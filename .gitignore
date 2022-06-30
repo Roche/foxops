@@ -1,0 +1,5 @@
+.python-version
+__pycache__/
+dist/
+.coverage*
+docs/build/

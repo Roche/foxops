@@ -1,0 +1,81 @@
+[tool.poetry]
+name = "foxops"
+# managed by poetry-dynamic-versioning, do not change.
+version = "0.0.0"
+description = "Foxops 🦊"
+authors = [
+    "Alexander Hungenberg <alexander.hungenberg@roche.com>",
+    "Timo Furrer <timo.furrer@roche.com>",
+]
+readme = "README.md"
+
+[tool.poetry.scripts]
+foxops = 'foxops.__main__:app'
+
+[tool.poetry.dependencies]
+python = ">=3.10"
+aiohttp = "^3.8.0"
+"ruamel.yaml" = "^0.17.20"
+pydantic = "^1.9.0"
+typer = "^0.4.0"
+structlog = "^21.2.0"
+dictdiffer = "^0.9.0"
+Jinja2 = "^3.0.3"
+aiopath = "^0.6.10"
+tenacity = "^8.0.1"
+
+[tool.poetry.dev-dependencies]
+flake8 = "^4.0.1"
+flake8-bugbear = "^22.0.0"
+isort = "^5.9.3"
+mypy = "^0.961"
+pytest = "^7.0.0"
+pytest-cov = "^3.0.0"
+black = "^22.3.0"
+pytest-asyncio = "^0.17.2"
+pytest-mock = "^3.6.1"
+pytest-bdd = "^5.0.0"
+Sphinx = "^4.4.0"
+myst-parser = "^0.16.1"
+furo = "^2022.1.2"
+sphinx-copybutton = "^0.5.0"
+sphinx-design = "^0.2.0"
+sphinx-autobuild = "^2021.3.14"
+sphinxcontrib-mermaid = "^0.7.1"
+
+[tool.isort]
+profile = "black"
+
+[tool.pytest.ini_options]
+addopts = '--cov=foxops'
+filterwarnings = [
+    # warning from: python3.9/asyncio/subprocess.py:196:
+    'ignore:The loop argument is deprecated since Python 3.8, and scheduled for removal in Python 3.10.'
+]
+bdd_features_base_dir = "tests/e2e/features/"
+markers = [
+    "e2e: end-to-end tests from tests/e2e/features",
+    "non_gherkin: temporary marker for non gherkin e2e tests"
+]
+asyncio_mode = "auto"
+
+[[tool.mypy.overrides]]
+module = "pytest_bdd"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "dictdiffer"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "aiopath"
+ignore_missing_imports = true
+
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+style = "pep440"
+
+[build-system]
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
+build-backend = "poetry.core.masonry.api"
