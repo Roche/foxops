@@ -1,0 +1,5 @@
+*
+!/src
+!/pyproject.toml
+!/.git/
+!/README.md
