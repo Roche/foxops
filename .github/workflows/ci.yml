@@ -91,8 +91,13 @@ jobs:
           # NOTE: we are unable to solely rely on pip because poetry doesn't export the dev dependencies
           #       as extras nor is it able to install ONLY the dev dependencies ...
           python -m poetry install
-      - run: python -m pytest
+      - run: python -m pytest --ignore=tests/e2e
         env:
+          # FoxOps test configuration
+          FOXOPS_GITLAB_ADDRESS: https://nonsense.com/api/v4
+          FOXOPS_GITLAB_TOKEN: nonsense
+
+          # Test runner configuration
           COVERAGE_FILE: .coverage.${{ matrix.python-version }}
 
       - name: Upload coverage data
