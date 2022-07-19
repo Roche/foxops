@@ -21,7 +21,7 @@ FROM python:3.10-alpine
 COPY --from=builder /build/dist/*.whl /tmp
 
 # Install the application
-RUN apk add --update git gcc musl-dev
+RUN apk add --update git gcc musl-dev bash
 RUN python -m pip install /tmp/*.whl
 RUN rm -f /tmp/*.whl
 
