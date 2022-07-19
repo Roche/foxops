@@ -6,30 +6,30 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory, mkstemp
 
-from structlog.stdlib import BoundLogger
-
 from foxops.external.git import GitRepository
-from foxops.settings import Settings
+from foxops.logging import get_logger
 from foxops.utils import CalledProcessError, check_call
+
+#: Holds the module logger
+logger = get_logger(__name__)
 
 
 async def diff_and_patch(
     diff_a_directory: Path,
     diff_b_directory: Path,
     patch_directory: Path,
-    logger: BoundLogger,
-) -> list[Path]:
-    patch_path = await diff(diff_a_directory, diff_b_directory, logger=logger)
-    try:
-        return await patch(
-            patch_path,
-            patch_directory,
-            diff_a_directory,
-            diff_b_directory,
-            logger=logger,
-        )
-    finally:
-        patch_path.unlink()
+) -> list[Path] | None:
+    if (patch_path := await diff(diff_a_directory, diff_b_directory)) is not None:
+        try:
+            return await patch(
+                patch_path,
+                patch_directory,
+                diff_a_directory,
+                diff_b_directory,
+            )
+        finally:
+            patch_path.unlink()
+    return None
 
 
 @asynccontextmanager
@@ -38,7 +38,6 @@ async def setup_diff_git_repository(
 ) -> typing.AsyncGenerator[Path, None]:
     # FIXME(TF): in case the *git way* provides as the viable long-term solution we could directly
     #            bootstrap that intermediate git repository instead of this copy-paste roundtrip.
-    settings = Settings()
     git_tmpdir: str
     with TemporaryDirectory() as git_tmpdir:
         await check_call("git", "init", ".", "--initial-branch", "main", cwd=git_tmpdir)
@@ -46,14 +45,14 @@ async def setup_diff_git_repository(
             "git",
             "config",
             "user.name",
-            settings.git_commit_author_name,
+            "fengine",
             cwd=git_tmpdir,
         )
         await check_call(
             "git",
             "config",
             "user.email",
-            settings.git_commit_author_email,
+            "noreply@fengine.io",
             cwd=git_tmpdir,
         )
         await check_call(
@@ -76,14 +75,18 @@ async def setup_diff_git_repository(
         yield Path(git_tmpdir)
 
 
-async def diff(old_directory: Path, new_directory: Path, logger: BoundLogger) -> Path:
+async def diff(old_directory: Path, new_directory: Path) -> Path | None:
     async with setup_diff_git_repository(old_directory, new_directory) as git_tmpdir:
         logger.debug(f"create git diff between branch old and new in {git_tmpdir}")
 
-        repo = GitRepository(git_tmpdir, logger)
+        repo = GitRepository(git_tmpdir)
         diff_output = await repo.diff("old", "new")
 
-        patch_path: str
+        if diff_output == "":
+            logger.info("The update didn't change anything, no patch to create")
+            return None
+
+        logger.debug("create patch from git diff", diff_output=diff_output)
         _, patch_path = mkstemp(prefix="fengine-update-", suffix=".patch")
 
         (p := Path(patch_path)).write_text(diff_output)
@@ -95,7 +98,6 @@ async def patch(
     incarnation_root_dir: Path,
     diff_a_directory: Path,
     diff_b_directory: Path,
-    logger: BoundLogger,
 ) -> list[Path]:
     # NOTE(TF): it's crucial that the paths are fully resolved here,
     #           because we are going to fiddle around how they
@@ -130,6 +132,7 @@ async def patch(
         logger.debug(
             "detected conflicts with patch, analyzing rejections ...",
             patch_path=patch_path,
+            exc=exc,
         )
         apply_rejection_output = exc.stderr
         files_with_conflicts = await analyze_patch_rejections(
@@ -137,7 +140,6 @@ async def patch(
             resolved_incarnation_root_dir,
             diff_a_directory,
             diff_b_directory,
-            logger=logger,
         )
         return files_with_conflicts
     else:
@@ -149,7 +151,6 @@ async def analyze_patch_rejections(
     patch_directory: Path,
     diff_a_directory: Path,
     diff_b_directory: Path,
-    logger: BoundLogger,
 ) -> list[Path]:
     reject_file_regex = re.compile(rb"Applying patch (.*?) with (\d+) reject...")
 
@@ -169,7 +170,6 @@ async def analyze_patch_rejections(
             patch_directory,
             diff_a_directory,
             diff_b_directory,
-            logger=logger,
         )
         if not conflict_fixed:
             logger.debug(f"file {file_with_rejection} still has conflicts")
@@ -182,7 +182,6 @@ async def attempt_fixing_rejection(
     patch_directory: Path,
     diff_a_directory: Path,
     diff_b_directory: Path,
-    logger: BoundLogger,
 ) -> bool:
     # diff_a_file = diff_a_directory / file_with_rejection
     diff_b_file = diff_b_directory / file_with_rejection

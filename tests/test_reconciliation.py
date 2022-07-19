@@ -1,3 +1,5 @@
+# type: ignore
+
 from pathlib import Path
 
 import pytest
@@ -12,7 +14,7 @@ from foxops.models import (
     IncarnationRemoteGitRepositoryState,
     yaml,
 )
-from foxops.reconciliation import (
+from foxops.v1_reconciliation import (
     ReconciliationState,
     get_actual_incarnation_state,
     reconcile,

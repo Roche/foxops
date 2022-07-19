@@ -1,0 +1,29 @@
+version: '3'
+
+services:
+  gitlab-ee:
+    image: gitlab/gitlab-ee:${GITLAB_EE_VERSION:-latest}
+    restart: always
+    ports:
+      - 5002:80
+    environment:
+      GITLAB_ROOT_PASSWORD: adminadmin
+    labels:
+      foxops-gitlab/owned: ''
+    volumes:
+      - config-ee:/etc/gitlab
+      - logs-ee:/var/log/gitlab
+      - data-ee:/var/opt/gitlab
+      - ${PWD}/scripts/healthcheck-and-setup.sh:/healthcheck-and-setup.sh:Z
+    healthcheck:
+      test: /healthcheck-and-setup.sh
+      interval: 10s
+      timeout: 2m
+
+volumes:
+  config-ce:
+  logs-ce:
+  data-ce:
+  config-ee:
+  logs-ee:
+  data-ee:

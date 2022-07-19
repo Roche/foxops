@@ -19,9 +19,7 @@ async def init_repository(repository_dir: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_initialize_template_at_root_of_incarnation_repository(
-    tmp_path: Path, logger
-):
+async def test_initialize_template_at_root_of_incarnation_repository(tmp_path: Path):
     # GIVEN
     (tmp_path / "fengine.yaml").write_text(
         """
@@ -49,7 +47,6 @@ variables:
         template_repository_version="any-version",
         template_data={"author": "John Doe", "three": "3"},
         incarnation_root_dir=incarnation_dir,
-        logger=logger,
     )
 
     # THEN
@@ -70,7 +67,7 @@ template_repository_version_hash: {repository_head}
 
 @pytest.mark.asyncio
 async def test_initialize_template_at_root_of_incarnation_repository_with_existing_file(
-    tmp_path: Path, logger
+    tmp_path: Path,
 ):
     # GIVEN
     (tmp_path / "fengine.yaml").write_text(
@@ -101,7 +98,6 @@ variables:
         template_repository_version="any-version",
         template_data={"author": "John Doe", "three": "3"},
         incarnation_root_dir=incarnation_dir,
-        logger=logger,
     )
 
     # THEN
@@ -122,7 +118,7 @@ template_repository_version_hash: {repository_head}
 
 
 @pytest.mark.asyncio
-async def test_initialize_template_fails_when_variables_are_not_set(tmp_path, logger):
+async def test_initialize_template_fails_when_variables_are_not_set(tmp_path):
     # GIVEN
     (tmp_path / "fengine.yaml").write_text(
         """
@@ -150,13 +146,12 @@ variables:
             template_repository_version="any-version",
             template_data={"author": "John Doe"},
             incarnation_root_dir=incarnation_dir,
-            logger=logger,
         )
 
 
 @pytest.mark.asyncio
 async def test_initialize_template_used_passed_value_instead_default_for_optional_variables(
-    tmp_path, logger
+    tmp_path,
 ):
     # GIVEN
     (tmp_path / "fengine.yaml").write_text(
@@ -186,7 +181,6 @@ variables:
         template_repository_version="any-version",
         template_data={"author": "John Doe", "three": 3},
         incarnation_root_dir=incarnation_dir,
-        logger=logger,
     )
 
     # THEN
@@ -194,7 +188,7 @@ variables:
 
 
 @pytest.mark.asyncio
-async def test_initialize_template_allows_optional_variables(tmp_path, logger):
+async def test_initialize_template_allows_optional_variables(tmp_path):
     # GIVEN
     (tmp_path / "fengine.yaml").write_text(
         """
@@ -223,7 +217,6 @@ variables:
         template_repository_version="any-version",
         template_data={"author": "John Doe"},
         incarnation_root_dir=incarnation_dir,
-        logger=logger,
     )
 
     # THEN
@@ -260,28 +253,22 @@ variables:
         "additional_variable_1": "any value",
         "additional_variable_2": 42,
     }
-    logger_mock = mocker.MagicMock()
 
     # WHEN
-    await initialize_incarnation(
+    incarnation_state = await initialize_incarnation(
         template_root_dir=tmp_path,
         template_repository="any-repository-url",
         template_repository_version="any-version",
         template_data=template_data_with_additional_values,
         incarnation_root_dir=incarnation_dir,
-        logger=logger_mock,
     )
 
     # THEN
-    logger_mock.warn.assert_called_once_with(
-        "got additional template data for the incarnation: ['additional_variable_1', 'additional_variable_2']"
-    )
+    assert incarnation_state is not None
 
 
 @pytest.mark.asyncio
-async def test_initialize_template_with_variables_from_fvars_file(
-    tmp_path: Path, logger
-):
+async def test_initialize_template_with_variables_from_fvars_file(tmp_path: Path):
     # GIVEN
     (tmp_path / "fengine.yaml").write_text(
         """
@@ -314,7 +301,6 @@ variables:
         template_repository_version="any-version",
         template_data={"three": "3"},
         incarnation_root_dir=incarnation_dir,
-        logger=logger,
     )
 
     # THEN
@@ -334,9 +320,7 @@ template_repository_version_hash: {repository_head}
 
 
 @pytest.mark.asyncio
-async def test_initialize_template_template_data_precedence_over_fvars(
-    tmp_path: Path, logger
-):
+async def test_initialize_template_template_data_precedence_over_fvars(tmp_path: Path):
     # GIVEN
     (tmp_path / "fengine.yaml").write_text(
         """
@@ -369,7 +353,6 @@ variables:
         template_repository_version="any-version",
         template_data={"author": "Overridden John Doe", "three": "3"},
         incarnation_root_dir=incarnation_dir,
-        logger=logger,
     )
 
     # THEN
@@ -391,7 +374,7 @@ template_repository_version_hash: {repository_head}
 
 
 @pytest.mark.asyncio
-async def test_initialize_template_empty_fvars_file(tmp_path: Path, logger):
+async def test_initialize_template_empty_fvars_file(tmp_path: Path):
     # GIVEN
     (tmp_path / "fengine.yaml").write_text(
         """
@@ -420,7 +403,6 @@ variables:
         template_repository_version="any-version",
         template_data={"author": "John Doe", "three": "3"},
         incarnation_root_dir=incarnation_dir,
-        logger=logger,
     )
 
     # THEN

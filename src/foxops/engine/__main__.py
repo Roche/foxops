@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import logging
 from dataclasses import asdict
 from pathlib import Path
@@ -6,7 +7,6 @@ from subprocess import PIPE, check_output
 from typing import Optional
 
 import typer
-from structlog.stdlib import BoundLogger
 
 from foxops.engine.initialization import initialize_incarnation
 from foxops.engine.models import (
@@ -18,11 +18,12 @@ from foxops.engine.models import (
 )
 from foxops.engine.patching.git_diff_patch import diff_and_patch
 from foxops.engine.update import update_incarnation_from_git_template_repository
-from foxops.logging import get_logger, setup_logging
+from foxops.logging import bind, get_logger, setup_logging
 
 app = typer.Typer()
 
-logger: BoundLogger
+#: Holds the module logger
+logger = get_logger(__name__)
 
 
 @app.command(name="new", help="Creates a new template scaffold in the given directory")
@@ -95,17 +96,15 @@ def cmd_initialize(
         tuple(x.split("=", maxsplit=1)) for x in raw_template_data  # type: ignore
     )
 
-    log = logger.bind(
-        template_repository=template_repository,
-        incarnation_dir=incarnation_dir,
-        template_data=template_data,
-    )
+    bind(template_repository=template_repository)
+    bind(incarnation_dir=incarnation_dir)
+    bind(template_data=template_data)
 
-    log.debug("creating empty incarnation directory")
+    logger.debug("creating empty incarnation directory")
     incarnation_dir.mkdir(parents=True, exist_ok=False)
 
     if template_repository_version:
-        log.debug(
+        logger.debug(
             f"checking out template repository version {template_repository_version}"
         )
         check_output(
@@ -120,7 +119,7 @@ def cmd_initialize(
         .strip()
     )
 
-    log.info(
+    logger.info(
         "starting initialization incarnation ...",
         template_repository=str(template_repository),
         template_repository_version=repository_version,
@@ -135,13 +134,12 @@ def cmd_initialize(
                 template_repository_version=repository_version,
                 template_data=template_data,
                 incarnation_root_dir=incarnation_dir,
-                logger=log,
             )
         )
     except Exception as exc:
-        log.exception(f"initialization failed: {exc}")
+        logger.exception(f"initialization failed: {exc}")
     else:
-        log.info("successfully initialized incarnation")
+        logger.info("successfully initialized incarnation")
     finally:
         if template_repository_version:
             check_output(
@@ -225,17 +223,15 @@ def cmd_update(
         incarnation_state_data=incarnation_state.template_data,
         user_template_data=template_data,
     )
-    merged_template_data = incarnation_state.template_data.copy()
+    merged_template_data = copy.deepcopy(incarnation_state.template_data)
     merged_template_data.update(template_data)
     merged_template_data = {
         k: v for k, v in merged_template_data.items() if k not in remove_template_data
     }
 
-    log = logger.bind(
-        template_repository=incarnation_state.template_repository,
-        incarnation_dir=incarnation_dir,
-        template_data=merged_template_data,
-    )
+    bind(template_repository=incarnation_state.template_repository)
+    bind(incarnation_dir=incarnation_dir)
+    bind(template_data=merged_template_data)
 
     if update_repository_version is None:
         update_repository_version = (
@@ -246,7 +242,7 @@ def cmd_update(
             .strip()
         )
 
-    log.info(
+    logger.info(
         f"starting update of incarnation to version {update_repository_version}...",
         template_repository=str(incarnation_state.template_repository),
         template_repository_version=update_repository_version,
@@ -262,18 +258,17 @@ def cmd_update(
                 update_template_data=merged_template_data,
                 incarnation_root_dir=incarnation_dir,
                 diff_patch_func=diff_and_patch,
-                logger=log,
             )
         )
 
         if files_with_conflicts:
-            log.error(
+            logger.error(
                 f"update failed, there were conflicts while updating the following files: {', '.join([str(f) for f in files_with_conflicts])}"
             )
         else:
-            log.info("successfully updated incarnation")
+            logger.info("successfully updated incarnation")
     except Exception as exc:
-        log.exception(f"update failed: {exc}")
+        logger.exception(f"update failed: {exc}")
 
 
 @app.callback()
@@ -281,20 +276,14 @@ def main(
     verbose: bool = typer.Option(  # noqa: B008
         False, "--verbose", "-v", help="turn on verbose logging"
     ),
-    logs_as_json: bool = typer.Option(  # noqa: B008
-        False, "--json-logs", "-j", help="render logs as JSON"
-    ),
 ):
     """
     Foxops engine ... use it to initialize or update template incarnations.
     """
     if verbose:
-        setup_logging(logging.DEBUG, logs_as_json)
+        setup_logging(level=logging.DEBUG)
     else:
-        setup_logging(logging.INFO, logs_as_json)
-
-    global logger
-    logger = get_logger("app")
+        setup_logging(level=logging.INFO)
 
 
 if __name__ == "__main__":

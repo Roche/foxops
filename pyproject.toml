@@ -14,6 +14,10 @@ foxops = 'foxops.__main__:app'
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
+uvicorn = "^0.18.2"
+fastapi = "0.79.0"
+SQLAlchemy = "^1.4.39"
+aiosqlite = "^0.17.0"
 aiohttp = "^3.8.0"
 "ruamel.yaml" = "^0.17.20"
 pydantic = "^1.9.0"
@@ -23,6 +27,7 @@ dictdiffer = "^0.9.0"
 Jinja2 = "^3.0.3"
 aiopath = "^0.6.10"
 tenacity = "^8.0.1"
+httpx = "^0.23.0"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^4.0.1"
@@ -42,6 +47,7 @@ sphinx-copybutton = "^0.5.0"
 sphinx-design = "^0.2.0"
 sphinx-autobuild = "^2021.3.14"
 sphinxcontrib-mermaid = "^0.7.1"
+SQLAlchemy = {extras = ["mypy"], version = "^1.4.39"}
 
 [tool.isort]
 profile = "black"
@@ -58,6 +64,7 @@ markers = [
     "non_gherkin: temporary marker for non gherkin e2e tests"
 ]
 asyncio_mode = "auto"
+python_functions = "should_* test_*"
 
 [[tool.mypy.overrides]]
 module = "pytest_bdd"

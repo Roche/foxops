@@ -1,3 +1,5 @@
+# type: ignore
+
 import os
 import shutil
 import subprocess
@@ -14,8 +16,7 @@ from aiopath import AsyncPath
 from dictdiffer import diff
 from ruamel.yaml import YAML
 
-from foxops.external.git import GitRepository, TemporaryGitRepository, git_exec
-from foxops.external.gitlab import GitlabNotFoundException
+from foxops.external.git import GitRepository, git_exec
 from foxops.logging import get_logger
 from foxops.reconciliation import generate_foxops_branch_name
 from tests.e2e.helpers import (
@@ -90,7 +91,6 @@ async def gitlab_test_group(
     )
 
 
-@pytest.mark.non_gherkin
 @pytest.mark.e2e
 @pytest.mark.asyncio
 async def test_initialize_template_in_root_of_empty_incarnation(
@@ -145,7 +145,6 @@ async def test_initialize_template_in_root_of_empty_incarnation(
     )
 
 
-@pytest.mark.non_gherkin
 @pytest.mark.e2e
 @pytest.mark.asyncio
 async def test_initialize_template_with_fvars(
@@ -206,7 +205,6 @@ async def test_initialize_template_with_fvars(
     )
 
 
-@pytest.mark.non_gherkin
 @pytest.mark.e2e
 @pytest.mark.asyncio
 async def test_initialize_template_in_root_of_nonempty_incarnation(
@@ -282,7 +280,6 @@ async def test_initialize_template_in_root_of_nonempty_incarnation(
     assert rev_before_reconcile == rev_after_reconcile
 
 
-@pytest.mark.non_gherkin
 @pytest.mark.e2e
 @pytest.mark.asyncio
 async def test_initialize_template_with_automerge_in_root_of_nonempty_incarnation(
@@ -350,7 +347,6 @@ async def test_initialize_template_with_automerge_in_root_of_nonempty_incarnatio
     assert rev_before_reconcile != rev_after_reconcile
 
 
-@pytest.mark.non_gherkin
 @pytest.mark.e2e
 @pytest.mark.asyncio
 async def test_initialize_template_in_root_of_nonempty_incarnation_with_fvars(
@@ -432,7 +428,6 @@ async def test_initialize_template_in_root_of_nonempty_incarnation_with_fvars(
     assert rev_before_reconcile == rev_after_reconcile
 
 
-@pytest.mark.non_gherkin
 @pytest.mark.e2e
 @pytest.mark.asyncio
 async def test_initialize_template_with_wrong_variables_errors(
@@ -486,7 +481,6 @@ async def test_initialize_template_with_wrong_variables_errors(
     )
 
 
-@pytest.mark.non_gherkin
 @pytest.mark.e2e
 @pytest.mark.asyncio
 async def test_initialize_template_in_subdir_incarnation(
@@ -541,7 +535,6 @@ async def test_initialize_template_in_subdir_incarnation(
     )
 
 
-@pytest.mark.non_gherkin
 @pytest.mark.e2e
 @pytest.mark.asyncio
 async def test_initialize_template_in_subdirs_incarnation(
@@ -631,7 +624,6 @@ async def test_initialize_template_in_subdirs_incarnation(
     )
 
 
-@pytest.mark.non_gherkin
 @pytest.mark.e2e
 @pytest.mark.asyncio
 async def test_update_incarnation_change_single_file(
@@ -720,7 +712,6 @@ async def test_update_incarnation_change_single_file(
     )
 
 
-@pytest.mark.non_gherkin
 @pytest.mark.e2e
 @pytest.mark.asyncio
 async def test_update_incarnation_change_single_file_with_fvars_change(
@@ -804,7 +795,6 @@ async def test_update_incarnation_change_single_file_with_fvars_change(
     )
 
 
-@pytest.mark.non_gherkin
 @pytest.mark.e2e
 @pytest.mark.asyncio
 async def test_update_incarnation_delete_single_file(
@@ -891,7 +881,6 @@ async def test_update_incarnation_delete_single_file(
     )
 
 
-@pytest.mark.non_gherkin
 @pytest.mark.e2e
 @pytest.mark.asyncio
 async def test_update_incarnation_rename_single_file(
@@ -978,7 +967,6 @@ async def test_update_incarnation_rename_single_file(
     )
 
 
-@pytest.mark.non_gherkin
 @pytest.mark.e2e
 @pytest.mark.asyncio
 async def test_update_incarnation_change_same_file_template_incarnation(
@@ -1062,7 +1050,6 @@ async def test_update_incarnation_change_same_file_template_incarnation(
     assert all(x["old_path"] != "README.md" for x in changes)
 
 
-@pytest.mark.non_gherkin
 @pytest.mark.e2e
 @pytest.mark.asyncio
 async def test_update_incarnation_moving_branch_name(
@@ -1152,7 +1139,6 @@ async def test_update_incarnation_moving_branch_name(
     )
 
 
-@pytest.mark.non_gherkin
 @pytest.mark.e2e
 @pytest.mark.asyncio
 async def test_update_incarnation_with_conflict_is_correctly_detected_and_presented(
@@ -1252,7 +1238,6 @@ async def test_update_incarnation_with_conflict_is_correctly_detected_and_presen
     )
 
 
-@pytest.mark.non_gherkin
 @pytest.mark.e2e
 @pytest.mark.asyncio
 async def test_update_incarnation_mr_is_automerged(

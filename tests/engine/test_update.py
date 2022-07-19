@@ -25,7 +25,7 @@ async def init_repository(repository_dir: Path) -> None:
     [diff_and_patch],
 )
 async def test_diff_and_patch_update_single_file_without_conflict(
-    diff_patch_func, tmp_path, logger
+    diff_patch_func, tmp_path
 ):
     # GIVEN
     old_directory = tmp_path / "old"
@@ -43,7 +43,6 @@ async def test_diff_and_patch_update_single_file_without_conflict(
         diff_a_directory=old_directory,
         diff_b_directory=new_directory,
         patch_directory=to_patch_directory,
-        logger=logger,
     )
 
     # THEN
@@ -53,7 +52,7 @@ async def test_diff_and_patch_update_single_file_without_conflict(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("diff_patch_func", [diff_and_patch])
 async def test_diff_and_patch_adding_new_file_without_conflict(
-    diff_patch_func, tmp_path, logger
+    diff_patch_func, tmp_path
 ):
     # GIVEN
     old_directory = tmp_path / "old"
@@ -71,7 +70,6 @@ async def test_diff_and_patch_adding_new_file_without_conflict(
         diff_a_directory=old_directory,
         diff_b_directory=new_directory,
         patch_directory=to_patch_directory,
-        logger=logger,
     )
 
     # THEN
@@ -80,9 +78,7 @@ async def test_diff_and_patch_adding_new_file_without_conflict(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("diff_patch_func", [diff_and_patch])
-async def test_diff_and_patch_removing_file_without_conflict(
-    diff_patch_func, tmp_path, logger
-):
+async def test_diff_and_patch_removing_file_without_conflict(diff_patch_func, tmp_path):
     # GIVEN
     old_directory = tmp_path / "old"
     old_directory.mkdir()
@@ -100,7 +96,6 @@ async def test_diff_and_patch_removing_file_without_conflict(
         diff_a_directory=old_directory,
         diff_b_directory=new_directory,
         patch_directory=to_patch_directory,
-        logger=logger,
     )
 
     # THEN
@@ -112,7 +107,6 @@ async def test_diff_and_patch_removing_file_without_conflict(
 async def test_diff_and_patch_no_change_when_updating_to_template_version_with_identical_change(
     diff_patch_func,
     tmp_path,
-    logger,
 ):
     """
     Verify that no change is being made to the incarnation repository when updating to a template version
@@ -137,7 +131,6 @@ r2 {...}
         template_repository_version="any-version",
         template_data={},
         incarnation_root_dir=incarnation_directory,
-        logger=logger,
     )
 
     # WHEN
@@ -170,7 +163,6 @@ r2 {...}
         update_template_data=incarnation_state.template_data,
         incarnation_root_dir=incarnation_directory,
         diff_patch_func=diff_patch_func,
-        logger=logger,
     )
 
     # THEN
@@ -189,7 +181,6 @@ r2 {...}
 async def test_diff_and_patch_conflict_for_nearby_changes_in_template_and_incarnation(
     diff_patch_func,
     tmp_path,
-    logger,
 ):
     """
     Verify that a conflict is detected when updating to a template version
@@ -216,7 +207,6 @@ c
         template_repository_version="any-version",
         template_data={},
         incarnation_root_dir=incarnation_directory,
-        logger=logger,
     )
 
     # WHEN
@@ -238,7 +228,7 @@ c
     await init_repository(incarnation_directory)
 
     # WHEN
-    _, files_with_conflicts = await update_incarnation(
+    update_performed, _, files_with_conflicts = await update_incarnation(
         template_root_dir=template_directory,
         update_template_root_dir=updated_template_directory,
         update_template_repository=incarnation_state.template_repository,
@@ -246,10 +236,11 @@ c
         update_template_data=incarnation_state.template_data,
         incarnation_root_dir=incarnation_directory,
         diff_patch_func=diff_patch_func,
-        logger=logger,
     )
 
     # THEN
+    print(files_with_conflicts)
+    assert update_performed is True
     assert Path("myfile.txt") in files_with_conflicts
 
 
@@ -258,7 +249,6 @@ c
 async def test_diff_and_patch_success_when_changes_in_different_places_in_template_and_incarnation(
     diff_patch_func,
     tmp_path,
-    logger,
 ):
     """
     Verify that a incarnation can successfully be updated to a new template version
@@ -289,7 +279,6 @@ c
         template_repository_version="any-version",
         template_data={},
         incarnation_root_dir=incarnation_directory,
-        logger=logger,
     )
 
     # WHEN
@@ -328,7 +317,6 @@ mychange
         update_template_data=incarnation_state.template_data,
         incarnation_root_dir=incarnation_directory,
         diff_patch_func=diff_patch_func,
-        logger=logger,
     )
 
     # THEN
@@ -352,7 +340,6 @@ mychange
 async def test_diff_and_patch_success_when_update_in_fvars_file(
     diff_patch_func,
     tmp_path: Path,
-    logger,
 ):
     """
     Verify that a incarnation can successfully be updated with new variable
@@ -386,7 +373,6 @@ variables:
         template_repository_version="any-version",
         template_data={},
         incarnation_root_dir=incarnation_directory,
-        logger=logger,
     )
 
     # WHEN
@@ -406,7 +392,6 @@ variables:
         update_template_data={},
         incarnation_root_dir=incarnation_directory,
         diff_patch_func=diff_patch_func,
-        logger=logger,
     )
 
     # THEN
@@ -420,7 +405,6 @@ variables:
 async def test_diff_and_patch_success_when_deleting_file_in_template(
     diff_patch_func,
     tmp_path,
-    logger,
 ):
     """
     Verify that a file is successfully deleted from the incarnation if it has been deleted in the template.
@@ -442,7 +426,6 @@ async def test_diff_and_patch_success_when_deleting_file_in_template(
         template_repository_version="any-version",
         template_data={},
         incarnation_root_dir=incarnation_directory,
-        logger=logger,
     )
 
     # WHEN
@@ -471,7 +454,6 @@ async def test_diff_and_patch_success_when_deleting_file_in_template(
         update_template_data=incarnation_state.template_data,
         incarnation_root_dir=incarnation_directory,
         diff_patch_func=diff_patch_func,
-        logger=logger,
     )
 
     # THEN
