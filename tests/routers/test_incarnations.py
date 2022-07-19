@@ -1,0 +1,106 @@
+from http import HTTPStatus
+
+import pytest
+from fastapi import FastAPI
+from httpx import AsyncClient
+from pytest_mock import MockFixture
+from sqlalchemy import text
+
+from foxops.dal import DAL
+from foxops.routers.incarnations import get_reconciliation
+
+
+@pytest.mark.asyncio
+async def test_api_get_incarnations_returns_empty_list_for_empty_incarnation_inventory(
+    api_client: AsyncClient,
+):
+    # WHEN
+    response = await api_client.get("/incarnations")
+
+    # THEN
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == []
+
+
+@pytest.mark.asyncio
+async def test_api_get_incarnations_returns_incarnations_from_inventory(
+    api_client: AsyncClient,
+    dal: DAL,
+):
+    # GIVEN
+    async with dal.connection() as conn:
+        await conn.execute(
+            text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'test', 'test')")
+        )
+        await conn.commit()
+
+    # WHEN
+    response = await api_client.get("/incarnations")
+
+    # THEN
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == [
+        {
+            "id": 1,
+            "incarnation_repository": "test",
+            "target_directory": "test",
+            "status": "test",
+            "revision": "test",
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_api_create_incarnation_adds_new_incarnation_to_inventory(
+    api_client: AsyncClient,
+    api_app: FastAPI,
+    mocker: MockFixture,
+):
+    # GIVEN
+    reconciliation_mock = mocker.AsyncMock()
+    reconciliation_mock.initialize_incarnation.return_value = "test"
+    api_app.dependency_overrides[get_reconciliation] = lambda: reconciliation_mock
+
+    # WHEN
+    response = await api_client.post(
+        "/incarnations",
+        json={
+            "incarnation_repository": "test",
+            "target_directory": "test",
+            "template_repository": "test",
+            "template_repository_version": "test",
+            "template_data": {"foo": "bar"},
+        },
+    )
+
+    # THEN
+    assert response.status_code == HTTPStatus.CREATED
+    assert response.json() == {
+        "id": 1,
+        "incarnation_repository": "test",
+        "target_directory": "test",
+        "status": "created",
+        "revision": "test",
+    }
+
+
+@pytest.mark.asyncio
+async def test_api_delete_incarnation_removes_incarnation_from_inventory(
+    api_client: AsyncClient,
+    dal: DAL,
+):
+    # GIVEN
+    async with dal.connection() as conn:
+        await conn.execute(
+            text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'test', 'test')")
+        )
+        await conn.commit()
+
+    # WHEN
+    response = await api_client.delete("/incarnations/1")
+
+    # THEN
+    assert response.status_code == HTTPStatus.NO_CONTENT
+    async with dal.connection() as conn:
+        actual_incarnations = await conn.execute(text("SELECT 1 FROM incarnation"))
+    assert actual_incarnations.scalar_one_or_none() is None

@@ -1,4 +1,3 @@
-import json
 import logging
 from dataclasses import asdict
 from pathlib import Path
@@ -465,7 +464,6 @@ def test_app_update_incarnation_should_complain_if_template_repository_is_not_a_
         result = cli_runner.invoke(
             app,
             [
-                "--json-logs",
                 "update",
                 str(incarnation_dir),
                 "-u",
@@ -476,10 +474,7 @@ def test_app_update_incarnation_should_complain_if_template_repository_is_not_a_
     # THEN
     assert result.exit_code == 1
     assert caplog.records[-1].levelname == "ERROR"
-    assert (
-        "is not a local directory. Might it be an URL?"
-        in json.loads(caplog.records[-1].message)["event"]
-    )
+    assert "is not a local directory. Might it be an URL?" in caplog.records[-1].message
 
 
 def test_app_should_update_incarnation_with_overridden_template_repository(

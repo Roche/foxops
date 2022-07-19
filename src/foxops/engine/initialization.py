@@ -1,7 +1,5 @@
 from pathlib import Path
 
-from structlog.stdlib import BoundLogger
-
 from foxops.engine.fvars import merge_template_data_with_fvars
 from foxops.engine.models import (
     IncarnationState,
@@ -12,6 +10,10 @@ from foxops.engine.models import (
 )
 from foxops.engine.rendering import render_template
 from foxops.external.git import GitRepository
+from foxops.logging import get_logger
+
+#: Holds the module logger
+logger = get_logger(__name__)
 
 
 async def initialize_incarnation(
@@ -20,7 +22,6 @@ async def initialize_incarnation(
     template_repository_version: str,
     template_data: TemplateData,
     incarnation_root_dir: Path,
-    logger: BoundLogger,
 ) -> IncarnationState:
     """Initialize an incarnation repository with a version of a template.
 
@@ -31,7 +32,6 @@ async def initialize_incarnation(
     template_data = merge_template_data_with_fvars(
         template_data=template_data,
         fvars_directory=incarnation_root_dir,
-        logger=logger,
     )
     return await _initialize_incarnation(
         template_root_dir=template_root_dir,
@@ -39,7 +39,6 @@ async def initialize_incarnation(
         template_repository_version=template_repository_version,
         template_data=template_data,
         incarnation_root_dir=incarnation_root_dir,
-        logger=logger,
     )
 
 
@@ -49,7 +48,6 @@ async def _initialize_incarnation(
     template_repository_version: str,
     template_data: TemplateData,
     incarnation_root_dir: Path,
-    logger: BoundLogger,
 ) -> IncarnationState:
     # verify that the template data in the desired incarnation state match the required template variables
     template_config = load_template_config(template_root_dir / "fengine.yaml")
@@ -77,7 +75,6 @@ async def _initialize_incarnation(
     template_data_with_defaults = fill_missing_optionals_with_defaults(
         provided_template_data=template_data,
         template_config=template_config,
-        logger=logger,
     )
 
     await render_template(
@@ -85,12 +82,9 @@ async def _initialize_incarnation(
         incarnation_root_dir,
         template_data_with_defaults,
         rendering_filename_exclude_patterns=template_config.rendering.excluded_files,
-        logger=logger,
     )
 
-    template_repository_version_hash = await GitRepository(
-        template_root_dir, logger
-    ).head()
+    template_repository_version_hash = await GitRepository(template_root_dir).head()
     incarnation_state = IncarnationState(
         template_repository=template_repository,
         template_repository_version=template_repository_version,

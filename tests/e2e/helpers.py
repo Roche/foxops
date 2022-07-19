@@ -1,3 +1,5 @@
+# type: ignore
+
 from collections import namedtuple
 
 from foxops.external.gitlab import AsyncGitlabClient, ProjectIdentifier, quote_plus

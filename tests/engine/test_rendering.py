@@ -25,9 +25,7 @@ def supports_symlink_permissions():
 
 
 @pytest.mark.asyncio
-async def test_rendering_a_template_file_renders_data_in_file_content(
-    tmp_path: Path, logger
-):
+async def test_rendering_a_template_file_renders_data_in_file_content(tmp_path: Path):
     # GIVEN
     template_file = tmp_path / "template.txt"
     template_file.write_text("{{ data }}")
@@ -43,7 +41,6 @@ async def test_rendering_a_template_file_renders_data_in_file_content(
         incarnation_dir,
         {"data": "Hello World"},
         render_content=True,
-        logger=logger,
     )
 
     # THEN
@@ -53,7 +50,6 @@ async def test_rendering_a_template_file_renders_data_in_file_content(
 @pytest.mark.asyncio
 async def test_rendering_a_template_file_with_invalid_templating_syntax_raises_exception(
     tmp_path: Path,
-    logger,
 ):
     # GIVEN
     template_file = tmp_path / "template.txt"
@@ -72,14 +68,11 @@ async def test_rendering_a_template_file_with_invalid_templating_syntax_raises_e
             incarnation_dir,
             {"data": "Hello World"},
             render_content=True,
-            logger=logger,
         )
 
 
 @pytest.mark.asyncio
-async def test_rendering_a_template_file_renders_data_in_filename(
-    tmp_path: Path, logger
-):
+async def test_rendering_a_template_file_renders_data_in_filename(tmp_path: Path):
     # GIVEN
     template_file = tmp_path / "template-{{ idx }}.txt"
     template_file.touch()
@@ -95,7 +88,6 @@ async def test_rendering_a_template_file_renders_data_in_filename(
         incarnation_dir,
         {"idx": "42"},
         render_content=True,
-        logger=logger,
     )
 
     # THEN
@@ -104,7 +96,7 @@ async def test_rendering_a_template_file_renders_data_in_filename(
 
 @pytest.mark.asyncio
 async def test_rendering_a_template_file_renders_data_in_entire_filepath(
-    tmp_path: Path, logger
+    tmp_path: Path,
 ):
     # GIVEN
     template_file = tmp_path / "project-{{ name }}/{{ subdir }}/template-{{ idx }}.txt"
@@ -122,7 +114,6 @@ async def test_rendering_a_template_file_renders_data_in_entire_filepath(
         incarnation_dir,
         {"name": "jon", "subdir": "tests", "idx": "42"},
         render_content=True,
-        logger=logger,
     )
 
     # THEN
@@ -130,9 +121,7 @@ async def test_rendering_a_template_file_renders_data_in_entire_filepath(
 
 
 @pytest.mark.asyncio
-async def test_rendering_a_template_symlink_renders_data_in_filename(
-    tmp_path: Path, logger
-):
+async def test_rendering_a_template_symlink_renders_data_in_filename(tmp_path: Path):
     # GIVEN
     template_symlink = tmp_path / "template-symlink-{{ idx }}"
     template_symlink.symlink_to("template.txt")
@@ -142,9 +131,7 @@ async def test_rendering_a_template_symlink_renders_data_in_filename(
     env = create_template_environment(tmp_path)
 
     # WHEN
-    await render_template_symlink(
-        env, template_symlink, incarnation_dir, {"idx": "42"}, logger=logger
-    )
+    await render_template_symlink(env, template_symlink, incarnation_dir, {"idx": "42"})
 
     # THEN
     assert (incarnation_dir / "template-symlink-42").is_symlink()
@@ -153,7 +140,7 @@ async def test_rendering_a_template_symlink_renders_data_in_filename(
 
 @pytest.mark.asyncio
 async def test_rendering_a_template_symlink_renders_data_in_target_filename(
-    tmp_path: Path, logger
+    tmp_path: Path,
 ):
     # GIVEN
     template_symlink = tmp_path / "template-symlink"
@@ -164,9 +151,7 @@ async def test_rendering_a_template_symlink_renders_data_in_target_filename(
     env = create_template_environment(tmp_path)
 
     # WHEN
-    await render_template_symlink(
-        env, template_symlink, incarnation_dir, {"idx": "42"}, logger=logger
-    )
+    await render_template_symlink(env, template_symlink, incarnation_dir, {"idx": "42"})
 
     # THEN
     assert (incarnation_dir / "template-symlink").is_symlink()
@@ -177,7 +162,7 @@ async def test_rendering_a_template_symlink_renders_data_in_target_filename(
 
 @pytest.mark.asyncio
 async def test_rendering_an_entire_template_directory_with_excluded_file(
-    tmp_path: Path, logger
+    tmp_path: Path,
 ):
     # GIVEN
     template_dir = tmp_path / "template"
@@ -198,7 +183,6 @@ async def test_rendering_an_entire_template_directory_with_excluded_file(
         incarnation_dir,
         {"data": "Hello World"},
         rendering_filename_exclude_patterns=excludes,
-        logger=logger,
     )
 
     # THEN
@@ -208,7 +192,7 @@ async def test_rendering_an_entire_template_directory_with_excluded_file(
 
 @pytest.mark.asyncio
 async def test_rendering_an_entire_template_directory_with_excluded_file_in_rendered_subdir(
-    tmp_path: Path, logger
+    tmp_path: Path,
 ):
     # GIVEN
     template_dir = tmp_path / "template"
@@ -233,7 +217,6 @@ async def test_rendering_an_entire_template_directory_with_excluded_file_in_rend
         incarnation_dir,
         {"data": "Hello World", "package_name": "test"},
         rendering_filename_exclude_patterns=excludes,
-        logger=logger,
     )
 
     # THEN
@@ -244,7 +227,7 @@ async def test_rendering_an_entire_template_directory_with_excluded_file_in_rend
 
 
 @pytest.mark.asyncio
-async def test_rendering_an_entire_template_directory(tmp_path: Path, logger):
+async def test_rendering_an_entire_template_directory(tmp_path: Path):
     # GIVEN
     template_dir = tmp_path / "template"
     template_dir.mkdir()
@@ -267,7 +250,6 @@ async def test_rendering_an_entire_template_directory(tmp_path: Path, logger):
         incarnation_dir,
         {"name": "jon", "data": "Hello World"},
         [],
-        logger=logger,
     )
 
     # THEN
@@ -288,9 +270,7 @@ async def test_rendering_an_entire_template_directory(tmp_path: Path, logger):
 
 
 @pytest.mark.asyncio
-async def test_rendering_a_template_file_inherits_file_permissions(
-    tmp_path: Path, logger
-):
+async def test_rendering_a_template_file_inherits_file_permissions(tmp_path: Path):
     # GIVEN
     template_file = tmp_path / "template.txt"
     template_file.touch()
@@ -306,7 +286,7 @@ async def test_rendering_a_template_file_inherits_file_permissions(
 
     # WHEN
     await render_template_file(
-        env, template_file, incarnation_dir, {}, render_content=True, logger=logger
+        env, template_file, incarnation_dir, {}, render_content=True
     )
 
     # THEN
@@ -321,9 +301,7 @@ async def test_rendering_a_template_file_inherits_file_permissions(
     not supports_symlink_permissions(),
     reason="Platform doesn't support setting symlink permissions",
 )
-async def test_rendering_a_template_symlink_inherits_file_permissions(
-    tmp_path: Path, logger
-):
+async def test_rendering_a_template_symlink_inherits_file_permissions(tmp_path: Path):
     # GIVEN
     template_file = tmp_path / "template.txt"
     template_file.write_text("test")
@@ -349,7 +327,6 @@ async def test_rendering_a_template_symlink_inherits_file_permissions(
         incarnation_dir,
         {},
         render_content=True,
-        logger=logger,
     )
     await render_template_file(
         env,
@@ -357,7 +334,6 @@ async def test_rendering_a_template_symlink_inherits_file_permissions(
         incarnation_dir,
         {},
         render_content=True,
-        logger=logger,
     )
 
     # THEN
@@ -371,9 +347,7 @@ async def test_rendering_a_template_symlink_inherits_file_permissions(
 
 
 @pytest.mark.asyncio
-async def test_rendering_a_template_directory_inherits_file_permissions(
-    tmp_path: Path, logger
-):
+async def test_rendering_a_template_directory_inherits_file_permissions(tmp_path: Path):
     # GIVEN
     template_dir = tmp_path / "template"
     template_subdir = template_dir / "subdir"
@@ -395,7 +369,7 @@ async def test_rendering_a_template_directory_inherits_file_permissions(
     expected_file_mode = stat.S_IMODE(file_mode_before_xusr | stat.S_IXUSR)
 
     # WHEN
-    await render_template(template_dir, incarnation_dir, {}, [], logger=logger)
+    await render_template(template_dir, incarnation_dir, {}, [])
 
     # THEN
     assert (incarnation_dir / "subdir").exists()

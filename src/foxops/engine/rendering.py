@@ -6,9 +6,12 @@ from pathlib import Path
 from aiopath import AsyncPath
 from jinja2 import FileSystemLoader, StrictUndefined
 from jinja2.sandbox import SandboxedEnvironment
-from structlog.stdlib import BoundLogger
 
 from foxops.engine.models import TemplateData
+from foxops.logging import get_logger
+
+#: Holds the module logger
+logger = get_logger(__name__)
 
 
 def create_template_environment(template_root_dir: Path) -> SandboxedEnvironment:
@@ -34,7 +37,6 @@ async def render_template(
     incarnation_root_dir: Path,
     template_data: TemplateData,
     rendering_filename_exclude_patterns: list[str],
-    logger: BoundLogger,
 ) -> None:
     """Render a template into an incarnation.
 
@@ -68,7 +70,6 @@ async def render_template(
             template_symlink_path,
             incarnation_root_dir,
             template_data,
-            logger=logger,
         )
 
     async def _render_template_dir(template_dir_path):
@@ -77,7 +78,6 @@ async def render_template(
             template_dir_path,
             incarnation_root_dir,
             template_data,
-            logger=logger,
         )
 
     async def _render_template_file(template_file_path, render_content: bool):
@@ -87,7 +87,6 @@ async def render_template(
             incarnation_root_dir,
             template_data,
             render_content=render_content,
-            logger=logger,
         )
 
     for root_dir, dirs, files in os.walk(template_root_dir):
@@ -115,7 +114,6 @@ async def render_template_file(
     incarnation_root_dir: Path,
     template_data: TemplateData,
     render_content: bool,
-    logger: BoundLogger,
 ) -> Path:
     """Render a template file into an incarnation file.
 
@@ -158,7 +156,6 @@ async def render_template_dir(
     template_dir_path: Path,
     incarnation_root_dir: Path,
     template_data: TemplateData,
-    logger: BoundLogger,
 ) -> Path:
     """Render a template directory path into an incarnation directory path."""
     loader: FileSystemLoader = typing.cast(FileSystemLoader, environment.loader)
@@ -182,7 +179,6 @@ async def render_template_symlink(
     template_symlink_path: Path,
     incarnation_root_dir: Path,
     template_data: TemplateData,
-    logger: BoundLogger,
 ) -> Path:
     """Render a template symlink path into an incarnation symlink path."""
     loader: FileSystemLoader = typing.cast(FileSystemLoader, environment.loader)
