@@ -21,3 +21,11 @@ The `foxops` is available in a container image hosted on [ghcr](https://github.c
 ```shell
 docker run -it --rm ghcr.io/roche/foxops --help
 ```
+
+# Future Improvements
+
+* Add an imperative REST API to foxops to create/update and list incarnations
+* Add a web UI on top of the foxops API
+* Add the capability to work with multiple different Git Hosting instances (i.e. various gitlab instances) in a single foxops deployment
+* Add user authentication & rbac
+* Add support for GitHub, BitBucket, ...
