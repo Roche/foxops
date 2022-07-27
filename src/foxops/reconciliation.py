@@ -314,7 +314,7 @@ of the following files from your repository:
         await local_incarnation_git_repository.commit_all(
             f"foxops: updating to template version {desired_incarnation_state.template_repository_version}"
         )
-        await local_incarnation_git_repository.push()
+        await local_incarnation_git_repository.push_with_potential_retry()
 
         await ensure_merge_request_is_submitted(
             gitlab=gitlab,

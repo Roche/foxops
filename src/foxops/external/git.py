@@ -11,8 +11,8 @@ from foxops.settings import Settings
 from foxops.utils import CalledProcessError, check_call
 
 GIT_REBASE_REQUIRED_ERROR_MESSAGE = (
-    "hint: Updates were rejected because the remote contains work that you do\n"
-    "hint: not have locally."
+    b"hint: Updates were rejected because the remote contains work that you do\n"
+    b"hint: not have locally."
 )
 
 
