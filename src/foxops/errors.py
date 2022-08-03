@@ -2,6 +2,18 @@ class FoxopsError(Exception):
     """Base class for all foxops errors."""
 
 
+class RetryableError(FoxopsError):
+    """Exception raised when an error occurs for which a retry usually helps."""
+
+
+class ReconciliationError(FoxopsError):
+    """Exception raised when an error occurs during reconciliation."""
+
+
+class ReconciliationUserError(ReconciliationError):
+    """Exception raised when a user error occurs during reconciliation."""
+
+
 class IncarnationNotFoundError(FoxopsError):
     """Exception raised when an Incarnation cannot be found in the inventory"""
 
@@ -19,18 +31,18 @@ class IncarnationRepositoryNotFound(FoxopsError):
         )
 
 
-class IncarnationAlreadyExistsError(FoxopsError):
+class IncarnationAlreadyInitializedError(ReconciliationUserError):
     """Exception raised when an Incarnation already exists in the inventory"""
 
-    def __init__(self, incarnation_repository: str, target_directory: str):
+    def __init__(
+        self,
+        incarnation_repository: str,
+        target_directory: str,
+        revision: str,
+        has_mismatch: bool,
+    ):
+        self.revision = revision
+        self.has_mismatch = has_mismatch
         super().__init__(
-            f"Incarnation at '{incarnation_repository}' and target directory '{target_directory}' already exists."
+            f"Incarnation at '{incarnation_repository}' and target directory '{target_directory}' already initialized."
         )
-
-
-class RetryableError(FoxopsError):
-    """Exception raised when an error occurs for which a retry usually helps."""
-
-
-class ReconciliationError(FoxopsError):
-    """Exception raised when an error occurs during reconciliation."""

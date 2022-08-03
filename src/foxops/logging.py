@@ -53,7 +53,7 @@ def configure_uvicorn_logging():
     uvicorn_access_logger.handlers.clear()
 
 
-def setup_logging(level=logging.DEBUG):
+def setup_logging(level: int | str) -> None:
     configure_sa_logging()
     configure_uvicorn_logging()
 

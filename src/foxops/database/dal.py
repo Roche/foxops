@@ -3,9 +3,9 @@ from typing import AsyncIterator
 
 from sqlalchemy import text
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
-from foxops.database.config import meta
+from foxops.database.schema import meta
 from foxops.errors import IncarnationNotFoundError
 from foxops.hosters import GitSha
 from foxops.logging import get_logger
@@ -13,15 +13,6 @@ from foxops.models import DesiredIncarnationState, Incarnation
 
 #: Holds the module logger
 logger = get_logger(__name__)
-
-
-#: Holds the URL to the database
-DATABASE_URL = "sqlite+aiosqlite:///./test.db"
-
-
-async_engine = create_async_engine(
-    DATABASE_URL, future=True, echo=False, pool_pre_ping=True
-)
 
 
 class DAL:
@@ -63,7 +54,7 @@ class DAL:
     ) -> Incarnation:
         async with self.connection() as conn:
             # Check if the incarnation already exists and if so, just update it gracefully
-            if incarnation := await self._get_incarnation_by_identity(
+            if incarnation := await self.get_incarnation_by_identity(
                 desired_incarnation_state.incarnation_repository,
                 desired_incarnation_state.target_directory,
                 conn=conn,
@@ -100,7 +91,7 @@ class DAL:
             )
             await conn.commit()
 
-    async def _get_incarnation_by_identity(
+    async def get_incarnation_by_identity(
         self,
         incarnation_repository: str,
         target_directory: str,
@@ -129,7 +120,3 @@ class DAL:
             return None
         else:
             return Incarnation.from_orm(row)
-
-
-def get_dal():
-    return DAL(async_engine)

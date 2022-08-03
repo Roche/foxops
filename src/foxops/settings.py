@@ -4,8 +4,8 @@ from pydantic import BaseSettings, SecretStr
 class Settings(BaseSettings):
     gitlab_address: str
     gitlab_token: SecretStr
-    git_commit_author_name: str = "foxops"
-    git_commit_author_email: str = "noreply@foxops.io"
+    database_url: str = "sqlite+aiosqlite:///./test.db"
+    log_level: str = "INFO"
 
     class Config:
         env_prefix = "foxops_"

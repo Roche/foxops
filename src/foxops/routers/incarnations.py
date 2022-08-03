@@ -1,9 +1,13 @@
 from fastapi import APIRouter, Depends, Response, status
 
-import foxops.reconciliation as reconciliation
-from foxops.dal import DAL, get_dal
-from foxops.errors import IncarnationNotFoundError
-from foxops.hosters import GitLab, Hoster
+from foxops.database import DAL
+from foxops.dependencies import get_dal, get_hoster, get_reconciliation
+from foxops.errors import (
+    IncarnationAlreadyInitializedError,
+    IncarnationNotFoundError,
+    ReconciliationUserError,
+)
+from foxops.hosters import Hoster
 from foxops.logging import bind, get_logger
 from foxops.models import (
     DesiredIncarnationState,
@@ -22,19 +26,6 @@ router = APIRouter(
 logger = get_logger(__name__)
 
 
-def get_hoster() -> Hoster:
-    # NOTE: Yes, you may absolutely use proper dependency injection at some point.
-    return GitLab(
-        address="",
-        token="",
-    )
-
-
-def get_reconciliation():
-    # NOTE: Yes, you may absolutely use proper dependency injection at some point.
-    return reconciliation
-
-
 @router.get(
     "/",
     responses={
@@ -42,32 +33,60 @@ def get_reconciliation():
             "description": "The list of incarnations in the inventory",
             "model": list[Incarnation],
         },
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "The `incarnation_repository` and `target_directory` settings where inconsistent",
+            "model": ApiError,
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "An incarnation with the `incarnation_repository` and `target_directory` does not exist",
+            "model": ApiError,
+        },
     },
 )
-async def list_incarnations(dal: DAL = Depends(get_dal)):
+async def list_incarnations(
+    response: Response,
+    incarnation_repository: str | None = None,
+    target_directory: str = ".",
+    dal: DAL = Depends(get_dal),
+):
     """Returns a list of all known incarnations.
 
     The list is sorted by creation date, with the oldest incarnation first.
 
     TODO: implement pagination
     """
+    if incarnation_repository is not None:
+        async with dal.connection() as conn:
+            incarnation = await dal.get_incarnation_by_identity(
+                incarnation_repository, target_directory, conn
+            )
+            if incarnation is None:
+                response.status_code = status.HTTP_404_NOT_FOUND
+                return ApiError(
+                    message="No incarnation found for the given repository and target directory"
+                )
+
     return [i async for i in dal.get_incarnations()]
 
 
 @router.post(
     "/",
     responses={
+        status.HTTP_200_OK: {
+            "description": "The incarnation is already initialized and was imported to the inventory. Only applicable with `allow_import=True`.",
+            "model": Incarnation,
+        },
         status.HTTP_201_CREATED: {
             "description": "The incarnation has been successfully initialized and was added to the inventory.",
             "model": Incarnation,
         },
         status.HTTP_400_BAD_REQUEST: {
-            "description": "The desired incarnation state was not valid.",
+            "description": "The desired incarnation state was not valid or the incarnation already exists and import was not allowed.",
             "model": ApiError,
         },
         status.HTTP_409_CONFLICT: {
-            "description": "The incarnation is already initialized.",
-            "model": ApiError,
+            "description": "The incarnation is already initialized and has a template configuration mismatch.",
+            "model": Incarnation,
         },
         status.HTTP_500_INTERNAL_SERVER_ERROR: {
             "description": "The reconciliation failed",
@@ -78,6 +97,7 @@ async def list_incarnations(dal: DAL = Depends(get_dal)):
 async def create_incarnation(
     response: Response,
     desired_incarnation_state: DesiredIncarnationState,
+    allow_import: bool = False,
     dal: DAL = Depends(get_dal),
     hoster: Hoster = Depends(get_hoster),
     reconciliation=Depends(get_reconciliation),
@@ -97,15 +117,35 @@ async def create_incarnation(
         revision = await reconciliation.initialize_incarnation(
             hoster, desired_incarnation_state
         )
+    except IncarnationAlreadyInitializedError as exc:
+        if not allow_import:
+            logger.warning(
+                f"User error happened during initialization of incarnation: {exc}"
+            )
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            return ApiError(message=str(exc))
+
+        revision = exc.revision
+        if exc.has_mismatch:
+            response.status_code = status.HTTP_409_CONFLICT
+        else:
+            response.status_code = status.HTTP_200_OK
+    except ReconciliationUserError as exc:
+        logger.warning(
+            f"User error happened during initialization of incarnation: {exc}"
+        )
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return ApiError(message=str(exc))
     except Exception as exc:
         logger.exception(str(exc))
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return ApiError(message=str(exc))
+    else:
+        response.status_code = status.HTTP_201_CREATED
 
     incarnation = await dal.create_incarnation(desired_incarnation_state, revision)
 
     bind(incarnation_id=incarnation.id)
-    response.status_code = status.HTTP_201_CREATED
     return incarnation
 
 
@@ -168,6 +208,7 @@ async def update_incarnation(
     desired_incarnation_state_patch: DesiredIncarnationStatePatch,
     dal: DAL = Depends(get_dal),
     hoster: Hoster = Depends(get_hoster),
+    reconciliation=Depends(get_reconciliation),
 ):
     """Reconciles the incarnation.
 
@@ -186,9 +227,15 @@ async def update_incarnation(
         return ApiError(message=str(exc))
 
     try:
-        _ = reconciliation.update_incarnation(
+        _ = await reconciliation.update_incarnation(
             hoster, incarnation, desired_incarnation_state_patch
         )
+    except ReconciliationUserError as exc:
+        logger.warning(
+            f"User error happened during initialization of incarnation: {exc}"
+        )
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return ApiError(message=str(exc))
     except Exception as exc:
         logger.exception(str(exc))
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR

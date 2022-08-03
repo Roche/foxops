@@ -1,4 +1,3 @@
-import os
 from contextvars import ContextVar
 
 import pytest

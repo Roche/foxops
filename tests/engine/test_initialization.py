@@ -4,6 +4,7 @@ import pytest
 
 from foxops import utils
 from foxops.engine import initialize_incarnation
+from foxops.errors import ReconciliationUserError
 
 
 async def init_repository(repository_dir: Path) -> None:
@@ -139,7 +140,7 @@ variables:
     incarnation_dir.mkdir()
 
     # THEN
-    with pytest.raises(ValueError):
+    with pytest.raises(ReconciliationUserError):
         await initialize_incarnation(
             template_root_dir=tmp_path,
             template_repository="any-repository-url",

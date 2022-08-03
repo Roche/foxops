@@ -6,7 +6,8 @@ from httpx import AsyncClient
 from pytest_mock import MockFixture
 from sqlalchemy import text
 
-from foxops.dal import DAL
+from foxops.database import DAL
+from foxops.errors import IncarnationAlreadyInitializedError
 from foxops.routers.incarnations import get_reconciliation
 
 
@@ -59,6 +60,7 @@ async def test_api_create_incarnation_adds_new_incarnation_to_inventory(
     # GIVEN
     reconciliation_mock = mocker.AsyncMock()
     reconciliation_mock.initialize_incarnation.return_value = "test"
+
     api_app.dependency_overrides[get_reconciliation] = lambda: reconciliation_mock
 
     # WHEN
@@ -75,6 +77,152 @@ async def test_api_create_incarnation_adds_new_incarnation_to_inventory(
 
     # THEN
     assert response.status_code == HTTPStatus.CREATED
+    assert response.json() == {
+        "id": 1,
+        "incarnation_repository": "test",
+        "target_directory": "test",
+        "status": "created",
+        "revision": "test",
+    }
+
+
+@pytest.mark.asyncio
+async def test_api_create_incarnation_already_exists_without_allowing_import(
+    api_client: AsyncClient,
+    api_app: FastAPI,
+    dal: DAL,
+    mocker: MockFixture,
+):
+    # GIVEN
+    async with dal.connection() as conn:
+        await conn.execute(
+            text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'test', 'test')")
+        )
+        await conn.commit()
+
+    reconciliation_mock = mocker.AsyncMock()
+    reconciliation_mock.initialize_incarnation.side_effect = (
+        IncarnationAlreadyInitializedError(
+            "test",
+            "test",
+            "fake-revision",
+            has_mismatch=False,
+        )
+    )
+
+    api_app.dependency_overrides[get_reconciliation] = lambda: reconciliation_mock
+
+    # WHEN
+    response = await api_client.post(
+        "/incarnations",
+        json={
+            "incarnation_repository": "test",
+            "target_directory": "test",
+            "template_repository": "test",
+            "template_repository_version": "test",
+            "template_data": {"foo": "bar"},
+        },
+    )
+
+    # THEN
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+
+
+@pytest.mark.asyncio
+async def test_api_create_incarnation_already_exists_allowing_import_without_a_mismatch(
+    api_client: AsyncClient,
+    api_app: FastAPI,
+    dal: DAL,
+    mocker: MockFixture,
+):
+    # GIVEN
+    async with dal.connection() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO incarnation VALUES (1, 'test', 'test', 'created', 'test')"
+            )
+        )
+        await conn.commit()
+
+    reconciliation_mock = mocker.AsyncMock()
+    reconciliation_mock.initialize_incarnation.side_effect = (
+        IncarnationAlreadyInitializedError(
+            "test",
+            "test",
+            "fake-revision",
+            has_mismatch=False,
+        )
+    )
+
+    api_app.dependency_overrides[get_reconciliation] = lambda: reconciliation_mock
+
+    # WHEN
+    response = await api_client.post(
+        "/incarnations",
+        params={"allow_import": "true"},
+        json={
+            "incarnation_repository": "test",
+            "target_directory": "test",
+            "template_repository": "test",
+            "template_repository_version": "test",
+            "template_data": {"foo": "bar"},
+        },
+    )
+
+    # THEN
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {
+        "id": 1,
+        "incarnation_repository": "test",
+        "target_directory": "test",
+        "status": "created",
+        "revision": "test",
+    }
+
+
+@pytest.mark.asyncio
+async def test_api_create_incarnation_already_exists_allowing_import_with_a_mismatch(
+    api_client: AsyncClient,
+    api_app: FastAPI,
+    dal: DAL,
+    mocker: MockFixture,
+):
+    # GIVEN
+    async with dal.connection() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO incarnation VALUES (1, 'test', 'test', 'created', 'test')"
+            )
+        )
+        await conn.commit()
+
+    reconciliation_mock = mocker.AsyncMock()
+    reconciliation_mock.initialize_incarnation.side_effect = (
+        IncarnationAlreadyInitializedError(
+            "test",
+            "test",
+            "fake-revision",
+            has_mismatch=True,
+        )
+    )
+
+    api_app.dependency_overrides[get_reconciliation] = lambda: reconciliation_mock
+
+    # WHEN
+    response = await api_client.post(
+        "/incarnations",
+        params={"allow_import": "true"},
+        json={
+            "incarnation_repository": "test",
+            "target_directory": "test",
+            "template_repository": "test",
+            "template_repository_version": "test",
+            "template_data": {"foo": "bar"},
+        },
+    )
+
+    # THEN
+    assert response.status_code == HTTPStatus.CONFLICT
     assert response.json() == {
         "id": 1,
         "incarnation_repository": "test",

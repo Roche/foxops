@@ -4,7 +4,11 @@ import pytest
 from pytest_mock import MockFixture
 
 import foxops.engine as fengine
-from foxops.errors import IncarnationRepositoryNotFound, ReconciliationError
+from foxops.errors import (
+    IncarnationAlreadyInitializedError,
+    IncarnationRepositoryNotFound,
+    ReconciliationError,
+)
 from foxops.external.git import GitRepository
 from foxops.hosters import Hoster
 from foxops.models import DesiredIncarnationState
@@ -35,14 +39,65 @@ async def should_err_if_incarnation_is_already_initialized(
     # GIVEN
     hoster = mocker.MagicMock(spec=Hoster)
     hoster.get_incarnation_state.return_value = mocker.MagicMock(
-        spec=fengine.IncarnationState
+        spec=fengine.IncarnationState,
+        template_repository="",
+        template_repository_version="",
+        template_data={},
     )
 
     # THEN
     expected_error_msg = "already initialized"
-    with pytest.raises(ReconciliationError, match=expected_error_msg):
+    with pytest.raises(IncarnationAlreadyInitializedError, match=expected_error_msg):
         # WHEN
         await initialize_incarnation(hoster, test_dis)
+
+
+@pytest.mark.asyncio
+async def should_err_if_incarnation_is_already_initialized_reporting_a_config_mismatch(
+    mocker: MockFixture, test_dis: DesiredIncarnationState
+):
+    # GIVEN
+    hoster = mocker.MagicMock(spec=Hoster)
+    hoster.get_incarnation_state.return_value = fengine.IncarnationState(
+        template_repository="",
+        template_repository_version="",
+        template_repository_version_hash="",
+        template_data={},
+    )
+
+    # THEN
+    expected_error_msg = "already initialized"
+    with pytest.raises(
+        IncarnationAlreadyInitializedError, match=expected_error_msg
+    ) as exc:
+        # WHEN
+        await initialize_incarnation(hoster, test_dis)
+
+    assert exc.value.has_mismatch is True
+
+
+@pytest.mark.asyncio
+async def should_err_if_incarnation_is_already_initialized_reporting_no_config_mismatch(
+    mocker: MockFixture, test_dis: DesiredIncarnationState
+):
+    # GIVEN
+    hoster = mocker.MagicMock(spec=Hoster)
+    hoster.get_incarnation_state.return_value = fengine.IncarnationState(
+        template_repository=test_dis.template_repository,
+        template_repository_version=test_dis.template_repository_version,
+        template_repository_version_hash="does-not-matter",
+        template_data=test_dis.template_data,
+    )
+
+    # THEN
+    expected_error_msg = "already initialized"
+    with pytest.raises(
+        IncarnationAlreadyInitializedError, match=expected_error_msg
+    ) as exc:
+        # WHEN
+        await initialize_incarnation(hoster, test_dis)
+
+    assert exc.value.has_mismatch is False
 
 
 @pytest.mark.asyncio

@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy import text
 
-from foxops.dal import DAL
+from foxops.database import DAL
 from foxops.models import Incarnation
 from foxops.models.desired_incarnation_state import DesiredIncarnationState
 
