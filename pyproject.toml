@@ -55,8 +55,7 @@ profile = "black"
 [tool.pytest.ini_options]
 addopts = '--cov=foxops'
 filterwarnings = [
-    # warning from: python3.9/asyncio/subprocess.py:196:
-    'ignore:The loop argument is deprecated since Python 3.8, and scheduled for removal in Python 3.10.'
+    'ignore:directory "/var/run/secrets/foxops" does not exist'
 ]
 bdd_features_base_dir = "tests/e2e/features/"
 markers = [

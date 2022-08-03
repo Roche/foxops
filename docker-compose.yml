@@ -15,6 +15,7 @@ services:
       - logs-ee:/var/log/gitlab
       - data-ee:/var/opt/gitlab
       - ${PWD}/scripts/healthcheck-and-setup.sh:/healthcheck-and-setup.sh:Z
+      - ${PWD}/scripts/gitlab.rb:/etc/gitlab/gitlab.rb:ro
     healthcheck:
       test: /healthcheck-and-setup.sh
       interval: 10s

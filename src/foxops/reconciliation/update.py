@@ -1,143 +1,23 @@
-import hashlib
 import os
-from glob import glob
 from pathlib import Path
 
 import foxops.engine as fengine
-from foxops.errors import IncarnationRepositoryNotFound, ReconciliationError
+from foxops.errors import ReconciliationError
 from foxops.external.git import GitRepository
 from foxops.hosters import GitSha, Hoster
 from foxops.logging import get_logger
 from foxops.models import (
-    DesiredIncarnationState,
     DesiredIncarnationStatePatch,
     Incarnation,
     incarnation_identifier,
 )
+from foxops.reconciliation.utils import generate_foxops_branch_name, retry_if_possible
 
 #: Holds the module logger
 logger = get_logger(__name__)
 
 
-async def initialize_incarnation(
-    hoster: Hoster, desired_incarnation_state: DesiredIncarnationState
-) -> GitSha:
-    logger.info("Verifying if the incarnation can be initialized")
-
-    try:
-        actual_incarnation_state = await hoster.get_incarnation_state(
-            desired_incarnation_state.incarnation_repository,
-            desired_incarnation_state.target_directory,
-        )
-    except IncarnationRepositoryNotFound as exc:
-        logger.warning(f"Reconciliation failed, because: {exc}")
-        raise ReconciliationError(
-            f"Failed to reconcile incarnation because the remote Incarnation repository at '{exc.incarnation_repository}' doesn't exist. "
-            "Create it first, then try again."
-        )
-
-    if actual_incarnation_state is not None:
-        raise ReconciliationError(
-            f"Incarnation {incarnation_identifier(desired_incarnation_state)} already initialized"
-        )
-
-    logger.debug("Cloning Incarnation and Template repository to local directory")
-
-    incarnation_repo_cm = hoster.cloned_repository(
-        desired_incarnation_state.incarnation_repository
-    )
-    template_repo_cm = hoster.cloned_repository(
-        desired_incarnation_state.template_repository,
-        refspec=desired_incarnation_state.template_repository_version,
-    )
-
-    # FIXME: why are these types not correctly deduced?!
-    local_incarnation_repository: GitRepository
-    local_template_repository: GitRepository
-    async with incarnation_repo_cm as local_incarnation_repository, template_repo_cm as local_template_repository:
-        logger.debug(
-            f"Cloned Incarnation repository to '{local_incarnation_repository.directory}' and Template repository to '{local_template_repository.directory}'"
-        )
-
-        with_merge_request = await _should_initialize_with_merge_request(
-            local_incarnation_repository, desired_incarnation_state.target_directory
-        )
-
-        # preparing the branch to initialize the incarnation
-        init_branch = None
-        if with_merge_request:
-            init_branch = generate_foxops_branch_name(
-                "initialize-to",
-                desired_incarnation_state.target_directory,
-                desired_incarnation_state.template_repository_version,
-            )
-
-            if git_sha := await hoster.has_pending_incarnation_branch(
-                desired_incarnation_state.incarnation_repository, init_branch
-            ):
-                logger.info(
-                    f"Branch '{init_branch}' already exists, skipping initialization"
-                )
-                return git_sha
-        else:
-            init_branch = (
-                await hoster.get_repository_metadata(
-                    desired_incarnation_state.incarnation_repository
-                )
-            )["default_branch"]
-
-        await local_incarnation_repository.create_and_checkout_branch(
-            init_branch,
-            exist_ok=True,
-        )
-
-        _ = await fengine.initialize_incarnation(
-            template_root_dir=local_template_repository.directory,
-            template_repository=desired_incarnation_state.template_repository,
-            template_repository_version=desired_incarnation_state.template_repository_version,
-            template_data=desired_incarnation_state.template_data,
-            incarnation_root_dir=(
-                local_incarnation_repository.directory
-                / desired_incarnation_state.target_directory
-            ),
-        )
-
-        await local_incarnation_repository.commit_all(
-            f"foxops: initializing incarnation from template {desired_incarnation_state.template_repository} "
-            f"@ {desired_incarnation_state.template_repository_version}"
-        )
-        commit_sha = await local_incarnation_repository.push_with_potential_retry()
-        logger.debug(
-            "Local reconciliation finished and synced with remote",
-            commit_sha=commit_sha,
-        )
-
-        if with_merge_request:
-            merge_request_sha = await hoster.merge_request(
-                incarnation_repository=desired_incarnation_state.incarnation_repository,
-                source_branch=init_branch,
-                title=f"Initialize to {desired_incarnation_state.template_repository_version}",
-                description=f"Initialize to {desired_incarnation_state.template_repository_version}",
-                with_automerge=desired_incarnation_state.automerge,
-            )
-            return merge_request_sha
-        else:
-            return commit_sha
-
-
-async def _should_initialize_with_merge_request(
-    local_repository: GitRepository, target_directory: str
-) -> bool:
-    """Checks if the given local incarnation repository should be initialize with a Merge Request or directly pushed to the default branch."""
-    incarnation_dir = local_repository.directory / target_directory
-    repo_has_commits = await local_repository.has_any_commits()
-    incarnated_files = set(
-        glob("*", root_dir=incarnation_dir) + glob(".*", root_dir=incarnation_dir)
-    ) - {".git", fengine.FVARS_FILENAME}
-
-    return repo_has_commits and incarnation_dir.exists() and len(incarnated_files) > 0
-
-
+@retry_if_possible
 async def update_incarnation(
     hoster: Hoster,
     incarnation: Incarnation,
@@ -186,7 +66,7 @@ async def update_incarnation(
     incarnation_repo_cm = hoster.cloned_repository(incarnation.incarnation_repository)
     template_repo_cm = hoster.cloned_repository(
         incarnation_state_before_update.template_repository,
-        refspec=incarnation_state_before_update.template_repository_version_hash,
+        bare=True,
     )
 
     # FIXME: why are these types not correctly deduced?!
@@ -265,8 +145,8 @@ async def _handle_update_merge_request_without_conflicts(
     merge_request_sha = await hoster.merge_request(
         incarnation_repository=incarnation.incarnation_repository,
         source_branch=update_branch,
-        title=f"Initialize to {template_repository_version}",
-        description=f"Initialize to {template_repository_version}",
+        title=f"Update to {template_repository_version}",
+        description=f"Update to {template_repository_version}",
         with_automerge=automerge,
     )
     return merge_request_sha
@@ -282,8 +162,8 @@ async def _handle_update_merge_request_with_conflicts(
     logger.info(
         f"detected conflicts for files: {', '.join([str(f) for f in files_with_conflicts])} after update to new template"
     )
-    title = f"🚧 - CONFLICT: Initialize to {template_repository_version}"
-    description = f"""Initialize to {template_repository_version}
+    title = f"🚧 - CONFLICT: Update to {template_repository_version}"
+    description = f"""Update to {template_repository_version}
 
 There are conflicts in this Merge Request. Please check the rejection files
 of the following files from your repository:
@@ -298,12 +178,3 @@ of the following files from your repository:
         with_automerge=False,
     )
     return merge_request_sha
-
-
-def generate_foxops_branch_name(
-    prefix: str, target_directory: str, template_repository_version: str
-) -> str:
-    target_directory_hash = hashlib.sha1(target_directory.encode("utf-8")).hexdigest()[
-        :7
-    ]
-    return f"foxops/{prefix}-{target_directory_hash}-{template_repository_version}"

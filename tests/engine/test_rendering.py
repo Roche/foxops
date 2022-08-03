@@ -16,8 +16,10 @@ from foxops.engine.rendering import (
 def supports_symlink_permissions():
     """Check if the current platform supports setting permissions on symlinks."""
     with TemporaryDirectory() as tmpdir:
+        p = Path(tmpdir) / "symlink"
+        p.symlink_to(Path(tmpdir) / "target")
         try:
-            Path(tmpdir).chmod(0o755, follow_symlinks=False)
+            p.chmod(0o755, follow_symlinks=False)
         except NotImplementedError:
             return False
         else:
@@ -296,11 +298,11 @@ async def test_rendering_a_template_file_inherits_file_permissions(tmp_path: Pat
     )
 
 
-@pytest.mark.asyncio
 @pytest.mark.skipif(
     not supports_symlink_permissions(),
     reason="Platform doesn't support setting symlink permissions",
 )
+@pytest.mark.asyncio
 async def test_rendering_a_template_symlink_inherits_file_permissions(tmp_path: Path):
     # GIVEN
     template_file = tmp_path / "template.txt"

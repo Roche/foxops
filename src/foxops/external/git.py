@@ -28,8 +28,8 @@ async def git_exec(*args, **kwargs) -> asyncio.subprocess.Process:
 
 
 def add_authentication_to_git_clone_url(source: str, username: str, password: str):
-    if not source.startswith("https://"):
-        raise ValueError("only https:// repository URLs are allowed")
+    if not source.startswith(("http://", "https://")):
+        raise ValueError("only http:// and https:// repository URLs are allowed")
 
     url_parts = urlparse(source)
     if url_parts.username is not None or url_parts.password is not None:

@@ -44,6 +44,9 @@ class GitLab:
             base_url=self.address, headers={"PRIVATE-TOKEN": self.token}
         )
 
+    async def validate(self):
+        (await self.client.get("/version")).raise_for_status()
+
     async def __project_exists(self, project_identifier: str) -> bool:
         response = await self.client.head(f"/projects/{quote_plus(project_identifier)}")
         return response.status_code == HTTPStatus.OK
@@ -54,7 +57,7 @@ class GitLab:
         if not await self.__project_exists(incarnation_repository):
             raise IncarnationRepositoryNotFound(incarnation_repository)
 
-        fengine_config_file = Path(incarnation_repository, ".fengine.yaml")
+        fengine_config_file = Path(target_directory, ".fengine.yaml")
         response = await self.client.get(
             f"/projects/{quote_plus(incarnation_repository)}/repository/files/{quote_plus(str(fengine_config_file))}/raw"
         )
@@ -111,7 +114,12 @@ class GitLab:
         )
         response.raise_for_status()
         merge_request: MergeRequest = response.json()
-        logger.info("Created merge request at %s", merge_request["web_url"])
+        logger.info(
+            f"Created merge request at {merge_request['web_url']}",
+            title=title,
+            source_branch=source_branch,
+            with_automerge=with_automerge,
+        )
 
         if with_automerge:
             logger.info(
@@ -128,7 +136,11 @@ class GitLab:
 
     @asynccontextmanager
     async def cloned_repository(
-        self, repository: str, *, refspec: str | None = None
+        self,
+        repository: str,
+        *,
+        refspec: str | None = None,
+        bare: bool = False,
     ) -> AsyncIterator[GitRepository]:
         if not repository.startswith(("https://", "http://")):
             # it's not a URL, but a `path_with_namespace`, so, let's think it a URL
@@ -144,13 +156,22 @@ class GitLab:
 
         try:
             if refspec is None:
-                await git_exec(
-                    "clone",
-                    "--depth=1",
-                    clone_url,
-                    local_clone_directory,
-                    cwd=Path.home(),
-                )
+                if not bare:
+                    await git_exec(
+                        "clone",
+                        "--depth=1",
+                        clone_url,
+                        local_clone_directory,
+                        cwd=Path.home(),
+                    )
+                else:
+                    await git_exec(
+                        "clone",
+                        "--bare",
+                        clone_url,
+                        local_clone_directory,
+                        cwd=Path.home(),
+                    )
             else:
                 # NOTE(TF): this only works for git hosters which have enabled `uploadpack.allowReachableSHA1InWant` on the server side.
                 #           It seems to be the case for GitHub and GitLab.
@@ -191,7 +212,7 @@ class GitLab:
         self, project_identifier: str, branch: str
     ) -> GitSha | None:
         response = await self.client.get(
-            f"/projects/{quote_plus(project_identifier)}/repository/branches/{branch}"
+            f"/projects/{quote_plus(project_identifier)}/repository/branches/{quote_plus(branch)}"
         )
         if response.status_code == HTTPStatus.OK:
             return response.json()["commit"]["id"]

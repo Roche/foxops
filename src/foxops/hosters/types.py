@@ -13,6 +13,9 @@ GitSha = str
 
 
 class Hoster(Protocol):
+    async def validate(self) -> None:
+        ...
+
     async def get_incarnation_state(
         self, incarnation_repository: str, target_directory: str
     ) -> IncarnationState | None:
@@ -30,7 +33,7 @@ class Hoster(Protocol):
         ...
 
     def cloned_repository(
-        self, repository: str, *, refspec: str | None = None
+        self, repository: str, *, refspec: str | None = None, bare: bool = False
     ) -> AsyncContextManager[GitRepository]:
         ...
 

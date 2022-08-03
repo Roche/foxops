@@ -9,6 +9,7 @@ from foxops.engine.models import (
     save_incarnation_state,
 )
 from foxops.engine.rendering import render_template
+from foxops.errors import ReconciliationUserError
 from foxops.external.git import GitRepository
 from foxops.logging import get_logger
 
@@ -57,7 +58,7 @@ async def _initialize_incarnation(
     required_variable_names = set(template_config.required_variables.keys())
     provided_variable_names = set(template_data.keys())
     if not required_variable_names.issubset(provided_variable_names):
-        raise ValueError(
+        raise ReconciliationUserError(
             f"the template required the variables {sorted(required_variable_names)} "
             "but the provided template data for the incarnation "
             f"where {sorted(provided_variable_names)}. "
