@@ -161,6 +161,9 @@ jobs:
         uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
+      - name: Get Tag or SHA
+        uses: tenhaus/get-release-or-tag@v2
+        id: tag
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
@@ -174,7 +177,7 @@ jobs:
           push: false
           tags: |
             ghcr.io/roche/foxops:latest
-            ghcr.io/roche/foxops:${{ github.ref_name }}
+            ghcr.io/roche/foxops:${{ steps.tag.outputs.tag }}
 
   docs:
     runs-on: ubuntu-latest
