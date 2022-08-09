@@ -10,7 +10,8 @@ authors = [
 readme = "README.md"
 
 [tool.poetry.scripts]
-foxops = 'foxops.__main__:app'
+foxops = 'foxops.cli.__main__:app'
+fengine = 'foxops.fengine.__main__:app'
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
