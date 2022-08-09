@@ -43,9 +43,7 @@ async def test_create_incarnation_should_add_new_incarnation_to_incarnation_inve
 async def test_get_incarnations_returns_items_in_incarnation_inventory(dal: DAL):
     # GIVEN
     async with dal.connection() as conn:
-        await conn.execute(
-            text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'test', 'test')")
-        )
+        await conn.execute(text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'test', 'test')"))
         await conn.commit()
 
     # WHEN
@@ -67,9 +65,7 @@ async def test_get_incarnations_returns_items_in_incarnation_inventory(dal: DAL)
 async def test_delete_incarnation_from_inventory(dal: DAL):
     # GIVEN
     async with dal.connection() as conn:
-        await conn.execute(
-            text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'test', 'test')")
-        )
+        await conn.execute(text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'test', 'test')"))
         await conn.commit()
 
     # WHEN

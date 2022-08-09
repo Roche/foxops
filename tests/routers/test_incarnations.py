@@ -30,9 +30,7 @@ async def test_api_get_incarnations_returns_incarnations_from_inventory(
 ):
     # GIVEN
     async with dal.connection() as conn:
-        await conn.execute(
-            text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'test', 'test')")
-        )
+        await conn.execute(text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'test', 'test')"))
         await conn.commit()
 
     # WHEN
@@ -95,19 +93,15 @@ async def test_api_create_incarnation_already_exists_without_allowing_import(
 ):
     # GIVEN
     async with dal.connection() as conn:
-        await conn.execute(
-            text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'test', 'test')")
-        )
+        await conn.execute(text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'test', 'test')"))
         await conn.commit()
 
     reconciliation_mock = mocker.AsyncMock()
-    reconciliation_mock.initialize_incarnation.side_effect = (
-        IncarnationAlreadyInitializedError(
-            "test",
-            "test",
-            "fake-revision",
-            has_mismatch=False,
-        )
+    reconciliation_mock.initialize_incarnation.side_effect = IncarnationAlreadyInitializedError(
+        "test",
+        "test",
+        "fake-revision",
+        has_mismatch=False,
     )
 
     api_app.dependency_overrides[get_reconciliation] = lambda: reconciliation_mock
@@ -137,21 +131,15 @@ async def test_api_create_incarnation_already_exists_allowing_import_without_a_m
 ):
     # GIVEN
     async with dal.connection() as conn:
-        await conn.execute(
-            text(
-                "INSERT INTO incarnation VALUES (1, 'test', 'test', 'created', 'test')"
-            )
-        )
+        await conn.execute(text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'created', 'test')"))
         await conn.commit()
 
     reconciliation_mock = mocker.AsyncMock()
-    reconciliation_mock.initialize_incarnation.side_effect = (
-        IncarnationAlreadyInitializedError(
-            "test",
-            "test",
-            "fake-revision",
-            has_mismatch=False,
-        )
+    reconciliation_mock.initialize_incarnation.side_effect = IncarnationAlreadyInitializedError(
+        "test",
+        "test",
+        "fake-revision",
+        has_mismatch=False,
     )
 
     api_app.dependency_overrides[get_reconciliation] = lambda: reconciliation_mock
@@ -189,21 +177,15 @@ async def test_api_create_incarnation_already_exists_allowing_import_with_a_mism
 ):
     # GIVEN
     async with dal.connection() as conn:
-        await conn.execute(
-            text(
-                "INSERT INTO incarnation VALUES (1, 'test', 'test', 'created', 'test')"
-            )
-        )
+        await conn.execute(text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'created', 'test')"))
         await conn.commit()
 
     reconciliation_mock = mocker.AsyncMock()
-    reconciliation_mock.initialize_incarnation.side_effect = (
-        IncarnationAlreadyInitializedError(
-            "test",
-            "test",
-            "fake-revision",
-            has_mismatch=True,
-        )
+    reconciliation_mock.initialize_incarnation.side_effect = IncarnationAlreadyInitializedError(
+        "test",
+        "test",
+        "fake-revision",
+        has_mismatch=True,
     )
 
     api_app.dependency_overrides[get_reconciliation] = lambda: reconciliation_mock
@@ -239,9 +221,7 @@ async def test_api_delete_incarnation_removes_incarnation_from_inventory(
 ):
     # GIVEN
     async with dal.connection() as conn:
-        await conn.execute(
-            text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'test', 'test')")
-        )
+        await conn.execute(text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'test', 'test')"))
         await conn.commit()
 
     # WHEN

@@ -36,15 +36,9 @@ def use_testing_gitconfig():
             test_gitconfig_path = Path(tmpdir) / "test.gitconfig"
             test_gitconfig_path.touch()
             os.environ["GIT_CONFIG_GLOBAL"] = str(test_gitconfig_path)
-            subprocess.check_call(
-                ["git", "config", "--global", "user.name", "Test User"]
-            )
-            subprocess.check_call(
-                ["git", "config", "--global", "user.email", "test@user.com"]
-            )
-            subprocess.check_call(
-                ["git", "config", "--global", "init.defaultBranch", "main"]
-            )
+            subprocess.check_call(["git", "config", "--global", "user.name", "Test User"])
+            subprocess.check_call(["git", "config", "--global", "user.email", "test@user.com"])
+            subprocess.check_call(["git", "config", "--global", "init.defaultBranch", "main"])
             yield
         finally:
             if orig_config_global is not None:
@@ -56,9 +50,7 @@ async def test_async_engine(tmp_path: Path) -> AsyncGenerator[AsyncEngine, None]
     local_db_file = tmp_path / "unit-test.db"
     test_database_url = f"sqlite+aiosqlite:///{str(local_db_file)}"
 
-    async_engine = create_async_engine(
-        test_database_url, future=True, echo=False, pool_pre_ping=True
-    )
+    async_engine = create_async_engine(test_database_url, future=True, echo=False, pool_pre_ping=True)
 
     yield async_engine
 
@@ -84,7 +76,5 @@ async def api_client(dal: DAL, api_app: FastAPI) -> AsyncGenerator[AsyncClient, 
 
     api_app.dependency_overrides[get_dal] = _test_get_dal
 
-    async with AsyncClient(
-        app=api_app, base_url="http://test/api", follow_redirects=True
-    ) as ac:
+    async with AsyncClient(app=api_app, base_url="http://test/api", follow_redirects=True) as ac:
         yield ac

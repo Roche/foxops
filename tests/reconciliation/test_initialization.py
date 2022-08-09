@@ -16,14 +16,10 @@ from foxops.reconciliation import initialize_incarnation
 
 
 @pytest.mark.asyncio
-async def should_err_if_incarnation_repository_does_not_exist(
-    mocker: MockFixture, test_dis: DesiredIncarnationState
-):
+async def should_err_if_incarnation_repository_does_not_exist(mocker: MockFixture, test_dis: DesiredIncarnationState):
     # GIVEN
     hoster = mocker.MagicMock(spec=Hoster)
-    hoster.get_incarnation_state.side_effect = IncarnationRepositoryNotFound(
-        test_dis.incarnation_repository
-    )
+    hoster.get_incarnation_state.side_effect = IncarnationRepositoryNotFound(test_dis.incarnation_repository)
 
     # THEN
     expected_error_msg = "remote Incarnation repository at '.*' doesn't exist"
@@ -33,9 +29,7 @@ async def should_err_if_incarnation_repository_does_not_exist(
 
 
 @pytest.mark.asyncio
-async def should_err_if_incarnation_is_already_initialized(
-    mocker: MockFixture, test_dis: DesiredIncarnationState
-):
+async def should_err_if_incarnation_is_already_initialized(mocker: MockFixture, test_dis: DesiredIncarnationState):
     # GIVEN
     hoster = mocker.MagicMock(spec=Hoster)
     hoster.get_incarnation_state.return_value = mocker.MagicMock(
@@ -67,9 +61,7 @@ async def should_err_if_incarnation_is_already_initialized_reporting_a_config_mi
 
     # THEN
     expected_error_msg = "already initialized"
-    with pytest.raises(
-        IncarnationAlreadyInitializedError, match=expected_error_msg
-    ) as exc:
+    with pytest.raises(IncarnationAlreadyInitializedError, match=expected_error_msg) as exc:
         # WHEN
         await initialize_incarnation(hoster, test_dis)
 
@@ -91,9 +83,7 @@ async def should_err_if_incarnation_is_already_initialized_reporting_no_config_m
 
     # THEN
     expected_error_msg = "already initialized"
-    with pytest.raises(
-        IncarnationAlreadyInitializedError, match=expected_error_msg
-    ) as exc:
+    with pytest.raises(IncarnationAlreadyInitializedError, match=expected_error_msg) as exc:
         # WHEN
         await initialize_incarnation(hoster, test_dis)
 
@@ -124,11 +114,7 @@ async def should_initialize_incarnation_without_merge_request(
     # THEN
     assert sha == (await test_empty_incarnation_repository.head())
     assert await test_empty_incarnation_repository.current_branch() == "main"
-    assert (
-        test_empty_incarnation_repository.directory
-        / test_dis.target_directory
-        / "README.md"
-    ).exists()
+    assert (test_empty_incarnation_repository.directory / test_dis.target_directory / "README.md").exists()
 
 
 @pytest.mark.asyncio
@@ -163,14 +149,8 @@ async def should_initialize_incarnation_with_merge_request(
 
     # THEN
     assert sha == (await test_non_empty_incarnation_repository.head())
-    assert (await test_non_empty_incarnation_repository.current_branch()).startswith(
-        "foxops/initialize-to-"
-    )
-    assert (
-        test_non_empty_incarnation_repository.directory
-        / test_dis.target_directory
-        / "README.md"
-    ).exists()
+    assert (await test_non_empty_incarnation_repository.current_branch()).startswith("foxops/initialize-to-")
+    assert (test_non_empty_incarnation_repository.directory / test_dis.target_directory / "README.md").exists()
     assert merge_request_called.get()
 
 

@@ -1,6 +1,4 @@
 [flake8]
-# line length is intentionally set to 80 here because we use flake8-bugbear
-# See https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html#line-length for more details
-max-line-length = 80
+max-line-length = 120
 select = B,C,E,F,W,B950
 extend-ignore = E203, E501, B008

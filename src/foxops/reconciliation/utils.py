@@ -11,10 +11,6 @@ retry_if_possible = retry(
 )
 
 
-def generate_foxops_branch_name(
-    prefix: str, target_directory: str, template_repository_version: str
-) -> str:
-    target_directory_hash = hashlib.sha1(target_directory.encode("utf-8")).hexdigest()[
-        :7
-    ]
+def generate_foxops_branch_name(prefix: str, target_directory: str, template_repository_version: str) -> str:
+    target_directory_hash = hashlib.sha1(target_directory.encode("utf-8")).hexdigest()[:7]
     return f"foxops/{prefix}-{target_directory_hash}-{template_repository_version}"

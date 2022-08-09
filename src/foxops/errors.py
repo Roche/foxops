@@ -26,9 +26,7 @@ class IncarnationRepositoryNotFound(FoxopsError):
 
     def __init__(self, incarnation_repository: str):
         self.incarnation_repository = incarnation_repository
-        super().__init__(
-            f"Incarnation repository '{incarnation_repository}' not found."
-        )
+        super().__init__(f"Incarnation repository '{incarnation_repository}' not found.")
 
 
 class IncarnationAlreadyInitializedError(ReconciliationUserError):

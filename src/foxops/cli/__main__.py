@@ -16,9 +16,7 @@ app.command(name="reconcile", help="Reconciles the given files")(cmd_reconcile)
 
 @app.callback()
 def main(
-    verbose: bool = typer.Option(  # noqa: B008
-        False, "--verbose", "-v", help="turn on verbose logging"
-    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="turn on verbose logging"),  # noqa: B008
 ):
     """
     Foxops engine ... use it to initialize or update template incarnations.

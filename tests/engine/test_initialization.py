@@ -10,9 +10,7 @@ from foxops.errors import ReconciliationUserError
 async def init_repository(repository_dir: Path) -> None:
     await utils.check_call("git", "init", cwd=repository_dir)
     await utils.check_call("git", "config", "user.name", "test", cwd=repository_dir)
-    await utils.check_call(
-        "git", "config", "user.email", "test@test.com", cwd=repository_dir
-    )
+    await utils.check_call("git", "config", "user.email", "test@test.com", cwd=repository_dir)
     await utils.check_call("git", "add", ".", cwd=repository_dir)
     await utils.check_call("git", "commit", "-m", "initial commit", cwd=repository_dir)
     proc = await utils.check_call("git", "rev-parse", "HEAD", cwd=repository_dir)
@@ -225,9 +223,7 @@ variables:
 
 
 @pytest.mark.asyncio
-async def test_initialize_template_ignores_but_warns_about_additional_variables(
-    tmp_path, mocker
-):
+async def test_initialize_template_ignores_but_warns_about_additional_variables(tmp_path, mocker):
     # GIVEN
     (tmp_path / "fengine.yaml").write_text(
         """
@@ -357,9 +353,7 @@ variables:
     )
 
     # THEN
-    assert (
-        incarnation_dir / "README.md"
-    ).read_text() == "Overridden John Doe knows that 1+2 = 3"
+    assert (incarnation_dir / "README.md").read_text() == "Overridden John Doe knows that 1+2 = 3"
     assert (
         (incarnation_dir / ".fengine.yaml").read_text()
         == f"""# This file is auto-generated and owned by foxops.

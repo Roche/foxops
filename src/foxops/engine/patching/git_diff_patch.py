@@ -33,9 +33,7 @@ async def diff_and_patch(
 
 
 @asynccontextmanager
-async def setup_diff_git_repository(
-    old_directory: Path, new_directory: Path
-) -> typing.AsyncGenerator[Path, None]:
+async def setup_diff_git_repository(old_directory: Path, new_directory: Path) -> typing.AsyncGenerator[Path, None]:
     # FIXME(TF): in case the *git way* provides as the viable long-term solution we could directly
     #            bootstrap that intermediate git repository instead of this copy-paste roundtrip.
     git_tmpdir: str
@@ -103,9 +101,7 @@ async def patch(
     #           because we are going to fiddle around how they
     #           are relative to each other.
     resolved_incarnation_root_dir = incarnation_root_dir.resolve()
-    proc = await check_call(
-        "git", "rev-parse", "--show-toplevel", cwd=str(resolved_incarnation_root_dir)
-    )
+    proc = await check_call("git", "rev-parse", "--show-toplevel", cwd=str(resolved_incarnation_root_dir))
     incarnation_git_root_dir = Path((await proc.stdout.read()).decode("utf-8").strip()).resolve()  # type: ignore
     incarnation_git_dir = (
         resolved_incarnation_root_dir.relative_to(incarnation_git_root_dir)
@@ -114,9 +110,7 @@ async def patch(
     )
 
     # FIXME(TF): may check git status to check if something has been modified or not ...
-    logger.debug(
-        f"applying patch {patch_path} to {incarnation_git_dir} inside {incarnation_root_dir}"
-    )
+    logger.debug(f"applying patch {patch_path} to {incarnation_git_dir} inside {incarnation_root_dir}")
     try:
         await check_call(
             "git",

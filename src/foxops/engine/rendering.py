@@ -46,9 +46,7 @@ async def render_template(
     :param rendering_filename_exclude_patterns: A list of glob patterns matching files which contents should not be rendered. Can be empty.
     """
     if not template_root_dir.is_absolute():
-        raise ValueError(
-            f"template_root_dir must be an absolute path, got {template_root_dir}"
-        )
+        raise ValueError(f"template_root_dir must be an absolute path, got {template_root_dir}")
 
     files_to_render = set(template_root_dir.glob("**/*"))
     for pattern in rendering_filename_exclude_patterns:
@@ -182,20 +180,14 @@ async def render_template_symlink(
 ) -> Path:
     """Render a template symlink path into an incarnation symlink path."""
     loader: FileSystemLoader = typing.cast(FileSystemLoader, environment.loader)
-    relative_template_symlink_path = template_symlink_path.relative_to(
-        loader.searchpath[0]
-    )
+    relative_template_symlink_path = template_symlink_path.relative_to(loader.searchpath[0])
 
     # get and render template file path
     path_template = environment.from_string(str(relative_template_symlink_path))
     rendered_path = Path(await path_template.render_async(**template_data))
     # get and render template symlink target
-    symlink_target_template = environment.from_string(
-        str(template_symlink_path.readlink())
-    )
-    rendered_symlink_target_path = Path(
-        await symlink_target_template.render_async(**template_data)
-    )
+    symlink_target_template = environment.from_string(str(template_symlink_path.readlink()))
+    rendered_symlink_target_path = Path(await symlink_target_template.render_async(**template_data))
 
     logger.debug(
         "rendering symlink in incarnation",

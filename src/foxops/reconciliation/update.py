@@ -55,9 +55,7 @@ async def update_incarnation(
         incarnation.target_directory,
         template_repository_version_update,
     )
-    if git_sha := await hoster.has_pending_incarnation_branch(
-        incarnation.incarnation_repository, update_branch
-    ):
+    if git_sha := await hoster.has_pending_incarnation_branch(incarnation.incarnation_repository, update_branch):
         logger.info(f"Branch '{update_branch}' already exists, skipping update")
         return git_sha
 
@@ -77,9 +75,7 @@ async def update_incarnation(
             f"Cloned Incarnation repository to '{local_incarnation_repository.directory}' and Template repository to '{local_template_repository.directory}'"
         )
 
-        logger.debug(
-            f"Creating new update branch {update_branch} in incarnation repository"
-        )
+        logger.debug(f"Creating new update branch {update_branch} in incarnation repository")
         await local_incarnation_repository.create_and_checkout_branch(update_branch)
 
         (
@@ -91,9 +87,7 @@ async def update_incarnation(
             update_template_repository=incarnation_state_before_update.template_repository,
             update_template_repository_version=template_repository_version_update,
             update_template_data=template_data_update,
-            incarnation_root_dir=(
-                local_incarnation_repository.directory / incarnation.target_directory
-            ),
+            incarnation_root_dir=(local_incarnation_repository.directory / incarnation.target_directory),
             diff_patch_func=fengine.diff_and_patch,
         )
 

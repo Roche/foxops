@@ -50,6 +50,9 @@ sphinx-autobuild = "^2021.3.14"
 sphinxcontrib-mermaid = "^0.7.1"
 SQLAlchemy = {extras = ["mypy"], version = "^1.4.39"}
 
+[tool.black]
+line-length = 120
+
 [tool.isort]
 profile = "black"
 

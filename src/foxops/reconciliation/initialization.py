@@ -17,9 +17,7 @@ logger = get_logger(__name__)
 
 
 @retry_if_possible
-async def initialize_incarnation(
-    hoster: Hoster, desired_incarnation_state: DesiredIncarnationState
-) -> GitSha:
+async def initialize_incarnation(hoster: Hoster, desired_incarnation_state: DesiredIncarnationState) -> GitSha:
     logger.info("Verifying if the incarnation can be initialized")
 
     try:
@@ -35,9 +33,7 @@ async def initialize_incarnation(
         )
 
     if actual_incarnation_state is not None:
-        logger.debug(
-            "Incarnation is already initialized, checking if conflicts in data ..."
-        )
+        logger.debug("Incarnation is already initialized, checking if conflicts in data ...")
 
         raise IncarnationAlreadyInitializedError(
             desired_incarnation_state.incarnation_repository,
@@ -48,9 +44,7 @@ async def initialize_incarnation(
 
     logger.debug("Cloning Incarnation and Template repository to local directory")
 
-    incarnation_repo_cm = hoster.cloned_repository(
-        desired_incarnation_state.incarnation_repository
-    )
+    incarnation_repo_cm = hoster.cloned_repository(desired_incarnation_state.incarnation_repository)
     template_repo_cm = hoster.cloned_repository(
         desired_incarnation_state.template_repository,
         refspec=desired_incarnation_state.template_repository_version,
@@ -80,16 +74,12 @@ async def initialize_incarnation(
             if git_sha := await hoster.has_pending_incarnation_branch(
                 desired_incarnation_state.incarnation_repository, init_branch
             ):
-                logger.info(
-                    f"Branch '{init_branch}' already exists, skipping initialization"
-                )
+                logger.info(f"Branch '{init_branch}' already exists, skipping initialization")
                 return git_sha
         else:
-            init_branch = (
-                await hoster.get_repository_metadata(
-                    desired_incarnation_state.incarnation_repository
-                )
-            )["default_branch"]
+            init_branch = (await hoster.get_repository_metadata(desired_incarnation_state.incarnation_repository))[
+                "default_branch"
+            ]
 
         await local_incarnation_repository.create_and_checkout_branch(
             init_branch,
@@ -101,10 +91,7 @@ async def initialize_incarnation(
             template_repository=desired_incarnation_state.template_repository,
             template_repository_version=desired_incarnation_state.template_repository_version,
             template_data=desired_incarnation_state.template_data,
-            incarnation_root_dir=(
-                local_incarnation_repository.directory
-                / desired_incarnation_state.target_directory
-            ),
+            incarnation_root_dir=(local_incarnation_repository.directory / desired_incarnation_state.target_directory),
         )
 
         await local_incarnation_repository.commit_all(
@@ -130,14 +117,13 @@ async def initialize_incarnation(
             return commit_sha
 
 
-async def _should_initialize_with_merge_request(
-    local_repository: GitRepository, target_directory: str
-) -> bool:
+async def _should_initialize_with_merge_request(local_repository: GitRepository, target_directory: str) -> bool:
     """Checks if the given local incarnation repository should be initialize with a Merge Request or directly pushed to the default branch."""
     incarnation_dir = local_repository.directory / target_directory
     repo_has_commits = await local_repository.has_any_commits()
-    incarnated_files = set(
-        glob("*", root_dir=incarnation_dir) + glob(".*", root_dir=incarnation_dir)
-    ) - {".git", fengine.FVARS_FILENAME}
+    incarnated_files = set(glob("*", root_dir=incarnation_dir) + glob(".*", root_dir=incarnation_dir)) - {
+        ".git",
+        fengine.FVARS_FILENAME,
+    }
 
     return repo_has_commits and incarnation_dir.exists() and len(incarnated_files) > 0

@@ -22,13 +22,7 @@ class Hoster(Protocol):
         ...
 
     async def merge_request(
-        self,
-        *,
-        incarnation_repository: str,
-        source_branch: str,
-        title: str,
-        description: str,
-        with_automerge=False
+        self, *, incarnation_repository: str, source_branch: str, title: str, description: str, with_automerge=False
     ) -> GitSha:
         ...
 
@@ -37,12 +31,8 @@ class Hoster(Protocol):
     ) -> AsyncContextManager[GitRepository]:
         ...
 
-    async def has_pending_incarnation_branch(
-        self, project_identifier: str, branch: str
-    ) -> GitSha | None:
+    async def has_pending_incarnation_branch(self, project_identifier: str, branch: str) -> GitSha | None:
         ...
 
-    async def get_repository_metadata(
-        self, project_identifier: str
-    ) -> RepositoryMetadata:
+    async def get_repository_metadata(self, project_identifier: str) -> RepositoryMetadata:
         ...

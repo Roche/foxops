@@ -13,9 +13,7 @@ GITLAB_ADMIN_TOKEN = "ACCTEST1234567890123"
 
 @pytest.fixture(scope="session", name="gitlab_test_user_token")
 def create_gitlab_test_user(test_run_id: str):
-    client = Client(
-        base_url=GITLAB_ADDRESS, headers={"PRIVATE-TOKEN": GITLAB_ADMIN_TOKEN}
-    )
+    client = Client(base_url=GITLAB_ADDRESS, headers={"PRIVATE-TOKEN": GITLAB_ADMIN_TOKEN})
 
     test_user_name = f"foxops-test-{test_run_id}"
     response = client.post(
@@ -56,16 +54,12 @@ def set_settings_env(gitlab_test_user_token: str):
 
 @pytest.fixture(name="gitlab_test_client")
 async def create_test_gitlab_client(gitlab_test_user_token: str) -> AsyncClient:
-    return AsyncClient(
-        base_url=GITLAB_ADDRESS, headers={"PRIVATE-TOKEN": gitlab_test_user_token}
-    )
+    return AsyncClient(base_url=GITLAB_ADDRESS, headers={"PRIVATE-TOKEN": gitlab_test_user_token})
 
 
 @pytest.fixture(name="empty_incarnation_gitlab_repository")
 async def create_empty_incarnation_gitlab_repository(gitlab_test_client: AsyncClient):
-    response = await gitlab_test_client.post(
-        "/projects", json={"name": f"incarnation-{str(uuid.uuid4())}"}
-    )
+    response = await gitlab_test_client.post("/projects", json={"name": f"incarnation-{str(uuid.uuid4())}"})
     response.raise_for_status()
     project = response.json()
     try:
@@ -73,9 +67,7 @@ async def create_empty_incarnation_gitlab_repository(gitlab_test_client: AsyncCl
         #       required for the tests.
         yield project["path_with_namespace"]
     finally:
-        (
-            await gitlab_test_client.delete(f"/projects/{project['id']}")
-        ).raise_for_status()
+        (await gitlab_test_client.delete(f"/projects/{project['id']}")).raise_for_status()
 
 
 @pytest.fixture(name="incarnation_gitlab_repository_in_v1")
@@ -101,9 +93,7 @@ async def create_incarnation_gitlab_repository_in_v1(
 
 @pytest.fixture(name="template_repository")
 async def create_template_gitlab_repository(gitlab_test_client: AsyncClient):
-    response = await gitlab_test_client.post(
-        "/projects", json={"name": f"template-{str(uuid.uuid4())}"}
-    )
+    response = await gitlab_test_client.post("/projects", json={"name": f"template-{str(uuid.uuid4())}"})
     response.raise_for_status()
     project = response.json()
     try:
@@ -138,9 +128,7 @@ variables:
                 f"/projects/{project['id']}/repository/files/{quote_plus('template/README.md')}",
                 json={
                     "encoding": "base64",
-                    "content": base64.b64encode(
-                        b"{{ name }} is of age {{ age }}"
-                    ).decode("utf-8"),
+                    "content": base64.b64encode(b"{{ name }} is of age {{ age }}").decode("utf-8"),
                     "commit_message": "Add template README",
                     "branch": project["default_branch"],
                 },
@@ -159,9 +147,7 @@ variables:
                 f"/projects/{project['id']}/repository/files/{quote_plus('template/README.md')}",
                 json={
                     "encoding": "base64",
-                    "content": base64.b64encode(
-                        b"Hello {{ name }}, age: {{ age }}"
-                    ).decode("utf-8"),
+                    "content": base64.b64encode(b"Hello {{ name }}, age: {{ age }}").decode("utf-8"),
                     "commit_message": "Change template README",
                     "branch": project["default_branch"],
                 },
@@ -176,6 +162,4 @@ variables:
 
         yield project["path_with_namespace"]
     finally:
-        (
-            await gitlab_test_client.delete(f"/projects/{project['id']}")
-        ).raise_for_status()
+        (await gitlab_test_client.delete(f"/projects/{project['id']}")).raise_for_status()

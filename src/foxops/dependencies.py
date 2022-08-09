@@ -23,9 +23,7 @@ def get_dal(settings: Settings = Depends(get_settings)) -> DAL:
     global async_engine
 
     if async_engine is None:
-        async_engine = create_async_engine(
-            settings.database_url, future=True, echo=False, pool_pre_ping=True
-        )
+        async_engine = create_async_engine(settings.database_url, future=True, echo=False, pool_pre_ping=True)
 
     return DAL(async_engine)
 
