@@ -27,18 +27,12 @@ async def assert_initialization_merge_request_exists(
     repository: str,
 ):
     params = {"state": "opened", "target_branch": "main"}
-    response = await gitlab_test_client.get(
-        f"/projects/{quote_plus(repository)}/merge_requests", params=params
-    )
+    response = await gitlab_test_client.get(f"/projects/{quote_plus(repository)}/merge_requests", params=params)
     response.raise_for_status()
     merge_requests = response.json()
 
     merge_request = next(
-        (
-            m
-            for m in merge_requests
-            if m["source_branch"].startswith("foxops/initialize-to-")
-        ),
+        (m for m in merge_requests if m["source_branch"].startswith("foxops/initialize-to-")),
         None,
     )
     assert (
@@ -54,23 +48,15 @@ async def assert_update_merge_request_exists(
     repository: str,
 ):
     params = {"state": "opened", "target_branch": "main"}
-    response = await gitlab_test_client.get(
-        f"/projects/{quote_plus(repository)}/merge_requests", params=params
-    )
+    response = await gitlab_test_client.get(f"/projects/{quote_plus(repository)}/merge_requests", params=params)
     response.raise_for_status()
     merge_requests = response.json()
 
     merge_request = next(
-        (
-            m
-            for m in merge_requests
-            if m["source_branch"].startswith("foxops/update-to-")
-        ),
+        (m for m in merge_requests if m["source_branch"].startswith("foxops/update-to-")),
         None,
     )
-    assert (
-        merge_request is not None
-    ), f"No update merge request found, merge requests available: {merge_requests}"
+    assert merge_request is not None, f"No update merge request found, merge requests available: {merge_requests}"
 
     assert merge_request["title"].startswith("Update to")
     return merge_request["source_branch"]
@@ -80,23 +66,15 @@ async def assert_update_merge_request_with_conflicts_exists(
     gitlab_test_client: AsyncClient, repository: str, files_with_conflicts: list[str]
 ):
     params = {"state": "opened", "target_branch": "main"}
-    response = await gitlab_test_client.get(
-        f"/projects/{quote_plus(repository)}/merge_requests", params=params
-    )
+    response = await gitlab_test_client.get(f"/projects/{quote_plus(repository)}/merge_requests", params=params)
     response.raise_for_status()
     merge_requests = response.json()
 
     merge_request = next(
-        (
-            m
-            for m in merge_requests
-            if m["source_branch"].startswith("foxops/update-to-")
-        ),
+        (m for m in merge_requests if m["source_branch"].startswith("foxops/update-to-")),
         None,
     )
-    assert (
-        merge_request is not None
-    ), f"No update merge request found, merge requests available: {merge_requests}"
+    assert merge_request is not None, f"No update merge request found, merge requests available: {merge_requests}"
 
     assert merge_request["title"].startswith("🚧 - CONFLICT: Update to")
 

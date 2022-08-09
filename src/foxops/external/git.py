@@ -6,8 +6,7 @@ from foxops.errors import FoxopsError, RetryableError
 from foxops.utils import CalledProcessError, check_call
 
 GIT_REBASE_REQUIRED_ERROR_MESSAGE = (
-    b"hint: Updates were rejected because the remote contains work that you do\n"
-    b"hint: not have locally."
+    b"hint: Updates were rejected because the remote contains work that you do\n" b"hint: not have locally."
 )
 
 
@@ -15,9 +14,7 @@ class GitError(FoxopsError):
     """Error raised when a call to git fails."""
 
     def __init__(self, message=None):
-        super().__init__(
-            message if message else "Git failed with an unexpected non-zero exit code."
-        )
+        super().__init__(message if message else "Git failed with an unexpected non-zero exit code.")
 
 
 async def git_exec(*args, **kwargs) -> asyncio.subprocess.Process:
@@ -53,9 +50,7 @@ class GitRepository:
 
         self.directory = directory
 
-    async def _run(
-        self, *args, timeout: int | float | None = 10, **kwargs
-    ) -> asyncio.subprocess.Process:
+    async def _run(self, *args, timeout: int | float | None = 10, **kwargs) -> asyncio.subprocess.Process:
         return await git_exec(*args, cwd=self.directory, timeout=timeout, **kwargs)
 
     async def has_any_commits(self) -> bool:
@@ -109,9 +104,7 @@ class GitRepository:
             stderr = (await proc.stderr.read()).decode()
 
         # exclude remote messages from stderr
-        stderr_non_remote_lines = list(
-            filter(lambda line: not line.startswith("remote:"), stderr.splitlines())
-        )
+        stderr_non_remote_lines = list(filter(lambda line: not line.startswith("remote:"), stderr.splitlines()))
         if len(stderr_non_remote_lines) > 0:
             raise GitError()
 
@@ -123,9 +116,7 @@ class GitRepository:
         except GitError as exc:
             if isinstance(exc.__cause__, CalledProcessError):
                 if GIT_REBASE_REQUIRED_ERROR_MESSAGE in exc.__cause__.stderr:
-                    raise RetryableError(
-                        "new commits on the target branch, need to retry"
-                    ) from exc
+                    raise RetryableError("new commits on the target branch, need to retry") from exc
             raise exc
 
     async def head(self) -> str:

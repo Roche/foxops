@@ -86,9 +86,7 @@ class DAL:
 
     async def delete_incarnation(self, id: int) -> None:
         async with self.connection() as conn:
-            await conn.execute(
-                text("DELETE FROM incarnation WHERE id = :id"), {"id": id}
-            )
+            await conn.execute(text("DELETE FROM incarnation WHERE id = :id"), {"id": id})
             await conn.commit()
 
     async def get_incarnation_by_identity(

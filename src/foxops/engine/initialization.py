@@ -52,9 +52,7 @@ async def _initialize_incarnation(
 ) -> IncarnationState:
     # verify that the template data in the desired incarnation state match the required template variables
     template_config = load_template_config(template_root_dir / "fengine.yaml")
-    logger.debug(
-        f"load template config from {template_config} to initialize incarnation at {incarnation_root_dir}"
-    )
+    logger.debug(f"load template config from {template_config} to initialize incarnation at {incarnation_root_dir}")
     required_variable_names = set(template_config.required_variables.keys())
     provided_variable_names = set(template_data.keys())
     if not required_variable_names.issubset(provided_variable_names):
@@ -68,9 +66,7 @@ async def _initialize_incarnation(
     # log additional template data passed for the incarnation
     config_variable_names = set(template_config.variables.keys())
     if additional_values := provided_variable_names - config_variable_names:
-        logger.warn(
-            f"got additional template data for the incarnation: {sorted(additional_values)}"
-        )
+        logger.warn(f"got additional template data for the incarnation: {sorted(additional_values)}")
 
     # fill defaults in passed data
     template_data_with_defaults = fill_missing_optionals_with_defaults(
@@ -95,7 +91,5 @@ async def _initialize_incarnation(
 
     incarnation_config_path = Path(incarnation_root_dir, ".fengine.yaml")
     save_incarnation_state(incarnation_config_path, incarnation_state)
-    logger.debug(
-        f"save incarnation state to {incarnation_config_path} after template initialization"
-    )
+    logger.debug(f"save incarnation state to {incarnation_config_path} after template initialization")
     return incarnation_state

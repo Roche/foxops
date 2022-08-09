@@ -57,14 +57,10 @@ async def list_incarnations(
     """
     if incarnation_repository is not None:
         async with dal.connection() as conn:
-            incarnation = await dal.get_incarnation_by_identity(
-                incarnation_repository, target_directory, conn
-            )
+            incarnation = await dal.get_incarnation_by_identity(incarnation_repository, target_directory, conn)
             if incarnation is None:
                 response.status_code = status.HTTP_404_NOT_FOUND
-                return ApiError(
-                    message="No incarnation found for the given repository and target directory"
-                )
+                return ApiError(message="No incarnation found for the given repository and target directory")
 
     return [i async for i in dal.get_incarnations()]
 
@@ -114,14 +110,10 @@ async def create_incarnation(
     bind(target_directory=desired_incarnation_state.target_directory)
 
     try:
-        revision = await reconciliation.initialize_incarnation(
-            hoster, desired_incarnation_state
-        )
+        revision = await reconciliation.initialize_incarnation(hoster, desired_incarnation_state)
     except IncarnationAlreadyInitializedError as exc:
         if not allow_import:
-            logger.warning(
-                f"User error happened during initialization of incarnation: {exc}"
-            )
+            logger.warning(f"User error happened during initialization of incarnation: {exc}")
             response.status_code = status.HTTP_400_BAD_REQUEST
             return ApiError(message=str(exc))
 
@@ -131,9 +123,7 @@ async def create_incarnation(
         else:
             response.status_code = status.HTTP_200_OK
     except ReconciliationUserError as exc:
-        logger.warning(
-            f"User error happened during initialization of incarnation: {exc}"
-        )
+        logger.warning(f"User error happened during initialization of incarnation: {exc}")
         response.status_code = status.HTTP_400_BAD_REQUEST
         return ApiError(message=str(exc))
     except Exception as exc:
@@ -227,13 +217,9 @@ async def update_incarnation(
         return ApiError(message=str(exc))
 
     try:
-        _ = await reconciliation.update_incarnation(
-            hoster, incarnation, desired_incarnation_state_patch
-        )
+        _ = await reconciliation.update_incarnation(hoster, incarnation, desired_incarnation_state_patch)
     except ReconciliationUserError as exc:
-        logger.warning(
-            f"User error happened during initialization of incarnation: {exc}"
-        )
+        logger.warning(f"User error happened during initialization of incarnation: {exc}")
         response.status_code = status.HTTP_400_BAD_REQUEST
         return ApiError(message=str(exc))
     except Exception as exc:

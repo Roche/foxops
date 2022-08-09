@@ -10,9 +10,7 @@ from foxops.engine import diff_and_patch, initialize_incarnation, update_incarna
 async def init_repository(repository_dir: Path) -> None:
     await utils.check_call("git", "init", cwd=repository_dir)
     await utils.check_call("git", "config", "user.name", "test", cwd=repository_dir)
-    await utils.check_call(
-        "git", "config", "user.email", "test@test.com", cwd=repository_dir
-    )
+    await utils.check_call("git", "config", "user.email", "test@test.com", cwd=repository_dir)
     await utils.check_call("git", "add", ".", cwd=repository_dir)
     await utils.check_call("git", "commit", "-m", "initial commit", cwd=repository_dir)
     proc = await utils.check_call("git", "rev-parse", "HEAD", cwd=repository_dir)
@@ -24,9 +22,7 @@ async def init_repository(repository_dir: Path) -> None:
     "diff_patch_func",
     [diff_and_patch],
 )
-async def test_diff_and_patch_update_single_file_without_conflict(
-    diff_patch_func, tmp_path
-):
+async def test_diff_and_patch_update_single_file_without_conflict(diff_patch_func, tmp_path):
     # GIVEN
     old_directory = tmp_path / "old"
     old_directory.mkdir()
@@ -51,9 +47,7 @@ async def test_diff_and_patch_update_single_file_without_conflict(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("diff_patch_func", [diff_and_patch])
-async def test_diff_and_patch_adding_new_file_without_conflict(
-    diff_patch_func, tmp_path
-):
+async def test_diff_and_patch_adding_new_file_without_conflict(diff_patch_func, tmp_path):
     # GIVEN
     old_directory = tmp_path / "old"
     old_directory.mkdir()
@@ -395,9 +389,7 @@ variables:
     )
 
     # THEN
-    assert (
-        incarnation_directory / "myfile.txt"
-    ).read_text() == "From: Updated John Doe"
+    assert (incarnation_directory / "myfile.txt").read_text() == "From: Updated John Doe"
 
 
 @pytest.mark.asyncio
@@ -435,16 +427,10 @@ async def test_diff_and_patch_success_when_deleting_file_in_template(
     (updated_template_directory / "template" / "myfile2.txt").unlink()
 
     await utils.check_call("git", "init", ".", cwd=str(incarnation_directory))
-    await utils.check_call(
-        "git", "config", "user.name", "test", cwd=str(incarnation_directory)
-    )
-    await utils.check_call(
-        "git", "config", "user.email", "test@test.com", cwd=str(incarnation_directory)
-    )
+    await utils.check_call("git", "config", "user.name", "test", cwd=str(incarnation_directory))
+    await utils.check_call("git", "config", "user.email", "test@test.com", cwd=str(incarnation_directory))
     await utils.check_call("git", "add", ".", cwd=str(incarnation_directory))
-    await utils.check_call(
-        "git", "commit", "-am", "Initial commit", cwd=str(incarnation_directory)
-    )
+    await utils.check_call("git", "commit", "-am", "Initial commit", cwd=str(incarnation_directory))
 
     await update_incarnation(
         template_root_dir=template_directory,

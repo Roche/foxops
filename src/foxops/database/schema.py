@@ -11,7 +11,5 @@ incarnations = Table(
     Column("target_directory", String),
     Column("status", String),
     Column("revision", String),
-    UniqueConstraint(
-        "incarnation_repository", "target_directory", name="incarnation_identity"
-    ),
+    UniqueConstraint("incarnation_repository", "target_directory", name="incarnation_identity"),
 )

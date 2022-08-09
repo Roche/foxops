@@ -28,9 +28,7 @@ async def should_not_update_if_branch_is_pending(
     incarnation_mock.incarnation_repository = test_dis.incarnation_repository
     incarnation_mock.target_directory = test_dis.target_directory
 
-    dis_patch = DesiredIncarnationStatePatch(
-        template_repository_version="v2.0.0", automerge=False
-    )
+    dis_patch = DesiredIncarnationStatePatch(template_repository_version="v2.0.0", automerge=False)
 
     # WHEN
     update_branch_sha = await update_incarnation(hoster, incarnation_mock, dis_patch)
@@ -53,9 +51,7 @@ async def should_err_if_incarnation_not_initialized(
     incarnation_mock.incarnation_repository = test_dis.incarnation_repository
     incarnation_mock.target_directory = test_dis.target_directory
 
-    dis_patch = DesiredIncarnationStatePatch(
-        template_repository_version="v2.0.0", automerge=False
-    )
+    dis_patch = DesiredIncarnationStatePatch(template_repository_version="v2.0.0", automerge=False)
 
     # THEN
     expected_error_msg = "not initialized"
@@ -68,9 +64,7 @@ async def should_err_if_incarnation_not_initialized(
 async def should_update_incarnation_to_new_version_in_merge_request(
     mocker: MockFixture,
     test_template_repository: GitRepository,
-    test_initialized_incarnation: tuple[
-        Incarnation, fengine.IncarnationState, DesiredIncarnationState, GitRepository
-    ],
+    test_initialized_incarnation: tuple[Incarnation, fengine.IncarnationState, DesiredIncarnationState, GitRepository],
 ):
     # GIVEN
     (
@@ -100,18 +94,14 @@ async def should_update_incarnation_to_new_version_in_merge_request(
 
     hoster.merge_request = __mocked_merge_request
 
-    dis_patch = DesiredIncarnationStatePatch(
-        template_repository_version="v2.0.0", automerge=False
-    )
+    dis_patch = DesiredIncarnationStatePatch(template_repository_version="v2.0.0", automerge=False)
 
     # WHEN
     sha = await update_incarnation(hoster, test_incarnation, dis_patch)
 
     # THEN
     assert sha == (await test_incarnation_repository.head())
-    assert (await test_incarnation_repository.current_branch()).startswith(
-        "foxops/update-to-"
-    )
+    assert (await test_incarnation_repository.current_branch()).startswith("foxops/update-to-")
     assert merge_request_called.get()
 
 
@@ -119,9 +109,7 @@ async def should_update_incarnation_to_new_version_in_merge_request(
 async def should_update_incarnation_to_new_template_data_in_merge_request(
     mocker: MockFixture,
     test_template_repository: GitRepository,
-    test_initialized_incarnation: tuple[
-        Incarnation, fengine.IncarnationState, DesiredIncarnationState, GitRepository
-    ],
+    test_initialized_incarnation: tuple[Incarnation, fengine.IncarnationState, DesiredIncarnationState, GitRepository],
 ):
     # GIVEN
     (
@@ -151,18 +139,14 @@ async def should_update_incarnation_to_new_template_data_in_merge_request(
 
     hoster.merge_request = __mocked_merge_request
 
-    dis_patch = DesiredIncarnationStatePatch(
-        template_data={"name": "new-name"}, automerge=False
-    )
+    dis_patch = DesiredIncarnationStatePatch(template_data={"name": "new-name"}, automerge=False)
 
     # WHEN
     sha = await update_incarnation(hoster, test_incarnation, dis_patch)
 
     # THEN
     assert sha == (await test_incarnation_repository.head())
-    assert (await test_incarnation_repository.current_branch()).startswith(
-        "foxops/update-to-"
-    )
+    assert (await test_incarnation_repository.current_branch()).startswith("foxops/update-to-")
     assert merge_request_called.get()
 
 
@@ -170,9 +154,7 @@ async def should_update_incarnation_to_new_template_data_in_merge_request(
 async def should_no_op_if_there_is_no_update_to_be_done(
     mocker: MockFixture,
     test_template_repository: GitRepository,
-    test_initialized_incarnation: tuple[
-        Incarnation, fengine.IncarnationState, DesiredIncarnationState, GitRepository
-    ],
+    test_initialized_incarnation: tuple[Incarnation, fengine.IncarnationState, DesiredIncarnationState, GitRepository],
 ):
     # GIVEN
     (
@@ -203,8 +185,6 @@ async def should_no_op_if_there_is_no_update_to_be_done(
 
 
 async def __add_new_template_version(template_repository: GitRepository):
-    (template_repository.directory / "template" / "file_from_update.txt").write_text(
-        "{{ name }}"
-    )
+    (template_repository.directory / "template" / "file_from_update.txt").write_text("{{ name }}")
     await template_repository.commit_all("New file")
     await git_exec("tag", "v2.0.0", cwd=template_repository.directory)

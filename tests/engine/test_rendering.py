@@ -157,9 +157,7 @@ async def test_rendering_a_template_symlink_renders_data_in_target_filename(
 
     # THEN
     assert (incarnation_dir / "template-symlink").is_symlink()
-    assert (incarnation_dir / "template-symlink").readlink() == Path(
-        "symlink-target-42.txt"
-    )
+    assert (incarnation_dir / "template-symlink").readlink() == Path("symlink-target-42.txt")
 
 
 @pytest.mark.asyncio
@@ -201,9 +199,7 @@ async def test_rendering_an_entire_template_directory_with_excluded_file_in_rend
     template_dir.mkdir()
 
     (template_dir / "{{ package_name }}").mkdir()
-    (template_dir / "{{ package_name }}" / "README.md").write_text(
-        "{{ invalid syntax } {%"
-    )
+    (template_dir / "{{ package_name }}" / "README.md").write_text("{{ invalid syntax } {%")
     (template_dir / "code.c").write_text("{{ data }}")
 
     incarnation_dir = tmp_path / "incarnation"
@@ -222,9 +218,7 @@ async def test_rendering_an_entire_template_directory_with_excluded_file_in_rend
     )
 
     # THEN
-    assert (
-        incarnation_dir / "test" / "README.md"
-    ).read_text() == "{{ invalid syntax } {%"
+    assert (incarnation_dir / "test" / "README.md").read_text() == "{{ invalid syntax } {%"
     assert (incarnation_dir / "code.c").read_text() == "Hello World"
 
 
@@ -237,9 +231,7 @@ async def test_rendering_an_entire_template_directory(tmp_path: Path):
     (template_dir / "{{ name }}").mkdir()
     (template_dir / "{{ name }}" / "code.c").write_text("{{ data }}")
     (template_dir / "tests" / "{{ name }}").mkdir(parents=True)
-    (template_dir / "tests" / "{{ name }}" / "test_code.c").write_text(
-        "Test: {{ data }}"
-    )
+    (template_dir / "tests" / "{{ name }}" / "test_code.c").write_text("Test: {{ data }}")
     (template_dir / "README-symlink").symlink_to("README.md")
     (template_dir / "test_code-symlink").symlink_to("tests/{{ name }}/test_code.c")
 
@@ -258,17 +250,13 @@ async def test_rendering_an_entire_template_directory(tmp_path: Path):
     assert (incarnation_dir / "README.md").read_text() == "README: Hello World"
     assert (incarnation_dir / "jon").exists()
     assert (incarnation_dir / "jon" / "code.c").read_text() == "Hello World"
-    assert (
-        incarnation_dir / "tests" / "jon" / "test_code.c"
-    ).read_text() == "Test: Hello World"
+    assert (incarnation_dir / "tests" / "jon" / "test_code.c").read_text() == "Test: Hello World"
     assert (incarnation_dir / "README-symlink").is_symlink()
     assert (incarnation_dir / "README-symlink").exists()
     assert (incarnation_dir / "README-symlink").readlink() == Path("README.md")
     assert (incarnation_dir / "test_code-symlink").is_symlink()
     assert (incarnation_dir / "test_code-symlink").exists()
-    assert (incarnation_dir / "test_code-symlink").readlink() == Path(
-        "tests/jon/test_code.c"
-    )
+    assert (incarnation_dir / "test_code-symlink").readlink() == Path("tests/jon/test_code.c")
 
 
 @pytest.mark.asyncio
@@ -287,15 +275,11 @@ async def test_rendering_a_template_file_inherits_file_permissions(tmp_path: Pat
     env = create_template_environment(tmp_path)
 
     # WHEN
-    await render_template_file(
-        env, template_file, incarnation_dir, {}, render_content=True
-    )
+    await render_template_file(env, template_file, incarnation_dir, {}, render_content=True)
 
     # THEN
     assert (incarnation_dir / "template.txt").exists()
-    assert (
-        stat.S_IMODE((incarnation_dir / "template.txt").stat().st_mode) == expected_mode
-    )
+    assert stat.S_IMODE((incarnation_dir / "template.txt").stat().st_mode) == expected_mode
 
 
 @pytest.mark.skipif(
@@ -341,9 +325,7 @@ async def test_rendering_a_template_symlink_inherits_file_permissions(tmp_path: 
     # THEN
     assert (incarnation_dir / "template-symlink").exists()
     assert (
-        stat.S_IMODE(
-            (incarnation_dir / "template-symlink").stat(follow_symlinks=False).st_mode  # type: ignore
-        )
+        stat.S_IMODE((incarnation_dir / "template-symlink").stat(follow_symlinks=False).st_mode)  # type: ignore
         == expected_symlink_mode
     )
 
@@ -375,12 +357,6 @@ async def test_rendering_a_template_directory_inherits_file_permissions(tmp_path
 
     # THEN
     assert (incarnation_dir / "subdir").exists()
-    assert (
-        stat.S_IMODE((incarnation_dir / "subdir").stat().st_mode)
-        == expected_subdir_mode
-    )
+    assert stat.S_IMODE((incarnation_dir / "subdir").stat().st_mode) == expected_subdir_mode
     assert (incarnation_dir / "subdir" / "template.txt").exists()
-    assert (
-        stat.S_IMODE((incarnation_dir / "subdir" / "template.txt").stat().st_mode)
-        == expected_file_mode
-    )
+    assert stat.S_IMODE((incarnation_dir / "subdir" / "template.txt").stat().st_mode) == expected_file_mode

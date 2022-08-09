@@ -44,9 +44,7 @@ class IncarnationState:
     template_data: TemplateData
 
 
-def save_incarnation_state(
-    incarnation_state_path: Path, incarnation_state: IncarnationState
-) -> None:
+def save_incarnation_state(incarnation_state_path: Path, incarnation_state: IncarnationState) -> None:
     with incarnation_state_path.open("w") as f:
         f.write("# This file is auto-generated and owned by foxops.\n")
         f.write("# DO NOT EDIT MANUALLY.\n")
@@ -120,9 +118,7 @@ class TemplateConfig(BaseModel):
 
     @property
     def optional_variables_defaults(self) -> TemplateData:
-        return {
-            k: v.default for k, v in self.variables.items() if v.default is not None
-        }
+        return {k: v.default for k, v in self.variables.items() if v.default is not None}
 
     def to_yaml(self, target: Path) -> None:
         with target.open("w") as f:

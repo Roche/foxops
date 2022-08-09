@@ -356,9 +356,7 @@ async def should_create_merge_request_when_file_changed_during_update(
     ).raise_for_status()
 
     # THEN
-    update_branch_name = await assert_update_merge_request_exists(
-        gitlab_test_client, incarnation_repository
-    )
+    update_branch_name = await assert_update_merge_request_exists(gitlab_test_client, incarnation_repository)
     await assert_file_in_repository(
         gitlab_test_client,
         incarnation_repository,
@@ -401,9 +399,7 @@ async def should_create_merge_request_when_file_changed_with_fvars_during_update
     ).raise_for_status()
 
     # THEN
-    update_branch_name = await assert_update_merge_request_exists(
-        gitlab_test_client, incarnation_repository
-    )
+    update_branch_name = await assert_update_merge_request_exists(gitlab_test_client, incarnation_repository)
     await assert_file_in_repository(
         gitlab_test_client,
         incarnation_repository,

@@ -40,9 +40,7 @@ class GitLab:
     def __init__(self, address: str, token: str):
         self.address = address
         self.token = token
-        self.client = httpx.AsyncClient(
-            base_url=self.address, headers={"PRIVATE-TOKEN": self.token}
-        )
+        self.client = httpx.AsyncClient(base_url=self.address, headers={"PRIVATE-TOKEN": self.token})
 
     async def validate(self):
         (await self.client.get("/version")).raise_for_status()
@@ -88,9 +86,7 @@ class GitLab:
         response.raise_for_status()
         existing_merge_requests: list[MergeRequest] = response.json()
         if len(existing_merge_requests) > 0:
-            logger.debug(
-                f"Merge request for '{source_branch}' already exists in '{incarnation_repository}'"
-            )
+            logger.debug(f"Merge request for '{source_branch}' already exists in '{incarnation_repository}'")
             # FIXME: what is the correct git sha / ref to return here?
             return existing_merge_requests[0]["sha"]
 
@@ -98,9 +94,7 @@ class GitLab:
         # In the future we might want to leave it up to the caller to
         # figure out which branch to merge to.
         # For now, foxops anyways only supports operating on the default branch.
-        target_branch = (await self.get_repository_metadata(incarnation_repository))[
-            "default_branch"
-        ]
+        target_branch = (await self.get_repository_metadata(incarnation_repository))["default_branch"]
 
         response = await self.client.post(
             f"/projects/{quote_plus(incarnation_repository)}/merge_requests",
@@ -122,15 +116,9 @@ class GitLab:
         )
 
         if with_automerge:
-            logger.info(
-                f"Triggering automerge for the new Merge Request {merge_request['web_url']}"
-            )
+            logger.info(f"Triggering automerge for the new Merge Request {merge_request['web_url']}")
             merge_request = await self._automerge_merge_request(merge_request)
-            return (
-                merge_request["merge_commit_sha"]
-                if merge_request["merge_commit_sha"]
-                else merge_request["sha"]
-            )
+            return merge_request["merge_commit_sha"] if merge_request["merge_commit_sha"] else merge_request["sha"]
         else:
             return merge_request["sha"]
 
@@ -147,9 +135,7 @@ class GitLab:
             metadata = await self.get_repository_metadata(repository)
             repository = metadata["http_url"]
 
-        clone_url = add_authentication_to_git_clone_url(
-            repository, "__token__", self.token
-        )
+        clone_url = add_authentication_to_git_clone_url(repository, "__token__", self.token)
 
         # we assume that `repository` is already a proper HTTP(S) URL
         local_clone_directory = Path(mkdtemp())
@@ -178,9 +164,7 @@ class GitLab:
                 #           In addition it seems that if the refspec is a tag, it won't be created locally and we later on
                 #           cannot address it in e.g. a `switch`. So we need to fetch all tag refs, which should be fine.
                 await git_exec("init", local_clone_directory, cwd=Path.home())
-                await git_exec(
-                    "remote", "add", "origin", clone_url, cwd=local_clone_directory
-                )
+                await git_exec("remote", "add", "origin", clone_url, cwd=local_clone_directory)
                 await git_exec(
                     "fetch",
                     "--depth=1",
@@ -189,9 +173,7 @@ class GitLab:
                     refspec,
                     cwd=local_clone_directory,
                 )
-                await git_exec(
-                    "reset", "--hard", "FETCH_HEAD", cwd=local_clone_directory
-                )
+                await git_exec("reset", "--hard", "FETCH_HEAD", cwd=local_clone_directory)
 
             # NOTE(TF): set author data
             await git_exec(
@@ -200,17 +182,13 @@ class GitLab:
                 "foxops",
                 cwd=local_clone_directory,
             )
-            await git_exec(
-                "config", "user.email", "noreply@foxops.io", cwd=local_clone_directory
-            )
+            await git_exec("config", "user.email", "noreply@foxops.io", cwd=local_clone_directory)
 
             yield GitRepository(local_clone_directory)
         finally:
             shutil.rmtree(local_clone_directory)
 
-    async def has_pending_incarnation_branch(
-        self, project_identifier: str, branch: str
-    ) -> GitSha | None:
+    async def has_pending_incarnation_branch(self, project_identifier: str, branch: str) -> GitSha | None:
         response = await self.client.get(
             f"/projects/{quote_plus(project_identifier)}/repository/branches/{quote_plus(branch)}"
         )
@@ -218,9 +196,7 @@ class GitLab:
             return response.json()["commit"]["id"]
         return None
 
-    async def get_repository_metadata(
-        self, project_identifier: str
-    ) -> RepositoryMetadata:
+    async def get_repository_metadata(self, project_identifier: str) -> RepositoryMetadata:
         response = await self.client.get(f"/projects/{quote_plus(project_identifier)}")
         response.raise_for_status()
         data = response.json()
@@ -248,9 +224,7 @@ class GitLab:
             wait=wait_fixed(1),
         )
         async def __merge(mr: MergeRequest) -> MergeRequest:
-            response = await self.client.get(
-                f"/projects/{mr['project_id']}/merge_requests/{mr['iid']}"
-            )
+            response = await self.client.get(f"/projects/{mr['project_id']}/merge_requests/{mr['iid']}")
             response.raise_for_status()
             merge_request: MergeRequest = response.json()
             has_pipeline = bool(merge_request["head_pipeline"])

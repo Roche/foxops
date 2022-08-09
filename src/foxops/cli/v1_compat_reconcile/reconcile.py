@@ -23,9 +23,7 @@ yaml = YAML(typ="safe")
 
 
 def cmd_reconcile(
-    parallelism: int = typer.Option(  # noqa: B008
-        10, "--parallelism", "-p", help="number of parallel reconciliations"
-    ),
+    parallelism: int = typer.Option(10, "--parallelism", "-p", help="number of parallel reconciliations"),  # noqa: B008
     config_paths: list[str] = typer.Argument(  # noqa: B008
         None,
         help="Path to the configuration file(s) or folder(s) containing configuration file(s) to use. The configuration files define the desired incarnation states.",
@@ -58,20 +56,15 @@ def cmd_reconcile(
         return [path]
 
     desired_incarnation_states: list[DesiredIncarnationStateConfig] = []
-    flattened_config_files = itertools.chain(
-        *(expand_dir(Path(c)) for c in config_paths)
-    )
+    flattened_config_files = itertools.chain(*(expand_dir(Path(c)) for c in config_paths))
     for config_file in flattened_config_files:
         try:
             parsed_config = yaml.load(config_file)
             desired_incarnation_states.extend(
-                DesiredIncarnationStateConfig.parse_obj(c)
-                for c in parsed_config["incarnations"]
+                DesiredIncarnationStateConfig.parse_obj(c) for c in parsed_config["incarnations"]
             )
         except Exception as exc:
-            logger.error(
-                f"Project definition config at {config_file} is not valid: {exc}"
-            )
+            logger.error(f"Project definition config at {config_file} is not valid: {exc}")
             raise typer.Exit(1)
 
     logger.debug(
@@ -123,9 +116,7 @@ def cmd_reconcile(
                     )
                     incarnation_before_update = incarnation
             else:
-                incarnation_before_update = Incarnation(
-                    **incarnation_exists_response.json()[0]
-                )
+                incarnation_before_update = Incarnation(**incarnation_exists_response.json()[0])
 
             logger.info(
                 "incarnation exists, updating ...",

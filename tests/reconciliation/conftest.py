@@ -82,9 +82,7 @@ async def create_test_initialized_incarnation(
         template_repository=test_dis.template_repository,
         template_repository_version=test_dis.template_repository_version,
         template_data=test_dis.template_data,
-        incarnation_root_dir=(
-            test_empty_incarnation_repository.directory / test_dis.target_directory
-        ),
+        incarnation_root_dir=(test_empty_incarnation_repository.directory / test_dis.target_directory),
     )
     incarnation = Incarnation(
         id=1,

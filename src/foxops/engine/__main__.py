@@ -58,9 +58,7 @@ def cmd_new(
 
     # Create sample README in template directory
     (target_directory / "template").mkdir(0o755)
-    (target_directory / "template" / "README.md").write_text(
-        "Created by {{ author }}\n"
-    )
+    (target_directory / "template" / "README.md").write_text("Created by {{ author }}\n")
 
 
 @app.command(name="initialize")
@@ -92,9 +90,7 @@ def cmd_initialize(
     ),
 ):
     """Initialize an incarnation repository with a version of a template and some data."""
-    template_data: TemplateData = dict(
-        tuple(x.split("=", maxsplit=1)) for x in raw_template_data  # type: ignore
-    )
+    template_data: TemplateData = dict(tuple(x.split("=", maxsplit=1)) for x in raw_template_data)  # type: ignore
 
     bind(template_repository=template_repository)
     bind(incarnation_dir=incarnation_dir)
@@ -104,20 +100,14 @@ def cmd_initialize(
     incarnation_dir.mkdir(parents=True, exist_ok=False)
 
     if template_repository_version:
-        logger.debug(
-            f"checking out template repository version {template_repository_version}"
-        )
+        logger.debug(f"checking out template repository version {template_repository_version}")
         check_output(
             ["git", "checkout", template_repository_version],
             cwd=template_repository,
             stderr=PIPE,
         )
 
-    repository_version = (
-        check_output(["git", "rev-parse", "HEAD"], cwd=template_repository)
-        .decode()
-        .strip()
-    )
+    repository_version = check_output(["git", "rev-parse", "HEAD"], cwd=template_repository).decode().strip()
 
     logger.info(
         "starting initialization incarnation ...",
@@ -184,14 +174,10 @@ def cmd_update(
     ),
 ):
     """Initialize an incarnation repository with a version of a template and some data."""
-    template_data: dict[str, str] = dict(
-        tuple(x.split("=", maxsplit=1)) for x in raw_template_data  # type: ignore
-    )
+    template_data: dict[str, str] = dict(tuple(x.split("=", maxsplit=1)) for x in raw_template_data)  # type: ignore
 
     incarnation_state_path = incarnation_dir / ".fengine.yaml"
-    logger.debug(
-        f"getting template repository path from incarnation state at {incarnation_state_path}"
-    )
+    logger.debug(f"getting template repository path from incarnation state at {incarnation_state_path}")
     incarnation_state = load_incarnation_state(incarnation_state_path)
 
     logger.debug(
@@ -200,9 +186,7 @@ def cmd_update(
     )
 
     if overridden_template_repository is not None:
-        logger.debug(
-            f"overriding template repository with {overridden_template_repository}"
-        )
+        logger.debug(f"overriding template repository with {overridden_template_repository}")
         incarnation_state = IncarnationState(
             **{
                 **asdict(incarnation_state),  # type: ignore
@@ -225,9 +209,7 @@ def cmd_update(
     )
     merged_template_data = copy.deepcopy(incarnation_state.template_data)
     merged_template_data.update(template_data)
-    merged_template_data = {
-        k: v for k, v in merged_template_data.items() if k not in remove_template_data
-    }
+    merged_template_data = {k: v for k, v in merged_template_data.items() if k not in remove_template_data}
 
     bind(template_repository=incarnation_state.template_repository)
     bind(incarnation_dir=incarnation_dir)
@@ -235,9 +217,7 @@ def cmd_update(
 
     if update_repository_version is None:
         update_repository_version = (
-            check_output(
-                ["git", "rev-parse", "HEAD"], cwd=incarnation_state.template_repository
-            )
+            check_output(["git", "rev-parse", "HEAD"], cwd=incarnation_state.template_repository)
             .decode("utf-8")
             .strip()
         )
@@ -273,9 +253,7 @@ def cmd_update(
 
 @app.callback()
 def main(
-    verbose: bool = typer.Option(  # noqa: B008
-        False, "--verbose", "-v", help="turn on verbose logging"
-    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="turn on verbose logging"),  # noqa: B008
 ):
     """
     Foxops engine ... use it to initialize or update template incarnations.
