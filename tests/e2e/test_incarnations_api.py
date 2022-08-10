@@ -37,7 +37,12 @@ async def should_initialize_incarnation_in_root_of_empty_repository_when_creatin
     incarnation = response.json()
 
     # THEN
-    assert incarnation["id"] is not None
+    assert incarnation == {
+        "id": 1,
+        "incarnation_repository": empty_incarnation_gitlab_repository,
+        "target_directory": ".",
+        "status": "success",
+    }
     await assert_file_in_repository(
         gitlab_test_client,
         empty_incarnation_gitlab_repository,
@@ -80,7 +85,12 @@ async def should_initialize_incarnation_in_root_of_repository_with_fvars_file_wh
     incarnation = response.json()
 
     # THEN
-    assert incarnation["id"] is not None
+    assert incarnation == {
+        "id": 1,
+        "incarnation_repository": empty_incarnation_gitlab_repository,
+        "target_directory": ".",
+        "status": "success",
+    }
     await assert_file_in_repository(
         gitlab_test_client,
         empty_incarnation_gitlab_repository,
@@ -120,8 +130,15 @@ async def should_initialize_incarnation_in_root_of_nonempty_incarnation_in_a_mer
         },
     )
     response.raise_for_status()
+    incarnation = response.json()
 
     # THEN
+    assert incarnation == {
+        "id": 1,
+        "incarnation_repository": empty_incarnation_gitlab_repository,
+        "target_directory": ".",
+        "status": "pending",
+    }
     merge_request_source_branch = await assert_initialization_merge_request_exists(
         gitlab_test_client, empty_incarnation_gitlab_repository
     )
@@ -166,8 +183,15 @@ async def should_initialize_incarnation_in_root_of_nonempty_incarnation_in_defau
         },
     )
     response.raise_for_status()
+    incarnation = response.json()
 
     # THEN
+    assert incarnation == {
+        "id": 1,
+        "incarnation_repository": empty_incarnation_gitlab_repository,
+        "target_directory": ".",
+        "status": "success",
+    }
     await assert_file_in_repository(
         gitlab_test_client,
         empty_incarnation_gitlab_repository,
@@ -218,8 +242,15 @@ async def should_initialize_incarnation_in_root_of_nonempty_repository_with_fvar
         },
     )
     response.raise_for_status()
+    incarnation = response.json()
 
     # THEN
+    assert incarnation == {
+        "id": 1,
+        "incarnation_repository": empty_incarnation_gitlab_repository,
+        "target_directory": ".",
+        "status": "pending",
+    }
     merge_request_branch_name = await assert_initialization_merge_request_exists(
         gitlab_test_client, empty_incarnation_gitlab_repository
     )
@@ -276,8 +307,15 @@ async def should_initialize_incarnation_in_subdir_of_empty_repository_when_creat
         },
     )
     response.raise_for_status()
+    incarnation = response.json()
 
     # THEN
+    assert incarnation == {
+        "id": 1,
+        "incarnation_repository": empty_incarnation_gitlab_repository,
+        "target_directory": "subdir",
+        "status": "success",
+    }
     await assert_file_in_repository(
         gitlab_test_client,
         empty_incarnation_gitlab_repository,
@@ -294,32 +332,45 @@ async def should_initialize_incarnations_in_subdirs_of_empty_repository_when_cre
     empty_incarnation_gitlab_repository: str,
 ):
     # WHEN
-    (
-        await api_client.post(
-            "/incarnations",
-            json={
-                "incarnation_repository": empty_incarnation_gitlab_repository,
-                "target_directory": "subdir1",
-                "template_repository": template_repository,
-                "template_repository_version": "v1.0.0",
-                "template_data": {"name": "Jon", "age": 18},
-            },
-        )
-    ).raise_for_status()
-    (
-        await api_client.post(
-            "/incarnations",
-            json={
-                "incarnation_repository": empty_incarnation_gitlab_repository,
-                "target_directory": "subdir2",
-                "template_repository": template_repository,
-                "template_repository_version": "v1.0.0",
-                "template_data": {"name": "Ygritte", "age": 17},
-            },
-        )
-    ).raise_for_status()
+    subdir1_response = await api_client.post(
+        "/incarnations",
+        json={
+            "incarnation_repository": empty_incarnation_gitlab_repository,
+            "target_directory": "subdir1",
+            "template_repository": template_repository,
+            "template_repository_version": "v1.0.0",
+            "template_data": {"name": "Jon", "age": 18},
+        },
+    )
+    subdir1_response.raise_for_status()
+    subdir1_incarnation = subdir1_response.json()
+
+    subdir2_response = await api_client.post(
+        "/incarnations",
+        json={
+            "incarnation_repository": empty_incarnation_gitlab_repository,
+            "target_directory": "subdir2",
+            "template_repository": template_repository,
+            "template_repository_version": "v1.0.0",
+            "template_data": {"name": "Ygritte", "age": 17},
+        },
+    )
+    subdir2_response.raise_for_status()
+    subdir2_incarnation = subdir2_response.json()
 
     # THEN
+    assert subdir1_incarnation == {
+        "id": 1,
+        "incarnation_repository": empty_incarnation_gitlab_repository,
+        "target_directory": "subdir1",
+        "status": "success",
+    }
+    assert subdir2_incarnation == {
+        "id": 2,
+        "incarnation_repository": empty_incarnation_gitlab_repository,
+        "target_directory": "subdir2",
+        "status": "success",
+    }
     await assert_file_in_repository(
         gitlab_test_client,
         empty_incarnation_gitlab_repository,
@@ -344,18 +395,24 @@ async def should_create_merge_request_when_file_changed_during_update(
     incarnation_repository, incarnation_id = incarnation_gitlab_repository_in_v1
 
     # WHEN
-    (
-        await api_client.put(
-            f"/incarnations/{incarnation_id}",
-            json={
-                "template_repository_version": "v2.0.0",
-                "template_data": {"name": "Jon", "age": 18},
-                "automerge": False,
-            },
-        )
-    ).raise_for_status()
+    response = await api_client.put(
+        f"/incarnations/{incarnation_id}",
+        json={
+            "template_repository_version": "v2.0.0",
+            "template_data": {"name": "Jon", "age": 18},
+            "automerge": False,
+        },
+    )
+    response.raise_for_status()
+    incarnation = response.json()
 
     # THEN
+    assert incarnation == {
+        "id": 1,
+        "incarnation_repository": incarnation_repository,
+        "target_directory": ".",
+        "status": "pending",
+    }
     update_branch_name = await assert_update_merge_request_exists(gitlab_test_client, incarnation_repository)
     await assert_file_in_repository(
         gitlab_test_client,
@@ -387,18 +444,24 @@ async def should_create_merge_request_when_file_changed_with_fvars_during_update
     ).raise_for_status()
 
     # WHEN
-    (
-        await api_client.put(
-            f"/incarnations/{incarnation_id}",
-            json={
-                "template_repository_version": "v2.0.0",
-                "template_data": {"age": 18},
-                "automerge": False,
-            },
-        )
-    ).raise_for_status()
+    response = await api_client.put(
+        f"/incarnations/{incarnation_id}",
+        json={
+            "template_repository_version": "v2.0.0",
+            "template_data": {"age": 18},
+            "automerge": False,
+        },
+    )
+    response.raise_for_status()
+    incarnation = response.json()
 
     # THEN
+    assert incarnation == {
+        "id": 1,
+        "incarnation_repository": incarnation_repository,
+        "target_directory": ".",
+        "status": "pending",
+    }
     update_branch_name = await assert_update_merge_request_exists(gitlab_test_client, incarnation_repository)
     await assert_file_in_repository(
         gitlab_test_client,
@@ -432,18 +495,24 @@ async def should_present_conflict_in_merge_request_when_updating(
     ).raise_for_status()
 
     # WHEN
-    (
-        await api_client.put(
-            f"/incarnations/{incarnation_id}",
-            json={
-                "template_repository_version": "v2.0.0",
-                "template_data": {"name": "Jon", "age": 18},
-                "automerge": False,
-            },
-        )
-    ).raise_for_status()
+    response = await api_client.put(
+        f"/incarnations/{incarnation_id}",
+        json={
+            "template_repository_version": "v2.0.0",
+            "template_data": {"name": "Jon", "age": 18},
+            "automerge": False,
+        },
+    )
+    response.raise_for_status()
+    incarnation = response.json()
 
     # THEN
+    assert incarnation == {
+        "id": 1,
+        "incarnation_repository": incarnation_repository,
+        "target_directory": ".",
+        "status": "pending",
+    }
     await assert_update_merge_request_with_conflicts_exists(
         gitlab_test_client,
         incarnation_repository,
@@ -461,18 +530,24 @@ async def should_automerge_merge_request_when_flag_is_true(
     incarnation_repository, incarnation_id = incarnation_gitlab_repository_in_v1
 
     # WHEN
-    (
-        await api_client.put(
-            f"/incarnations/{incarnation_id}",
-            json={
-                "template_repository_version": "v2.0.0",
-                "template_data": {"name": "Jon", "age": 18},
-                "automerge": True,
-            },
-        )
-    ).raise_for_status()
+    response = await api_client.put(
+        f"/incarnations/{incarnation_id}",
+        json={
+            "template_repository_version": "v2.0.0",
+            "template_data": {"name": "Jon", "age": 18},
+            "automerge": True,
+        },
+    )
+    response.raise_for_status()
+    incarnation = response.json()
 
     # THEN
+    assert incarnation == {
+        "id": 1,
+        "incarnation_repository": incarnation_repository,
+        "target_directory": ".",
+        "status": "success",
+    }
     await assert_file_in_repository(
         gitlab_test_client,
         incarnation_repository,

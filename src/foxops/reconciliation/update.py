@@ -5,6 +5,7 @@ import foxops.engine as fengine
 from foxops.errors import ReconciliationError
 from foxops.external.git import GitRepository
 from foxops.hosters import GitSha, Hoster
+from foxops.hosters.types import MergeRequestId
 from foxops.logging import get_logger
 from foxops.models import (
     DesiredIncarnationStatePatch,
@@ -22,18 +23,20 @@ async def update_incarnation(
     hoster: Hoster,
     incarnation: Incarnation,
     desired_incarnation_state_patch: DesiredIncarnationStatePatch,
-) -> GitSha | None:
+) -> tuple[GitSha, MergeRequestId] | None:
     logger.info("Updating incarnation")
 
     logger.debug("Fetching current incarnation state")
-    incarnation_state_before_update = await hoster.get_incarnation_state(
+    incarnation_state_with_sha = await hoster.get_incarnation_state(
         incarnation.incarnation_repository, incarnation.target_directory
     )
 
-    if incarnation_state_before_update is None:
+    if incarnation_state_with_sha is None:
         raise ReconciliationError(
             f"Failed to update incarnation {incarnation_identifier(incarnation)} because it is not initialized"
         )
+
+    _, incarnation_state_before_update = incarnation_state_with_sha
 
     template_repository_version_update = (
         desired_incarnation_state_patch.template_repository_version
@@ -55,9 +58,9 @@ async def update_incarnation(
         incarnation.target_directory,
         template_repository_version_update,
     )
-    if git_sha := await hoster.has_pending_incarnation_branch(incarnation.incarnation_repository, update_branch):
+    if await hoster.has_pending_incarnation_branch(incarnation.incarnation_repository, update_branch):
         logger.info(f"Branch '{update_branch}' already exists, skipping update")
-        return git_sha
+        return None
 
     logger.debug("Cloning Incarnation and Template repository to local directory")
 
@@ -110,7 +113,7 @@ async def update_incarnation(
         )
 
         if not files_with_conflicts:
-            revision = await _handle_update_merge_request_without_conflicts(
+            commit_sha, merge_request_id = await _handle_update_merge_request_without_conflicts(
                 hoster,
                 incarnation,
                 update_branch,
@@ -118,7 +121,7 @@ async def update_incarnation(
                 desired_incarnation_state_patch.automerge,
             )
         else:
-            revision = await _handle_update_merge_request_with_conflicts(
+            commit_sha, merge_request_id = await _handle_update_merge_request_with_conflicts(
                 hoster,
                 incarnation,
                 update_branch,
@@ -126,7 +129,7 @@ async def update_incarnation(
                 files_with_conflicts,
             )
 
-        return revision
+        return commit_sha, merge_request_id
 
 
 async def _handle_update_merge_request_without_conflicts(
@@ -135,15 +138,14 @@ async def _handle_update_merge_request_without_conflicts(
     update_branch: str,
     template_repository_version: str,
     automerge: bool,
-) -> GitSha:
-    merge_request_sha = await hoster.merge_request(
+) -> tuple[GitSha, MergeRequestId]:
+    return await hoster.merge_request(
         incarnation_repository=incarnation.incarnation_repository,
         source_branch=update_branch,
         title=f"Update to {template_repository_version}",
         description=f"Update to {template_repository_version}",
         with_automerge=automerge,
     )
-    return merge_request_sha
 
 
 async def _handle_update_merge_request_with_conflicts(
@@ -152,7 +154,7 @@ async def _handle_update_merge_request_with_conflicts(
     update_branch: str,
     template_repository_version: str,
     files_with_conflicts: list[Path],
-) -> GitSha:
+) -> tuple[GitSha, MergeRequestId]:
     logger.info(
         f"detected conflicts for files: {', '.join([str(f) for f in files_with_conflicts])} after update to new template"
     )
@@ -164,11 +166,10 @@ of the following files from your repository:
 
 {os.linesep.join([f"- {f}" for f in files_with_conflicts])}
     """
-    merge_request_sha = await hoster.merge_request(
+    return await hoster.merge_request(
         incarnation_repository=incarnation.incarnation_repository,
         source_branch=update_branch,
         title=title,
         description=description,
         with_automerge=False,
     )
-    return merge_request_sha

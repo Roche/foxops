@@ -1,3 +1,4 @@
+import base64
 import shutil
 from contextlib import asynccontextmanager
 from datetime import timedelta
@@ -18,7 +19,12 @@ from foxops.external.git import (
     add_authentication_to_git_clone_url,
     git_exec,
 )
-from foxops.hosters.types import GitSha, RepositoryMetadata
+from foxops.hosters.types import (
+    GitSha,
+    MergeRequestId,
+    ReconciliationStatus,
+    RepositoryMetadata,
+)
 from foxops.logging import get_logger
 
 #: Holds the module logger
@@ -30,8 +36,20 @@ class MergeRequest(TypedDict):
     project_id: int
     web_url: str
     sha: str
+    state: str
+    merge_status: str
     merge_commit_sha: str | None
-    head_pipeline: list[dict] | None
+    head_pipeline: dict | None
+
+
+class LastCommitPipeline(TypedDict):
+    id: int
+    status: str
+
+
+class Commit(TypedDict):
+    last_pipeline: dict | None
+    status: str
 
 
 class GitLab:
@@ -51,13 +69,14 @@ class GitLab:
 
     async def get_incarnation_state(
         self, incarnation_repository: str, target_directory: str
-    ) -> IncarnationState | None:
+    ) -> tuple[GitSha, IncarnationState] | None:
         if not await self.__project_exists(incarnation_repository):
             raise IncarnationRepositoryNotFound(incarnation_repository)
 
         fengine_config_file = Path(target_directory, ".fengine.yaml")
         response = await self.client.get(
-            f"/projects/{quote_plus(incarnation_repository)}/repository/files/{quote_plus(str(fengine_config_file))}/raw"
+            f"/projects/{quote_plus(incarnation_repository)}/repository/files/{quote_plus(str(fengine_config_file))}",
+            params={"ref": "main"},
         )
         if response.status_code == HTTPStatus.NOT_FOUND:
             logger.debug(
@@ -67,8 +86,11 @@ class GitLab:
 
         # raising for all other non-success statuses
         response.raise_for_status()
+        file_data = response.json()
 
-        return load_incarnation_state_from_string(response.text)
+        return file_data["last_commit_id"], load_incarnation_state_from_string(
+            base64.b64decode(file_data["content"]).decode("utf-8")
+        )
 
     async def merge_request(
         self,
@@ -78,7 +100,7 @@ class GitLab:
         title: str,
         description: str,
         with_automerge=False,
-    ) -> GitSha:
+    ) -> tuple[GitSha, MergeRequestId]:
         response = await self.client.get(
             f"/projects/{quote_plus(incarnation_repository)}/merge_requests",
             params={"state": "opened", "source_branch": source_branch},
@@ -87,8 +109,7 @@ class GitLab:
         existing_merge_requests: list[MergeRequest] = response.json()
         if len(existing_merge_requests) > 0:
             logger.debug(f"Merge request for '{source_branch}' already exists in '{incarnation_repository}'")
-            # FIXME: what is the correct git sha / ref to return here?
-            return existing_merge_requests[0]["sha"]
+            return existing_merge_requests[0]["sha"], str(existing_merge_requests[0]["iid"])
 
         # Get project details to retrieve the default branch name
         # In the future we might want to leave it up to the caller to
@@ -118,17 +139,12 @@ class GitLab:
         if with_automerge:
             logger.info(f"Triggering automerge for the new Merge Request {merge_request['web_url']}")
             merge_request = await self._automerge_merge_request(merge_request)
-            return merge_request["merge_commit_sha"] if merge_request["merge_commit_sha"] else merge_request["sha"]
-        else:
-            return merge_request["sha"]
+
+        return merge_request["sha"], str(merge_request["iid"])
 
     @asynccontextmanager
     async def cloned_repository(
-        self,
-        repository: str,
-        *,
-        refspec: str | None = None,
-        bare: bool = False,
+        self, repository: str, *, refspec: str | None = None, bare: bool = False
     ) -> AsyncIterator[GitRepository]:
         if not repository.startswith(("https://", "http://")):
             # it's not a URL, but a `path_with_namespace`, so, let's think it a URL
@@ -196,6 +212,20 @@ class GitLab:
             return response.json()["commit"]["id"]
         return None
 
+    async def has_pending_incarnation_merge_request(
+        self, project_identifier: str, branch: str
+    ) -> MergeRequestId | None:
+        response = await self.client.get(
+            f"/projects/{quote_plus(project_identifier)}/merge_requests",
+            params={"source_branch": branch, "state": "opened"},
+        )
+        response.raise_for_status()
+        merge_requests: list[MergeRequest] = response.json()
+        if len(merge_requests) > 0:
+            return str(merge_requests[0]["iid"])
+
+        return None
+
     async def get_repository_metadata(self, project_identifier: str) -> RepositoryMetadata:
         response = await self.client.get(f"/projects/{quote_plus(project_identifier)}")
         response.raise_for_status()
@@ -206,9 +236,7 @@ class GitLab:
         }
 
     async def _automerge_merge_request(
-        self,
-        merge_request: MergeRequest,
-        timeout: timedelta | None = None,
+        self, merge_request: MergeRequest, timeout: timedelta | None = None
     ) -> MergeRequest:
         """Automerge the given Merge Request.
 
@@ -237,3 +265,64 @@ class GitLab:
             return response.json()
 
         return await __merge(merge_request)
+
+    async def get_reconciliation_status(
+        self, incarnation_repository: str, target_directory: str, commit_sha: GitSha, merge_request_id: str | None
+    ) -> ReconciliationStatus:
+        async def _get_commit_status(commit_sha: GitSha) -> ReconciliationStatus:
+            response = await self.client.get(
+                f"/projects/{quote_plus(incarnation_repository)}/repository/commits/{commit_sha}"
+            )
+            response.raise_for_status()
+            commit: Commit = response.json()
+
+            if commit["status"] is None and commit["last_pipeline"] is None:
+                return ReconciliationStatus.SUCCESS
+
+            if commit["status"] == "success":
+                return ReconciliationStatus.SUCCESS
+
+            if commit["status"] in {"created", "pending", "running"}:
+                return ReconciliationStatus.PENDING
+
+            if commit["status"] in {"failed", "canceled"}:
+                return ReconciliationStatus.FAILED
+
+            logger.error(
+                f"Incarnation '{incarnation_repository}' / '{target_directory}' has an unknown commit status '{commit['status']}' for commit '{commit_sha}'"
+            )
+            return ReconciliationStatus.UNKNOWN
+
+        if merge_request_id is None:
+            logger.debug(f"No merge request id given, therefore checking commit status of '{commit_sha}'")
+            return await _get_commit_status(commit_sha)
+
+        logger.debug("Checking merge request status")
+        response = await self.client.get(
+            f"/projects/{quote_plus(incarnation_repository)}/merge_requests/{merge_request_id}"
+        )
+        response.raise_for_status()
+        merge_request: MergeRequest = response.json()
+
+        if merge_request["state"] == "opened":
+            if merge_request["merge_status"] in {"cannot_be_merged", "cannot_be_merged_recheck"}:
+                return ReconciliationStatus.FAILED
+
+            if merge_request["head_pipeline"] is not None and merge_request["head_pipeline"]["status"] in {
+                "failed",
+                "canceled",
+            }:
+                return ReconciliationStatus.FAILED
+
+            return ReconciliationStatus.PENDING
+        elif merge_request["state"] == "merged":
+            if merge_request["merge_commit_sha"] is not None:
+                merge_commit_sha = merge_request["merge_commit_sha"]
+                return await _get_commit_status(merge_commit_sha)
+        elif merge_request["state"] == "closed":
+            return ReconciliationStatus.FAILED
+
+        logger.error(
+            f"Incarnation '{incarnation_repository}' / '{target_directory}' has an unknown merge request status '{merge_request['state']}' for merge request '{merge_request_id}'"
+        )
+        return ReconciliationStatus.UNKNOWN

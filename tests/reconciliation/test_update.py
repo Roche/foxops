@@ -22,7 +22,7 @@ async def should_not_update_if_branch_is_pending(
 ):
     # GIVEN
     hoster = mocker.MagicMock(spec=Hoster)
-    hoster.get_incarnation_state.return_value.template_data = {}
+    hoster.get_incarnation_state.return_value = ("any-hash", mocker.MagicMock(template_data={}))
     hoster.has_pending_incarnation_branch.return_value = "any-hash"
     incarnation_mock = mocker.MagicMock(spec=Incarnation)
     incarnation_mock.incarnation_repository = test_dis.incarnation_repository
@@ -31,10 +31,10 @@ async def should_not_update_if_branch_is_pending(
     dis_patch = DesiredIncarnationStatePatch(template_repository_version="v2.0.0", automerge=False)
 
     # WHEN
-    update_branch_sha = await update_incarnation(hoster, incarnation_mock, dis_patch)
+    update = await update_incarnation(hoster, incarnation_mock, dis_patch)
 
     # THEN
-    assert update_branch_sha == "any-hash"
+    assert update is None
 
 
 @pytest.mark.asyncio
@@ -78,7 +78,7 @@ async def should_update_incarnation_to_new_version_in_merge_request(
 
     hoster = mocker.MagicMock(spec=Hoster)
     hoster.has_pending_incarnation_branch.return_value = None
-    hoster.get_incarnation_state.return_value = test_incarnation_state
+    hoster.get_incarnation_state.return_value = "any-commit-sha", test_incarnation_state
     # NOTE: the order here has to match. A better option for the future is to implement
     #       a more sophisticated fake hoster.
     hoster.cloned_repository().__aenter__.side_effect = [
@@ -90,7 +90,7 @@ async def should_update_incarnation_to_new_version_in_merge_request(
 
     async def __mocked_merge_request(*_, **__):
         merge_request_called.set(True)
-        return await test_incarnation_repository.head()
+        return await test_incarnation_repository.head(), "any-merge-request-id"
 
     hoster.merge_request = __mocked_merge_request
 
@@ -100,7 +100,7 @@ async def should_update_incarnation_to_new_version_in_merge_request(
     sha = await update_incarnation(hoster, test_incarnation, dis_patch)
 
     # THEN
-    assert sha == (await test_incarnation_repository.head())
+    assert sha == (await test_incarnation_repository.head(), "any-merge-request-id")
     assert (await test_incarnation_repository.current_branch()).startswith("foxops/update-to-")
     assert merge_request_called.get()
 
@@ -123,7 +123,7 @@ async def should_update_incarnation_to_new_template_data_in_merge_request(
 
     hoster = mocker.MagicMock(spec=Hoster)
     hoster.has_pending_incarnation_branch.return_value = None
-    hoster.get_incarnation_state.return_value = test_incarnation_state
+    hoster.get_incarnation_state.return_value = "any-commit-sha", test_incarnation_state
     # NOTE: the order here has to match. A better option for the future is to implement
     #       a more sophisticated fake hoster.
     hoster.cloned_repository().__aenter__.side_effect = [
@@ -135,7 +135,7 @@ async def should_update_incarnation_to_new_template_data_in_merge_request(
 
     async def __mocked_merge_request(*_, **__):
         merge_request_called.set(True)
-        return await test_incarnation_repository.head()
+        return await test_incarnation_repository.head(), "any-merge-request-id"
 
     hoster.merge_request = __mocked_merge_request
 
@@ -145,7 +145,7 @@ async def should_update_incarnation_to_new_template_data_in_merge_request(
     sha = await update_incarnation(hoster, test_incarnation, dis_patch)
 
     # THEN
-    assert sha == (await test_incarnation_repository.head())
+    assert sha == (await test_incarnation_repository.head(), "any-merge-request-id")
     assert (await test_incarnation_repository.current_branch()).startswith("foxops/update-to-")
     assert merge_request_called.get()
 
@@ -166,7 +166,7 @@ async def should_no_op_if_there_is_no_update_to_be_done(
 
     hoster = mocker.MagicMock(spec=Hoster)
     hoster.has_pending_incarnation_branch.return_value = None
-    hoster.get_incarnation_state.return_value = test_incarnation_state
+    hoster.get_incarnation_state.return_value = "any-commit-sha", test_incarnation_state
     # NOTE: the order here has to match. A better option for the future is to implement
     #       a more sophisticated fake hoster.
     hoster.cloned_repository().__aenter__.side_effect = [

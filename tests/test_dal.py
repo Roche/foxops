@@ -31,7 +31,7 @@ async def test_create_incarnation_should_add_new_incarnation_to_incarnation_inve
     )
 
     # WHEN
-    await dal.create_incarnation(new_incarnation, revision="abcdefg")
+    await dal.create_incarnation(new_incarnation, commit_sha="commit_sha", merge_request_id="merge_request_id")
 
     # THEN
     async with dal.connection() as conn:
@@ -43,7 +43,7 @@ async def test_create_incarnation_should_add_new_incarnation_to_incarnation_inve
 async def test_get_incarnations_returns_items_in_incarnation_inventory(dal: DAL):
     # GIVEN
     async with dal.connection() as conn:
-        await conn.execute(text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'test', 'test')"))
+        await conn.execute(text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'commit_sha', 'merge_request_id')"))
         await conn.commit()
 
     # WHEN
@@ -55,17 +55,57 @@ async def test_get_incarnations_returns_items_in_incarnation_inventory(dal: DAL)
             id=1,
             incarnation_repository="test",
             target_directory="test",
-            status="test",
-            revision="test",
+            commit_sha="commit_sha",
+            merge_request_id="merge_request_id",
         )
     ]
+
+
+@pytest.mark.asyncio
+async def test_get_incarnation_in_incarnation_inventory(dal: DAL):
+    # GIVEN
+    async with dal.connection() as conn:
+        await conn.execute(text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'commit_sha', 'merge_request_id')"))
+        await conn.commit()
+
+    # WHEN
+    incarnation = await dal.get_incarnation(1)
+
+    # THEN
+    assert incarnation == Incarnation(
+        id=1,
+        incarnation_repository="test",
+        target_directory="test",
+        commit_sha="commit_sha",
+        merge_request_id="merge_request_id",
+    )
+
+
+@pytest.mark.asyncio
+async def test_update_incarnation_in_inventory(dal: DAL):
+    # GIVEN
+    async with dal.connection() as conn:
+        await conn.execute(text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'commit_sha', 'merge_request_id')"))
+        await conn.commit()
+
+    # WHEN
+    updated_incarnation = await dal.update_incarnation(1, "new_commit_sha", "new_merge_request_id")
+
+    # THEN
+    assert updated_incarnation == Incarnation(
+        id=1,
+        incarnation_repository="test",
+        target_directory="test",
+        commit_sha="new_commit_sha",
+        merge_request_id="new_merge_request_id",
+    )
 
 
 @pytest.mark.asyncio
 async def test_delete_incarnation_from_inventory(dal: DAL):
     # GIVEN
     async with dal.connection() as conn:
-        await conn.execute(text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'test', 'test')"))
+        await conn.execute(text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'commit_sha', 'merge_request_id')"))
         await conn.commit()
 
     # WHEN

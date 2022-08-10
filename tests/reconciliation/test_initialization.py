@@ -32,11 +32,14 @@ async def should_err_if_incarnation_repository_does_not_exist(mocker: MockFixtur
 async def should_err_if_incarnation_is_already_initialized(mocker: MockFixture, test_dis: DesiredIncarnationState):
     # GIVEN
     hoster = mocker.MagicMock(spec=Hoster)
-    hoster.get_incarnation_state.return_value = mocker.MagicMock(
-        spec=fengine.IncarnationState,
-        template_repository="",
-        template_repository_version="",
-        template_data={},
+    hoster.get_incarnation_state.return_value = (
+        "any-commit_sha",
+        mocker.MagicMock(
+            spec=fengine.IncarnationState,
+            template_repository="",
+            template_repository_version="",
+            template_data={},
+        ),
     )
 
     # THEN
@@ -52,11 +55,14 @@ async def should_err_if_incarnation_is_already_initialized_reporting_a_config_mi
 ):
     # GIVEN
     hoster = mocker.MagicMock(spec=Hoster)
-    hoster.get_incarnation_state.return_value = fengine.IncarnationState(
-        template_repository="",
-        template_repository_version="",
-        template_repository_version_hash="",
-        template_data={},
+    hoster.get_incarnation_state.return_value = (
+        "any-commit-sha",
+        fengine.IncarnationState(
+            template_repository="",
+            template_repository_version="",
+            template_repository_version_hash="",
+            template_data={},
+        ),
     )
 
     # THEN
@@ -74,11 +80,14 @@ async def should_err_if_incarnation_is_already_initialized_reporting_no_config_m
 ):
     # GIVEN
     hoster = mocker.MagicMock(spec=Hoster)
-    hoster.get_incarnation_state.return_value = fengine.IncarnationState(
-        template_repository=test_dis.template_repository,
-        template_repository_version=test_dis.template_repository_version,
-        template_repository_version_hash="does-not-matter",
-        template_data=test_dis.template_data,
+    hoster.get_incarnation_state.return_value = (
+        "any-commit-sha",
+        fengine.IncarnationState(
+            template_repository=test_dis.template_repository,
+            template_repository_version=test_dis.template_repository_version,
+            template_repository_version_hash="does-not-matter",
+            template_data=test_dis.template_data,
+        ),
     )
 
     # THEN
@@ -112,7 +121,7 @@ async def should_initialize_incarnation_without_merge_request(
     sha = await initialize_incarnation(hoster, test_dis)
 
     # THEN
-    assert sha == (await test_empty_incarnation_repository.head())
+    assert sha == (await test_empty_incarnation_repository.head(), None)
     assert await test_empty_incarnation_repository.current_branch() == "main"
     assert (test_empty_incarnation_repository.directory / test_dis.target_directory / "README.md").exists()
 
@@ -140,7 +149,7 @@ async def should_initialize_incarnation_with_merge_request(
 
     async def __mocked_merge_request(*_, **__):
         merge_request_called.set(True)
-        return await test_non_empty_incarnation_repository.head()
+        return await test_non_empty_incarnation_repository.head(), "any-merge-request-id"
 
     hoster.merge_request = __mocked_merge_request
 
@@ -148,7 +157,7 @@ async def should_initialize_incarnation_with_merge_request(
     sha = await initialize_incarnation(hoster, test_dis)
 
     # THEN
-    assert sha == (await test_non_empty_incarnation_repository.head())
+    assert sha == (await test_non_empty_incarnation_repository.head(), "any-merge-request-id")
     assert (await test_non_empty_incarnation_repository.current_branch()).startswith("foxops/initialize-to-")
     assert (test_non_empty_incarnation_repository.directory / test_dis.target_directory / "README.md").exists()
     assert merge_request_called.get()
@@ -177,11 +186,16 @@ async def should_not_initialize_with_merge_request_if_branch_is_pending(
 
     hoster.has_pending_incarnation_branch = __mocked_has_pending_incarnation_branch
 
+    async def __mocked_has_pending_incarnation_merge_request(*_, **__):
+        return "any-merge-request-id"
+
+    hoster.has_pending_incarnation_merge_request = __mocked_has_pending_incarnation_merge_request
+
     # WHEN
     sha = await initialize_incarnation(hoster, test_dis)
 
     # THEN
-    assert sha == (await test_non_empty_incarnation_repository.head())
+    assert sha == (await test_non_empty_incarnation_repository.head(), "any-merge-request-id")
     hoster.merge_request.assert_not_called()
 
 
