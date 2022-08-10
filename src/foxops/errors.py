@@ -36,10 +36,10 @@ class IncarnationAlreadyInitializedError(ReconciliationUserError):
         self,
         incarnation_repository: str,
         target_directory: str,
-        revision: str,
+        commit_sha: str,
         has_mismatch: bool,
     ):
-        self.revision = revision
+        self.commit_sha = commit_sha
         self.has_mismatch = has_mismatch
         super().__init__(
             f"Incarnation at '{incarnation_repository}' and target directory '{target_directory}' already initialized."

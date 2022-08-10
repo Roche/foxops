@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from foxops.database.schema import meta
 from foxops.errors import IncarnationNotFoundError
-from foxops.hosters import GitSha
+from foxops.hosters import GitSha, MergeRequestId
 from foxops.logging import get_logger
 from foxops.models import DesiredIncarnationState, Incarnation
 
@@ -50,7 +50,8 @@ class DAL:
     async def create_incarnation(
         self,
         desired_incarnation_state: DesiredIncarnationState,
-        revision: GitSha,
+        commit_sha: GitSha,
+        merge_request_id: str | None,
     ) -> Incarnation:
         async with self.connection() as conn:
             # Check if the incarnation already exists and if so, just update it gracefully
@@ -66,18 +67,39 @@ class DAL:
                 text(
                     """
                     INSERT INTO incarnation
-                        (incarnation_repository, target_directory, status, revision)
+                        (incarnation_repository, target_directory, commit_sha, merge_request_id)
                     VALUES
-                        (:incarnation_repository, :target_directory, :status, :revision)
+                        (:incarnation_repository, :target_directory, :commit_sha, :merge_request_id)
                     RETURNING *
                     """
                 ),
                 {
                     "incarnation_repository": desired_incarnation_state.incarnation_repository,
                     "target_directory": desired_incarnation_state.target_directory,
-                    "status": "created",
-                    "revision": revision,
+                    "commit_sha": commit_sha,
+                    "merge_request_id": merge_request_id,
                 },
+            )
+
+            row = query.one()
+            await conn.commit()
+            return Incarnation.from_orm(row)
+
+    async def update_incarnation(self, id: int, commit_sha: GitSha, merge_request_id: MergeRequestId) -> Incarnation:
+        async with self.connection() as conn:
+            query = await conn.execute(
+                text(
+                    """
+                    UPDATE incarnation
+                    SET
+                        commit_sha = :commit_sha,
+                        merge_request_id = :merge_request_id
+                    WHERE
+                        id = :id
+                    RETURNING *
+                    """
+                ),
+                {"id": id, "commit_sha": commit_sha, "merge_request_id": merge_request_id},
             )
 
             row = query.one()

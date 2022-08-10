@@ -11,6 +11,11 @@ GITLAB_ADDRESS = "http://127.0.0.1:5002/api/v4"
 GITLAB_ADMIN_TOKEN = "ACCTEST1234567890123"
 
 
+@pytest.fixture(scope="session")
+def gitlab_test_address() -> str:
+    return GITLAB_ADDRESS
+
+
 @pytest.fixture(scope="session", name="gitlab_test_user_token")
 def create_gitlab_test_user(test_run_id: str):
     client = Client(base_url=GITLAB_ADDRESS, headers={"PRIVATE-TOKEN": GITLAB_ADMIN_TOKEN})

@@ -233,7 +233,6 @@ c
     )
 
     # THEN
-    print(files_with_conflicts)
     assert update_performed is True
     assert Path("myfile.txt") in files_with_conflicts
 

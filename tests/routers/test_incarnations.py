@@ -7,6 +7,7 @@ from pytest_mock import MockFixture
 from sqlalchemy import text
 
 from foxops.database import DAL
+from foxops.dependencies import get_hoster
 from foxops.errors import IncarnationAlreadyInitializedError
 from foxops.routers.incarnations import get_reconciliation
 
@@ -30,7 +31,7 @@ async def test_api_get_incarnations_returns_incarnations_from_inventory(
 ):
     # GIVEN
     async with dal.connection() as conn:
-        await conn.execute(text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'test', 'test')"))
+        await conn.execute(text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'commit_sha', 'merge_request_id')"))
         await conn.commit()
 
     # WHEN
@@ -43,8 +44,6 @@ async def test_api_get_incarnations_returns_incarnations_from_inventory(
             "id": 1,
             "incarnation_repository": "test",
             "target_directory": "test",
-            "status": "test",
-            "revision": "test",
         }
     ]
 
@@ -57,9 +56,12 @@ async def test_api_create_incarnation_adds_new_incarnation_to_inventory(
 ):
     # GIVEN
     reconciliation_mock = mocker.AsyncMock()
-    reconciliation_mock.initialize_incarnation.return_value = "test"
+    reconciliation_mock.initialize_incarnation.return_value = "commit_sha", "merge_request_id"
+    hoster_mock = mocker.AsyncMock()
+    hoster_mock.get_reconciliation_status.return_value = "success"
 
     api_app.dependency_overrides[get_reconciliation] = lambda: reconciliation_mock
+    api_app.dependency_overrides[get_hoster] = lambda: hoster_mock
 
     # WHEN
     response = await api_client.post(
@@ -79,8 +81,7 @@ async def test_api_create_incarnation_adds_new_incarnation_to_inventory(
         "id": 1,
         "incarnation_repository": "test",
         "target_directory": "test",
-        "status": "created",
-        "revision": "test",
+        "status": "success",
     }
 
 
@@ -93,14 +94,14 @@ async def test_api_create_incarnation_already_exists_without_allowing_import(
 ):
     # GIVEN
     async with dal.connection() as conn:
-        await conn.execute(text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'test', 'test')"))
+        await conn.execute(text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'commit_sha', 'merge_request_id')"))
         await conn.commit()
 
     reconciliation_mock = mocker.AsyncMock()
     reconciliation_mock.initialize_incarnation.side_effect = IncarnationAlreadyInitializedError(
         "test",
         "test",
-        "fake-revision",
+        "fake-commit_sha",
         has_mismatch=False,
     )
 
@@ -131,18 +132,22 @@ async def test_api_create_incarnation_already_exists_allowing_import_without_a_m
 ):
     # GIVEN
     async with dal.connection() as conn:
-        await conn.execute(text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'created', 'test')"))
+        await conn.execute(text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'commit_sha', 'merge_request_id')"))
         await conn.commit()
 
     reconciliation_mock = mocker.AsyncMock()
     reconciliation_mock.initialize_incarnation.side_effect = IncarnationAlreadyInitializedError(
         "test",
         "test",
-        "fake-revision",
+        "fake-commit_sha",
         has_mismatch=False,
     )
 
+    hoster_mock = mocker.AsyncMock()
+    hoster_mock.get_reconciliation_status.return_value = "success"
+
     api_app.dependency_overrides[get_reconciliation] = lambda: reconciliation_mock
+    api_app.dependency_overrides[get_hoster] = lambda: hoster_mock
 
     # WHEN
     response = await api_client.post(
@@ -163,8 +168,7 @@ async def test_api_create_incarnation_already_exists_allowing_import_without_a_m
         "id": 1,
         "incarnation_repository": "test",
         "target_directory": "test",
-        "status": "created",
-        "revision": "test",
+        "status": "success",
     }
 
 
@@ -177,18 +181,22 @@ async def test_api_create_incarnation_already_exists_allowing_import_with_a_mism
 ):
     # GIVEN
     async with dal.connection() as conn:
-        await conn.execute(text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'created', 'test')"))
+        await conn.execute(text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'commit_sha', 'merge_request_id')"))
         await conn.commit()
 
     reconciliation_mock = mocker.AsyncMock()
     reconciliation_mock.initialize_incarnation.side_effect = IncarnationAlreadyInitializedError(
         "test",
         "test",
-        "fake-revision",
+        "fake-commit_sha",
         has_mismatch=True,
     )
 
+    hoster_mock = mocker.AsyncMock()
+    hoster_mock.get_reconciliation_status.return_value = "success"
+
     api_app.dependency_overrides[get_reconciliation] = lambda: reconciliation_mock
+    api_app.dependency_overrides[get_hoster] = lambda: hoster_mock
 
     # WHEN
     response = await api_client.post(
@@ -209,8 +217,7 @@ async def test_api_create_incarnation_already_exists_allowing_import_with_a_mism
         "id": 1,
         "incarnation_repository": "test",
         "target_directory": "test",
-        "status": "created",
-        "revision": "test",
+        "status": "success",
     }
 
 
@@ -221,7 +228,7 @@ async def test_api_delete_incarnation_removes_incarnation_from_inventory(
 ):
     # GIVEN
     async with dal.connection() as conn:
-        await conn.execute(text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'test', 'test')"))
+        await conn.execute(text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'commit_sha', 'merge_request_id')"))
         await conn.commit()
 
     # WHEN

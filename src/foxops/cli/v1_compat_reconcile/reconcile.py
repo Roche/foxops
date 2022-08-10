@@ -11,7 +11,8 @@ from foxops.logging import get_logger
 from foxops.models import (
     DesiredIncarnationState,
     DesiredIncarnationStatePatch,
-    Incarnation,
+    IncarnationBasic,
+    IncarnationWithDetails,
 )
 from foxops.settings import Settings
 
@@ -104,7 +105,7 @@ def cmd_reconcile(
                 if response.status_code != HTTPStatus.CONFLICT:
                     response.raise_for_status()
 
-                incarnation = Incarnation(**response.json())
+                incarnation = IncarnationWithDetails(**response.json())
 
                 if response.status_code != HTTPStatus.CONFLICT:
                     logger.info("successfully reconciled", incarnation=incarnation)
@@ -116,7 +117,8 @@ def cmd_reconcile(
                     )
                     incarnation_before_update = incarnation
             else:
-                incarnation_before_update = Incarnation(**incarnation_exists_response.json()[0])
+                incarnation_exists_response.raise_for_status()
+                incarnation_before_update = IncarnationBasic(**incarnation_exists_response.json()[0])
 
             logger.info(
                 "incarnation exists, updating ...",
@@ -134,5 +136,5 @@ def cmd_reconcile(
                 json=dis_patch.dict(),
             )
             response.raise_for_status()
-            incarnation = Incarnation(**response.json())
+            incarnation = IncarnationWithDetails(**response.json())
             logger.info("successfully reconciled", incarnation=incarnation)

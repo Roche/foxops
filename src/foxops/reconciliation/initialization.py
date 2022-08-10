@@ -7,7 +7,7 @@ from foxops.errors import (
     ReconciliationUserError,
 )
 from foxops.external.git import GitRepository
-from foxops.hosters import GitSha, Hoster
+from foxops.hosters import GitSha, Hoster, MergeRequestId
 from foxops.logging import get_logger
 from foxops.models import DesiredIncarnationState
 from foxops.reconciliation.utils import generate_foxops_branch_name, retry_if_possible
@@ -17,11 +17,13 @@ logger = get_logger(__name__)
 
 
 @retry_if_possible
-async def initialize_incarnation(hoster: Hoster, desired_incarnation_state: DesiredIncarnationState) -> GitSha:
+async def initialize_incarnation(
+    hoster: Hoster, desired_incarnation_state: DesiredIncarnationState
+) -> tuple[GitSha, MergeRequestId | None]:
     logger.info("Verifying if the incarnation can be initialized")
 
     try:
-        actual_incarnation_state = await hoster.get_incarnation_state(
+        incarnation_state = await hoster.get_incarnation_state(
             desired_incarnation_state.incarnation_repository,
             desired_incarnation_state.target_directory,
         )
@@ -32,13 +34,14 @@ async def initialize_incarnation(hoster: Hoster, desired_incarnation_state: Desi
             "Create it first, then try again."
         )
 
-    if actual_incarnation_state is not None:
+    if incarnation_state is not None:
+        last_commit_sha, actual_incarnation_state = incarnation_state
         logger.debug("Incarnation is already initialized, checking if conflicts in data ...")
 
         raise IncarnationAlreadyInitializedError(
             desired_incarnation_state.incarnation_repository,
             desired_incarnation_state.target_directory,
-            revision="fix-this-to-be-a-real-sha",
+            commit_sha=last_commit_sha,
             has_mismatch=desired_incarnation_state != actual_incarnation_state,
         )
 
@@ -75,7 +78,21 @@ async def initialize_incarnation(hoster: Hoster, desired_incarnation_state: Desi
                 desired_incarnation_state.incarnation_repository, init_branch
             ):
                 logger.info(f"Branch '{init_branch}' already exists, skipping initialization")
-                return git_sha
+
+                if merge_request_id := await hoster.has_pending_incarnation_merge_request(
+                    desired_incarnation_state.incarnation_repository, init_branch
+                ):
+                    logger.info(f"Branch '{init_branch}' is already merge requested, skipping initialization")
+                    return git_sha, merge_request_id
+                else:
+                    merge_request_sha, merge_request_id = await hoster.merge_request(
+                        incarnation_repository=desired_incarnation_state.incarnation_repository,
+                        source_branch=init_branch,
+                        title=f"Initialize to {desired_incarnation_state.template_repository_version}",
+                        description=f"Initialize to {desired_incarnation_state.template_repository_version}",
+                        with_automerge=desired_incarnation_state.automerge,
+                    )
+                    return git_sha, merge_request_id
         else:
             init_branch = (await hoster.get_repository_metadata(desired_incarnation_state.incarnation_repository))[
                 "default_branch"
@@ -105,16 +122,16 @@ async def initialize_incarnation(hoster: Hoster, desired_incarnation_state: Desi
         )
 
         if with_merge_request:
-            merge_request_sha = await hoster.merge_request(
+            merge_request_sha, merge_request_id = await hoster.merge_request(
                 incarnation_repository=desired_incarnation_state.incarnation_repository,
                 source_branch=init_branch,
                 title=f"Initialize to {desired_incarnation_state.template_repository_version}",
                 description=f"Initialize to {desired_incarnation_state.template_repository_version}",
                 with_automerge=desired_incarnation_state.automerge,
             )
-            return merge_request_sha
+            return merge_request_sha, merge_request_id
         else:
-            return commit_sha
+            return commit_sha, None
 
 
 async def _should_initialize_with_merge_request(local_repository: GitRepository, target_directory: str) -> bool:
