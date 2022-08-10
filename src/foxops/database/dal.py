@@ -1,11 +1,11 @@
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
-from foxops.database.schema import meta
+from foxops.database.schema import incarnations, meta
 from foxops.errors import IncarnationNotFoundError
 from foxops.hosters import GitSha, MergeRequestId
 from foxops.logging import get_logger
@@ -30,15 +30,12 @@ class DAL:
 
     async def get_incarnations(self) -> AsyncIterator[Incarnation]:
         async with self.connection() as conn:
-            for row in await conn.execute(text("SELECT * FROM incarnation")):
+            for row in await conn.execute(select(incarnations)):
                 yield Incarnation.from_orm(row)
 
     async def get_incarnation(self, id: int) -> Incarnation:
         async with self.connection() as conn:
-            query = await conn.execute(
-                text("SELECT * FROM incarnation WHERE id = :id"),
-                {"id": id},
-            )
+            query = await conn.execute(select(incarnations).where(incarnations.c.id == id))
 
             try:
                 row = query.one()
@@ -60,7 +57,6 @@ class DAL:
                 desired_incarnation_state.target_directory,
                 conn=conn,
             ):
-                # FIXME: nothing to update for now ...
                 return incarnation
 
             query = await conn.execute(
@@ -108,7 +104,7 @@ class DAL:
 
     async def delete_incarnation(self, id: int) -> None:
         async with self.connection() as conn:
-            await conn.execute(text("DELETE FROM incarnation WHERE id = :id"), {"id": id})
+            await conn.execute(incarnations.delete().where(incarnations.c.id == id))
             await conn.commit()
 
     async def get_incarnation_by_identity(
@@ -118,20 +114,10 @@ class DAL:
         conn: AsyncConnection,
     ) -> Incarnation | None:
         query = await conn.execute(
-            text(
-                """
-                SELECT * FROM incarnation
-                WHERE
-                    incarnation_repository = :incarnation_repository
-                AND
-                    target_directory = :target_directory
-                LIMIT 1
-                """
-            ),
-            {
-                "incarnation_repository": incarnation_repository,
-                "target_directory": target_directory,
-            },
+            select(incarnations)
+            .where(incarnations.c.incarnation_repository == incarnation_repository)
+            .where(incarnations.c.target_directory == target_directory)
+            .limit(1)
         )
 
         try:
