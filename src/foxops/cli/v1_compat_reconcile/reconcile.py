@@ -87,6 +87,7 @@ def cmd_reconcile(
                     "target_directory": str(config.target_directory),
                 },
             )
+            incarnation_before_update: IncarnationWithDetails | IncarnationBasic
             if incarnation_exists_response.status_code == HTTPStatus.NOT_FOUND:
                 logger.info("incarnation does not exist, creating ...")
                 dis = DesiredIncarnationState(
