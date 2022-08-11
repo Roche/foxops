@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from subprocess import Popen
-from typing import Iterator
 from time import sleep
+from typing import Iterator
 
 import httpx
 
