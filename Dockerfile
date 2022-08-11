@@ -25,4 +25,6 @@ RUN apk add --update git gcc musl-dev bash
 RUN python -m pip install /tmp/*.whl
 RUN rm -f /tmp/*.whl
 
-ENTRYPOINT [ "foxops" ]
+EXPOSE 80
+
+CMD [ "uvicorn", "foxops.__main__:app", "--proxy-headers", "--host", "0.0.0.0", "--port", "80" ]
