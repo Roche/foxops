@@ -52,9 +52,10 @@ def create_gitlab_test_user(test_run_id: str):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def set_settings_env(gitlab_test_user_token: str):
+def set_settings_env(gitlab_test_user_token: str, static_api_token: str):
     os.environ["FOXOPS_GITLAB_ADDRESS"] = GITLAB_ADDRESS
     os.environ["FOXOPS_GITLAB_TOKEN"] = gitlab_test_user_token
+    os.environ["FOXOPS_STATIC_TOKEN"] = static_api_token
 
 
 @pytest.fixture(name="gitlab_test_client")

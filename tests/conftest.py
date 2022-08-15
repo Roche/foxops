@@ -69,12 +69,22 @@ async def create_dal(test_async_engine: AsyncEngine) -> AsyncGenerator[DAL, None
     yield dal
 
 
+@pytest.fixture(name="static_api_token", scope="session")
+def get_static_api_token() -> str:
+    return "test-token"
+
+
 @pytest.fixture(name="api_client")
-async def api_client(dal: DAL, api_app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
+async def api_client(dal: DAL, api_app: FastAPI, static_api_token: str) -> AsyncGenerator[AsyncClient, None]:
     def _test_get_dal() -> DAL:
         return dal
 
     api_app.dependency_overrides[get_dal] = _test_get_dal
 
-    async with AsyncClient(app=api_app, base_url="http://test/api", follow_redirects=True) as ac:
+    async with AsyncClient(
+        app=api_app,
+        base_url="http://test/api",
+        follow_redirects=True,
+        headers={"Authorization": f"Bearer {static_api_token}"},
+    ) as ac:
         yield ac

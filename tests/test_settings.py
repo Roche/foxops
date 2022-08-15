@@ -9,6 +9,7 @@ def test_settings_can_load_config_from_env(monkeypatch: MonkeyPatch):
     # GIVEN
     monkeypatch.setenv("FOXOPS_GITLAB_ADDRESS", "dummy")
     monkeypatch.setenv("FOXOPS_GITLAB_TOKEN", "dummy")
+    monkeypatch.setenv("FOXOPS_STATIC_TOKEN", "dummy")
 
     # WHEN
     settings = Settings()

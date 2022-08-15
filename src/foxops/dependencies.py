@@ -1,6 +1,8 @@
 from functools import lru_cache
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException, Request, status
+from fastapi.openapi.models import APIKey, APIKeyIn
+from fastapi.security.base import SecurityBase
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 import foxops.reconciliation as reconciliation
@@ -37,3 +39,26 @@ def get_hoster(settings: Settings = Depends(get_settings)) -> Hoster:
 
 def get_reconciliation():
     return reconciliation
+
+
+class StaticTokenHeaderAuth(SecurityBase):
+    def __init__(self):
+        self.model = APIKey(**{"in": APIKeyIn.header}, name="Authorization")
+        self.scheme_name = self.__class__.__name__
+
+    async def __call__(self, request: Request, settings: Settings = Depends(get_settings)) -> None:
+        authorization_header = request.headers.get("Authorization")
+        if authorization_header is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing Authorization header")
+
+        scheme, token = authorization_header.split(" ")
+        if scheme.lower() != "bearer":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Only 'Bearer' Authorization headers are supported"
+            )
+
+        if settings.static_token.get_secret_value() != token:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token is invalid")
+
+
+static_token_auth_scheme = StaticTokenHeaderAuth()
