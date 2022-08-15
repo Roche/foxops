@@ -89,7 +89,7 @@ class GitRepository:
             "diff",
             f"{ref_old}..{ref_new}",
             expected_returncodes=frozenset({0, 1}),
-            timeout=30,
+            timeout=120,
         )
 
         output = ""
