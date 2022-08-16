@@ -29,6 +29,7 @@ Jinja2 = "^3.0.3"
 aiopath = "^0.6.10"
 tenacity = "^8.0.1"
 httpx = "^0.23.0"
+asyncpg = "^0.26.0"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^4.0.1"
