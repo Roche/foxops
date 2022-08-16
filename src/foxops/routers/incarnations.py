@@ -1,7 +1,12 @@
 from fastapi import APIRouter, Depends, Response, status
 
 from foxops.database import DAL
-from foxops.dependencies import get_dal, get_hoster, get_reconciliation, static_token_auth_scheme
+from foxops.dependencies import (
+    get_dal,
+    get_hoster,
+    get_reconciliation,
+    static_token_auth_scheme,
+)
 from foxops.errors import (
     IncarnationAlreadyInitializedError,
     IncarnationNotFoundError,
