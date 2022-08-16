@@ -74,6 +74,13 @@ def get_static_api_token() -> str:
     return "test-token"
 
 
+@pytest.fixture(scope="module", autouse=True)
+def set_settings_env(static_api_token: str):
+    os.environ["FOXOPS_GITLAB_ADDRESS"] = "https://nonsense.com/api/v4"
+    os.environ["FOXOPS_GITLAB_TOKEN"] = "nonsense"
+    os.environ["FOXOPS_STATIC_TOKEN"] = static_api_token
+
+
 @pytest.fixture(name="api_client")
 async def api_client(dal: DAL, api_app: FastAPI, static_api_token: str) -> AsyncGenerator[AsyncClient, None]:
     def _test_get_dal() -> DAL:

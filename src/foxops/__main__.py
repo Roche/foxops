@@ -10,15 +10,14 @@ from foxops.middlewares import request_middleware
 from foxops.openapi import custom_openapi
 from foxops.routers import incarnations
 
-STATIC_DIR = (Path(__file__).parent / "static").absolute()
-
 
 def get_app():
     app = FastAPI()
 
+    settings = get_settings()
+
     @app.on_event("startup")
     async def startup():
-        settings = get_settings()
 
         # validate hoster
         hoster = get_hoster(settings)
@@ -37,11 +36,12 @@ def get_app():
     app.include_router(incarnations.router)
 
     # Add static content
-    app.mount("/static", StaticFiles(directory=STATIC_DIR.absolute(), html=True), name="static")
+    app.mount("/assets", StaticFiles(directory=settings.frontend_dist_dir / "assets", html=True), name="ui-assets")
+    app.mount("/favicons", StaticFiles(directory=settings.frontend_dist_dir / "favicons"), name="ui-favicons")
 
     @app.get("/", include_in_schema=False)
     async def root():
-        return FileResponse(STATIC_DIR / "index.html")
+        return FileResponse(settings.frontend_dist_dir / "index.html")
 
     # Customize OpenAPI specification document
     app.openapi = custom_openapi(app)  # type: ignore
@@ -49,4 +49,5 @@ def get_app():
     return app
 
 
-app = get_app()
+if __name__ == "__main__":
+    app = get_app()
