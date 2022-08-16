@@ -60,7 +60,7 @@ class GitRepository:
         self.logger = logger.bind(directory=directory.name)
 
     async def _run(
-        self, *args, timeout: int | float | None = 10, **kwargs
+        self, *args, timeout: int | float | None = 30, **kwargs
     ) -> asyncio.subprocess.Process:
         return await git_exec(*args, cwd=self.directory, timeout=timeout, **kwargs)
 
