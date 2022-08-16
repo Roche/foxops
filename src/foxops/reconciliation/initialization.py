@@ -8,7 +8,7 @@ from foxops.errors import (
 )
 from foxops.external.git import GitRepository
 from foxops.hosters import GitSha, Hoster, MergeRequestId
-from foxops.logging import get_logger
+from foxops.logger import get_logger
 from foxops.models import DesiredIncarnationState
 from foxops.reconciliation.utils import generate_foxops_branch_name, retry_if_possible
 

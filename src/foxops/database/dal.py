@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 from foxops.database.schema import incarnations, meta
 from foxops.errors import IncarnationNotFoundError
 from foxops.hosters import GitSha, MergeRequestId
-from foxops.logging import get_logger
+from foxops.logger import get_logger
 from foxops.models import DesiredIncarnationState, Incarnation
 
 #: Holds the module logger

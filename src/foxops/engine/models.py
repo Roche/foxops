@@ -6,7 +6,7 @@ from typing import MutableMapping
 from pydantic import BaseModel, Field
 from ruamel.yaml import YAML
 
-from foxops.logging import get_logger
+from foxops.logger import get_logger
 
 #: Holds the module logger
 logger = get_logger(__name__)

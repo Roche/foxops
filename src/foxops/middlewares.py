@@ -4,7 +4,7 @@ from typing import Awaitable, Callable
 from fastapi import Request, Response
 from structlog.contextvars import bind_contextvars, clear_contextvars
 
-from foxops.logging import get_logger
+from foxops.logger import get_logger
 
 Middleware = Callable[[Request], Awaitable[Response]]
 

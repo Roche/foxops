@@ -13,7 +13,7 @@ from foxops.errors import (
     ReconciliationUserError,
 )
 from foxops.hosters import Hoster
-from foxops.logging import bind, get_logger
+from foxops.logger import bind, get_logger
 from foxops.models import (
     DesiredIncarnationState,
     DesiredIncarnationStatePatch,

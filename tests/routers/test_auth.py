@@ -1,6 +1,6 @@
-from httpx import AsyncClient
 import pytest
-from fastapi import FastAPI, Depends, status
+from fastapi import Depends, FastAPI, status
+from httpx import AsyncClient
 
 from foxops.dependencies import static_token_auth_scheme
 

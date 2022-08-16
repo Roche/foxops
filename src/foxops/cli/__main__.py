@@ -3,7 +3,7 @@ import logging
 import typer
 
 from foxops.cli.v1_compat_reconcile import cmd_reconcile
-from foxops.logging import get_logger, setup_logging
+from foxops.logger import get_logger, setup_logging
 
 #: Holds the module logger
 logger = get_logger(__name__)

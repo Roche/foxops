@@ -6,7 +6,7 @@ from foxops.errors import ReconciliationError
 from foxops.external.git import GitRepository
 from foxops.hosters import GitSha, Hoster
 from foxops.hosters.types import MergeRequestId
-from foxops.logging import get_logger
+from foxops.logger import get_logger
 from foxops.models import (
     DesiredIncarnationStatePatch,
     Incarnation,

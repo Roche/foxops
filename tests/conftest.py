@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from foxops.__main__ import get_app
 from foxops.database import DAL
 from foxops.dependencies import get_dal
-from foxops.logging import setup_logging
+from foxops.logger import setup_logging
 
 
 @pytest.fixture(scope="session", autouse=True)

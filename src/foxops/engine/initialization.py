@@ -11,7 +11,7 @@ from foxops.engine.models import (
 from foxops.engine.rendering import render_template
 from foxops.errors import ReconciliationUserError
 from foxops.external.git import GitRepository
-from foxops.logging import get_logger
+from foxops.logger import get_logger
 
 #: Holds the module logger
 logger = get_logger(__name__)

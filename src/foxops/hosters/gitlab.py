@@ -25,7 +25,7 @@ from foxops.hosters.types import (
     ReconciliationStatus,
     RepositoryMetadata,
 )
-from foxops.logging import get_logger
+from foxops.logger import get_logger
 
 #: Holds the module logger
 logger = get_logger(__name__)

@@ -8,7 +8,7 @@ from jinja2 import FileSystemLoader, StrictUndefined
 from jinja2.sandbox import SandboxedEnvironment
 
 from foxops.engine.models import TemplateData
-from foxops.logging import get_logger
+from foxops.logger import get_logger
 
 #: Holds the module logger
 logger = get_logger(__name__)

@@ -7,7 +7,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory, mkstemp
 
 from foxops.external.git import GitRepository
-from foxops.logging import get_logger
+from foxops.logger import get_logger
 from foxops.utils import CalledProcessError, check_call
 
 #: Holds the module logger

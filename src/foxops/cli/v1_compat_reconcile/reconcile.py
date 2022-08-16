@@ -7,7 +7,7 @@ from ruamel.yaml import YAML
 
 from foxops.cli.v1_compat_reconcile.api import foxops_api
 from foxops.cli.v1_compat_reconcile.models import DesiredIncarnationStateConfig
-from foxops.logging import get_logger
+from foxops.logger import get_logger
 from foxops.models import (
     DesiredIncarnationState,
     DesiredIncarnationStatePatch,
