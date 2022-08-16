@@ -1,19 +1,21 @@
 # Installation
 
-The **foxops** Python package can be installed from the Roche GitLab Package Registry:
+The **foxops** Python package can be installed from the PyPI:
 
 ```bash
 pip install foxops
 ```
 
-```{note}
-Make sure to replace `<your_personal_token>` with a valid Personal Access Token.
-```
-
 The foxops Python package contains multiple console scripts:
 
-* `foxops` - the main foxops tool to manage the full MegOps lifecycle
 * `fengine` - exposes the initialize and update APIs to manually execute the template rendering
+* `foxops` - the legacy command line
+
+And the main foxops API server can be started using uvicorn:
+
+```
+uvicorn foxops.__main__:app --host localhost --port 5001 --reload
+```
 
 ## Docker
 
@@ -26,6 +28,3 @@ docker pull ghcr.io/roche/foxops:<version>
 ```{note}
 Make sure to replace the `<version>` with a [valid version](https://github.com/Roche/foxops/releases).
 ```
-
-The default entrypoint for the `foxops` docker image is the `foxops` console script.
-However, you may also specify the `fengine` console script as entrypoint.

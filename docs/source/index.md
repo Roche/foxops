@@ -43,26 +43,21 @@ graph LR
 The foxops tool is split into two components:
 
 * **fengine** is the underlying templating engine which works with _local_ Git repositories for templates and incarnations. Internally it uses [Jinja](https://jinja.palletsprojects.com/) to render the templates.
-* **foxops** is the tool on top of fengine that supports declarative configuration and reconciliation loops. Also, it extends the functionality to work with GitLab, for example to create merge requests when updates need to happen.
+* **foxops** is the tool on top of fengine that provides a REST API to manage incarnations hosted on GitLab
 
 ## Quick Start
 
-First let's declare an *incarnation* for my `catcam` Python application based on a Python *template*:
+First let's create an *incarnation* for my `catcam` Python application based on a Python *template*:
 
 ```yaml
-# catcam-incarnation.yaml
-incarnations:
-  - gitlab_project: my-org/catcam
-    template_repository: https://gitlab.com/my-org/templates/python
-    template_version: v1.0.0
-    template_data:
-      package_name: catcam
-```
-
-Let's call `foxops` with that configuration file:
-
-```bash
-foxops reconcile catcam-incarnation.yaml
+curl --json '{
+  "incarnation_repository": "my-org/catcam",
+  "template_repository": https://gitlab.com/my-org/templates/python",
+  "template_version": "v1.0.0",
+  "template_data": {
+    "package_name": "catcam"
+  }
+}' https://example.com/api/incarnations
 ```
 
 Once the incarnation initialization finished, you'll have a nice Merge Request in the `my-org/catcam`

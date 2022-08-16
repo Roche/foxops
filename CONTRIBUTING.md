@@ -40,7 +40,7 @@ For this to work foxops needs a few configuration settings to be available.
 These are at least a GitLab address and token. To use the test instance you can run the following
 
 ```
-FOXOPS_GITLAB_ADDRESS=http://localhost:5002/api/v4 FOXOPS_GITLAB_TOKEN=ACCTEST1234567890123 uvicorn foxops.__main__:app --host localhost --port 5001 --reload
+FOXOPS_STATIC_TOKEN=dummy FOXOPS_GITLAB_ADDRESS=http://localhost:5002/api/v4 FOXOPS_GITLAB_TOKEN=ACCTEST1234567890123 uvicorn foxops.__main__:app --host localhost --port 5001 --reload
 ```
 
 ### Documentation

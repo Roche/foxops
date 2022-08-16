@@ -3,3 +3,6 @@
 !/pyproject.toml
 !/.git/
 !/README.md
+!/ui
+ui/dist
+ui/node_modules
