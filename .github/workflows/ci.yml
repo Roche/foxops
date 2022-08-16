@@ -92,6 +92,11 @@ jobs:
           #       as extras nor is it able to install ONLY the dev dependencies ...
           python -m poetry install
 
+      - name: Mock frontend assets
+        run: |
+          mkdir -p ui/dist/assets
+          mkdir -p ui/dist/favicons
+
       - run: python -m pytest -m 'not e2e'
         env:
           # FoxOps test configuration
@@ -131,6 +136,11 @@ jobs:
           # NOTE: we are unable to solely rely on pip because poetry doesn't export the dev dependencies
           #       as extras nor is it able to install ONLY the dev dependencies ...
           python -m poetry install
+
+      - name: Mock frontend assets
+        run: |
+          mkdir -p ui/dist/assets
+          mkdir -p ui/dist/favicons
 
       - name: Start GitLab test instance
         run: |
