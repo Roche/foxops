@@ -137,7 +137,7 @@ jobs:
           docker compose up -d
           ./scripts/await-healthy.sh
 
-      - run: python -m pytest
+      - run: python -m pytest -m 'e2e'
         env:
           # FoxOps test configuration
           FOXOPS_GITLAB_ADDRESS: https://nonsense.com/api/v4
