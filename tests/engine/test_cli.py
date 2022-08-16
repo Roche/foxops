@@ -1,4 +1,3 @@
-import json
 import logging
 from dataclasses import asdict
 from pathlib import Path
@@ -65,9 +64,7 @@ def template_repository(tmp_path: Path):
         )
     )
     (template_repository_dir / "template").mkdir()
-    (template_repository_dir / "template" / "README.md").write_text(
-        "# Hello, {{ name }} of age {{ age }}!"
-    )
+    (template_repository_dir / "template" / "README.md").write_text("# Hello, {{ name }} of age {{ age }}!")
     commit_version(template_repository_dir, "v1")
 
     yield template_repository_dir
@@ -75,9 +72,7 @@ def template_repository(tmp_path: Path):
 
 @pytest.fixture()
 def template_repository_with_two_versions(template_repository: Path):
-    (template_repository / "template" / "info.txt").write_text(
-        "some info for {{ name }}."
-    )
+    (template_repository / "template" / "info.txt").write_text("some info for {{ name }}.")
     commit_version(template_repository, "v2")
 
     yield template_repository
@@ -95,9 +90,7 @@ def template_repository_with_two_versions_different_variables(
         description: the new
 """
     )
-    (template_repository / "template" / "info.txt").write_text(
-        "some info for {{ name }} with {{ new }}."
-    )
+    (template_repository / "template" / "info.txt").write_text("some info for {{ name }} with {{ new }}.")
     commit_version(template_repository, "v2")
 
     yield template_repository
@@ -328,9 +321,7 @@ def test_app_should_update_incarnation_to_version_with_new_variable(
 
     # THEN
     assert result.exit_code == 0
-    assert (
-        incarnation_dir / "info.txt"
-    ).read_text() == "some info for jon with foobar."
+    assert (incarnation_dir / "info.txt").read_text() == "some info for jon with foobar."
 
 
 def test_app_should_update_incarnation_to_version_with_removed_variable(
@@ -465,7 +456,6 @@ def test_app_update_incarnation_should_complain_if_template_repository_is_not_a_
         result = cli_runner.invoke(
             app,
             [
-                "--json-logs",
                 "update",
                 str(incarnation_dir),
                 "-u",
@@ -476,10 +466,7 @@ def test_app_update_incarnation_should_complain_if_template_repository_is_not_a_
     # THEN
     assert result.exit_code == 1
     assert caplog.records[-1].levelname == "ERROR"
-    assert (
-        "is not a local directory. Might it be an URL?"
-        in json.loads(caplog.records[-1].message)["event"]
-    )
+    assert "is not a local directory. Might it be an URL?" in caplog.records[-1].message
 
 
 def test_app_should_update_incarnation_with_overridden_template_repository(

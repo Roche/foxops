@@ -2,7 +2,6 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from dictdiffer import diff
-from structlog.stdlib import BoundLogger
 
 from foxops import utils
 from foxops.engine.fvars import merge_template_data_with_fvars
@@ -14,13 +13,16 @@ from foxops.engine.models import (
     load_incarnation_state,
     load_template_config,
 )
+from foxops.logger import get_logger
+
+#: Holds the module logger
+logger = get_logger(__name__)
 
 
 def get_data_mismatch(
     desired_template_data: TemplateData,
     actual_template_data: TemplateData,
     template_root_dir: Path,
-    logger: BoundLogger,
 ) -> list:
     template_config = load_template_config(template_root_dir / "fengine.yaml")
 
@@ -28,7 +30,6 @@ def get_data_mismatch(
     template_data_with_defaults = fill_missing_optionals_with_defaults(
         provided_template_data=desired_template_data,
         template_config=template_config,
-        logger=logger,
     )
 
     return list(
@@ -46,8 +47,7 @@ async def update_incarnation_from_git_template_repository(
     update_template_data: TemplateData,
     incarnation_root_dir: Path,
     diff_patch_func,
-    logger: BoundLogger,
-) -> tuple[IncarnationState, list[Path]]:
+) -> tuple[bool, IncarnationState, list[Path] | None]:
     # initialize pristine incarnation from current incarnation state
     current_incarnation_state_path = incarnation_root_dir / ".fengine.yaml"
     current_incarnation_state = load_incarnation_state(current_incarnation_state_path)
@@ -84,7 +84,6 @@ async def update_incarnation_from_git_template_repository(
             update_template_data=update_template_data,
             incarnation_root_dir=incarnation_root_dir,
             diff_patch_func=diff_patch_func,
-            logger=logger,
         )
 
 
@@ -96,8 +95,7 @@ async def update_incarnation(
     update_template_data: TemplateData,
     incarnation_root_dir: Path,
     diff_patch_func,
-    logger: BoundLogger,
-) -> tuple[IncarnationState, list[Path]]:
+) -> tuple[bool, IncarnationState, list[Path] | None]:
     """Update an incarnation with a new version of a template."""
     # initialize pristine incarnation from current incarnation state
     current_incarnation_state_path = incarnation_root_dir / ".fengine.yaml"
@@ -115,7 +113,6 @@ async def update_incarnation(
             template_repository_version=current_incarnation_state.template_repository_version,
             template_data=current_incarnation_state.template_data,
             incarnation_root_dir=Path(tmp_pristine_incarnation_dir),
-            logger=logger,
         )
 
         logger.debug(
@@ -130,10 +127,8 @@ async def update_incarnation(
             template_data=merge_template_data_with_fvars(
                 update_template_data,
                 incarnation_root_dir,
-                logger,
             ),
             incarnation_root_dir=Path(tmp_updated_incarnation_dir),
-            logger=logger,
         )
 
         # diff pristine and new incarnations
@@ -144,10 +139,14 @@ async def update_incarnation(
             diff_b_directory=tmp_updated_incarnation_dir,
             patch_directory=incarnation_root_dir,
         )
-        files_with_conflicts = await diff_patch_func(
-            diff_a_directory=tmp_pristine_incarnation_dir,
-            diff_b_directory=tmp_updated_incarnation_dir,
-            patch_directory=incarnation_root_dir,
-            logger=logger,
-        )
-        return updated_incarnation_state, files_with_conflicts
+        if (
+            files_with_conflicts := await diff_patch_func(
+                diff_a_directory=tmp_pristine_incarnation_dir,
+                diff_b_directory=tmp_updated_incarnation_dir,
+                patch_directory=incarnation_root_dir,
+            )
+        ) is not None:
+            return True, updated_incarnation_state, files_with_conflicts
+        else:
+            logger.debug("Update didn't change anything")
+            return False, updated_incarnation_state, None

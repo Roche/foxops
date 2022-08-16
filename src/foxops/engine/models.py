@@ -1,9 +1,15 @@
+import copy
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import MutableMapping
 
 from pydantic import BaseModel, Field
 from ruamel.yaml import YAML
-from structlog.stdlib import BoundLogger
+
+from foxops.logger import get_logger
+
+#: Holds the module logger
+logger = get_logger(__name__)
 
 yaml = YAML(typ="safe")
 yaml.default_flow_style = False
@@ -12,7 +18,7 @@ yaml.default_flow_style = False
 #: Holds the type for all `template_data` dictionary values
 TemplateDataValue = str | int | float
 #: Holds the type for all `template_data` dictionaries
-TemplateData = dict[str, TemplateDataValue]
+TemplateData = MutableMapping[str, TemplateDataValue]
 
 
 @dataclass(frozen=True)
@@ -38,9 +44,7 @@ class IncarnationState:
     template_data: TemplateData
 
 
-def save_incarnation_state(
-    incarnation_state_path: Path, incarnation_state: IncarnationState
-) -> None:
+def save_incarnation_state(incarnation_state_path: Path, incarnation_state: IncarnationState) -> None:
     with incarnation_state_path.open("w") as f:
         f.write("# This file is auto-generated and owned by foxops.\n")
         f.write("# DO NOT EDIT MANUALLY.\n")
@@ -114,9 +118,7 @@ class TemplateConfig(BaseModel):
 
     @property
     def optional_variables_defaults(self) -> TemplateData:
-        return {
-            k: v.default for k, v in self.variables.items() if v.default is not None
-        }
+        return {k: v.default for k, v in self.variables.items() if v.default is not None}
 
     def to_yaml(self, target: Path) -> None:
         with target.open("w") as f:
@@ -138,11 +140,10 @@ def load_template_config(template_config_path: Path) -> TemplateConfig:
 def fill_missing_optionals_with_defaults(
     provided_template_data: TemplateData,
     template_config: TemplateConfig,
-    logger: BoundLogger,
 ) -> TemplateData:
     provided_variable_names = set(provided_template_data.keys())
     config_variable_names = set(template_config.variables.keys())
-    template_data_with_defaults = provided_template_data.copy()
+    template_data_with_defaults = copy.deepcopy(provided_template_data)
     optional_vars = template_config.optional_variables_defaults
     if need_default := config_variable_names.difference(provided_variable_names):
         logger.debug(
