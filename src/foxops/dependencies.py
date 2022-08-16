@@ -49,14 +49,16 @@ class StaticTokenHeaderAuth(SecurityBase):
         self.scheme_name = self.__class__.__name__
 
     async def __call__(self, request: Request, settings: Settings = Depends(get_settings)) -> None:
-        authorization_header = request.headers.get("Authorization")
-        if authorization_header is None:
+        authorization_header: str | None = request.headers.get("Authorization")
+        if not authorization_header:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing Authorization header")
 
-        scheme, token = authorization_header.split(" ")
-        if scheme.lower() != "bearer":
+        if not authorization_header.startswith("Bearer ") or not (
+            token := authorization_header.removeprefix("Bearer ")
+        ):
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Only 'Bearer' Authorization headers are supported"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Authorization header must start with 'Bearer ' followed by the token",
             )
 
         if settings.static_token.get_secret_value() != token:
