@@ -1,3 +1,4 @@
+import os
 from contextlib import contextmanager
 from subprocess import Popen
 from time import sleep
@@ -24,7 +25,12 @@ def foxops_api(foxops_api_url: str | None) -> Iterator[httpx.Client]:
         logger.info("Waiting 5 seconds for API server to start ...", url=foxops_api_url)
         sleep(5)
 
-    client = httpx.Client(base_url=foxops_api_url, follow_redirects=True, timeout=None)
+    client = httpx.Client(
+        base_url=foxops_api_url,
+        follow_redirects=True,
+        timeout=None,
+        headers={"Authorization": f"Bearer {os.environ['FOXOPS_STATIC_TOKEN']}"},
+    )
 
     try:
         yield client

@@ -19,52 +19,13 @@ learn more about templates.
 
 Let's assume you have a template at `https://gitlab.com/my-org/templates/python` with two variables, one is called `name` and one `category`.
 
-The first thing you need to initialize an incarnation is a *desired incarnation state* configuration.
-This configuration must be in a YAML file, e.g. `incarnations.yaml`.
-
-The following example configures the incarnation to an already existing Git repository at `my-org/catcam`:
-
-```yaml
-incarnations:
-  - gitlab_project: my-org/catcam
-    template_repository: https://gitlab.com/my-org/templates/python
-    template_version: v1.0.0
-    template_data:
-      name: catcam
-      category: utils
-```
-
-foxops can now be used to *reconcile* the incarnation from the actual to the desired state given the above config:
-
-```sh
-foxops reconcile incarnations.yaml
-```
+tbd.
 
 ## Update an Incarnation
 
 When an update to the template was made it's sometimes worthwhile to update the incarnation to reflect these changes, too.
-The same `foxops reconcile` command as for the [initialization](#initialize-an-incarnation-from-a-template) can be used
-for an update.
 
-The only thing which may change is the `template_version` or `template_data` values.
-Using the following *desired incarnation state* configuration to change to the update template version `v2.0.0` and change
-the category from `utils` to `extras`:
-
-```yaml
-incarnations:
-  - gitlab_project: my-org/catcam
-    template_repository: https://gitlab.com/my-org/templates/python
-    template_version: v2.0.0
-    template_data:
-      name: catcam
-      category: extras
-```
-
-To perform the actual update, run `foxops` again:
-
-```sh
-foxops reconcile incarnations.yaml
-```
+tbd ....
 
 An update will always create a Merge Request on the incarnation repository with the changes, ready to be reviewed and merged.
 
