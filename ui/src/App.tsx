@@ -1,6 +1,9 @@
 function App() {
   return (
-    <div>hello foxops 🦊</div>
+    <>
+      <h1>foxops 🦊</h1>
+      <i>coming soon ...</i>
+    </>
   )
 }
 
