@@ -279,5 +279,9 @@ jobs:
           node-version: '16.17.0'
       - name: Install dependencies 🖥
         run: npm install
+      - name: Lint ui/src ✔️
+        run: npm run lint
+      - name: Unit tests 🤞
+        run: npm run test
       - name: Build UI 🏰
         run: npm run build
