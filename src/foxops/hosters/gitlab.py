@@ -52,13 +52,23 @@ class Commit(TypedDict):
     status: str
 
 
+def evaluate_gitlab_address(address: str) -> tuple[str, str]:
+    """Evaluate the given GitLab address and return a tuple containing the GitLab Web UI URL and the GitLab API URL."""
+    if address.endswith("/api/v4"):
+        return address.removesuffix("/api/v4"), address
+    else:
+        return address, f"{address}/api/v4"
+
+
 class GitLab:
     """REST API client for GitLab"""
 
     def __init__(self, address: str, token: str):
-        self.address = address
+        self.web_address, self.api_address = evaluate_gitlab_address(address)
         self.token = token
-        self.client = httpx.AsyncClient(base_url=self.address, headers={"PRIVATE-TOKEN": self.token})
+        self.client = httpx.AsyncClient(
+            base_url=self.api_address, headers={"PRIVATE-TOKEN": self.token}, timeout=httpx.Timeout(120)
+        )
 
     async def validate(self):
         (await self.client.get("/version")).raise_for_status()
@@ -326,3 +336,9 @@ class GitLab:
             f"Incarnation '{incarnation_repository}' / '{target_directory}' has an unknown merge request status '{merge_request['state']}' for merge request '{merge_request_id}'"
         )
         return ReconciliationStatus.UNKNOWN
+
+    async def get_commit_url(self, incarnation_repository: str, commit_sha: GitSha) -> str:
+        return f"{self.web_address}/{incarnation_repository}/-/commit/{commit_sha}"
+
+    async def get_merge_request_url(self, incarnation_repository: str, merge_request_id: str) -> str:
+        return f"{self.web_address}/{incarnation_repository}/-/merge_requests/{merge_request_id}"

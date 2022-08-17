@@ -55,3 +55,9 @@ class Hoster(Protocol):
         self, incarnation_repository: str, target_directory: str, commit_sha: GitSha, merge_request_id: str | None
     ) -> ReconciliationStatus:
         ...
+
+    async def get_commit_url(self, incarnation_repository: str, commit_sha: GitSha) -> str:
+        ...
+
+    async def get_merge_request_url(self, incarnation_repository: str, merge_request_id: str) -> str:
+        ...

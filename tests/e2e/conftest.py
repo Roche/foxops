@@ -4,7 +4,7 @@ import uuid
 from urllib.parse import quote_plus
 
 import pytest
-from httpx import AsyncClient, Client
+from httpx import AsyncClient, Client, Timeout
 
 #: Holds settings for the GitLab test instance
 GITLAB_ADDRESS = "http://127.0.0.1:5002/api/v4"
@@ -18,7 +18,7 @@ def gitlab_test_address() -> str:
 
 @pytest.fixture(scope="session", name="gitlab_test_user_token")
 def create_gitlab_test_user(test_run_id: str):
-    client = Client(base_url=GITLAB_ADDRESS, headers={"PRIVATE-TOKEN": GITLAB_ADMIN_TOKEN})
+    client = Client(base_url=GITLAB_ADDRESS, headers={"PRIVATE-TOKEN": GITLAB_ADMIN_TOKEN}, timeout=Timeout(120))
 
     test_user_name = f"foxops-test-{test_run_id}"
     response = client.post(
@@ -60,7 +60,7 @@ def set_settings_env(gitlab_test_user_token: str, static_api_token: str):
 
 @pytest.fixture(name="gitlab_test_client")
 async def create_test_gitlab_client(gitlab_test_user_token: str) -> AsyncClient:
-    return AsyncClient(base_url=GITLAB_ADDRESS, headers={"PRIVATE-TOKEN": gitlab_test_user_token})
+    return AsyncClient(base_url=GITLAB_ADDRESS, headers={"PRIVATE-TOKEN": gitlab_test_user_token}, timeout=Timeout(120))
 
 
 @pytest.fixture(name="empty_incarnation_gitlab_repository")

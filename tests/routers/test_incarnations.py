@@ -44,6 +44,8 @@ async def test_api_get_incarnations_returns_incarnations_from_inventory(
             "id": 1,
             "incarnation_repository": "test",
             "target_directory": "test",
+            "commit_url": "https://nonsense.com/test/-/commit/commit_sha",
+            "merge_request_url": "https://nonsense.com/test/-/merge_requests/merge_request_id",
         }
     ]
 
@@ -59,6 +61,8 @@ async def test_api_create_incarnation_adds_new_incarnation_to_inventory(
     reconciliation_mock.initialize_incarnation.return_value = "commit_sha", "merge_request_id"
     hoster_mock = mocker.AsyncMock()
     hoster_mock.get_reconciliation_status.return_value = "success"
+    hoster_mock.get_commit_url.return_value = "some-commit-url"
+    hoster_mock.get_merge_request_url.return_value = "some-merge-request-url"
 
     api_app.dependency_overrides[get_reconciliation] = lambda: reconciliation_mock
     api_app.dependency_overrides[get_hoster] = lambda: hoster_mock
@@ -81,6 +85,8 @@ async def test_api_create_incarnation_adds_new_incarnation_to_inventory(
         "id": 1,
         "incarnation_repository": "test",
         "target_directory": "test",
+        "commit_url": "some-commit-url",
+        "merge_request_url": "some-merge-request-url",
         "status": "success",
     }
 
@@ -145,6 +151,8 @@ async def test_api_create_incarnation_already_exists_allowing_import_without_a_m
 
     hoster_mock = mocker.AsyncMock()
     hoster_mock.get_reconciliation_status.return_value = "success"
+    hoster_mock.get_commit_url.return_value = "some-commit-url"
+    hoster_mock.get_merge_request_url.return_value = "some-merge-request-url"
 
     api_app.dependency_overrides[get_reconciliation] = lambda: reconciliation_mock
     api_app.dependency_overrides[get_hoster] = lambda: hoster_mock
@@ -168,6 +176,8 @@ async def test_api_create_incarnation_already_exists_allowing_import_without_a_m
         "id": 1,
         "incarnation_repository": "test",
         "target_directory": "test",
+        "commit_url": "some-commit-url",
+        "merge_request_url": "some-merge-request-url",
         "status": "success",
     }
 
@@ -194,6 +204,8 @@ async def test_api_create_incarnation_already_exists_allowing_import_with_a_mism
 
     hoster_mock = mocker.AsyncMock()
     hoster_mock.get_reconciliation_status.return_value = "success"
+    hoster_mock.get_commit_url.return_value = "some-commit-url"
+    hoster_mock.get_merge_request_url.return_value = "some-merge-request-url"
 
     api_app.dependency_overrides[get_reconciliation] = lambda: reconciliation_mock
     api_app.dependency_overrides[get_hoster] = lambda: hoster_mock
@@ -217,6 +229,8 @@ async def test_api_create_incarnation_already_exists_allowing_import_with_a_mism
         "id": 1,
         "incarnation_repository": "test",
         "target_directory": "test",
+        "commit_url": "some-commit-url",
+        "merge_request_url": "some-merge-request-url",
         "status": "success",
     }
 
