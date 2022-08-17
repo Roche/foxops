@@ -1,8 +1,8 @@
 function App() {
   return (
     <>
-      <h1>foxops 🦊</h1>
-      <i>coming soon ...</i>
+      <h1 data-testid="App-title">foxops 🦊</h1>
+      <i data-testid="App-subtitle">coming soon ...</i>
     </>
   )
 }
