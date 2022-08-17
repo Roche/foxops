@@ -20,6 +20,8 @@ class IncarnationBasic(BaseModel):
     id: int
     incarnation_repository: str
     target_directory: str
+    commit_url: str
+    merge_request_url: str | None
 
     class Config:
         orm_mode = True

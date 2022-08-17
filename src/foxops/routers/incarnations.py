@@ -52,6 +52,7 @@ async def list_incarnations(
     incarnation_repository: str | None = None,
     target_directory: str = ".",
     dal: DAL = Depends(get_dal),
+    hoster: Hoster = Depends(get_hoster),
 ) -> list[IncarnationBasic] | ApiError:
     """Returns a list of all known incarnations.
 
@@ -66,9 +67,9 @@ async def list_incarnations(
                 response.status_code = status.HTTP_404_NOT_FOUND
                 return ApiError(message="No incarnation found for the given repository and target directory")
 
-            return [IncarnationBasic.from_orm(incarnation)]
+            return [await get_incarnation_basic(incarnation, hoster)]
 
-    return [IncarnationBasic.from_orm(i) async for i in dal.get_incarnations()]
+    return [await get_incarnation_basic(i, hoster) async for i in dal.get_incarnations()]
 
 
 @router.post(
@@ -288,6 +289,18 @@ async def get_incarnation_with_details(incarnation: Incarnation, hoster: Hoster)
     )
 
     return IncarnationWithDetails(
-        **incarnation.dict(),
+        **(await get_incarnation_basic(incarnation, hoster)).dict(),
         status=reconciliation_status,
+    )
+
+
+async def get_incarnation_basic(incarnation: Incarnation, hoster: Hoster) -> IncarnationBasic:
+    return IncarnationBasic(
+        **incarnation.dict(),
+        commit_url=await hoster.get_commit_url(incarnation.incarnation_repository, incarnation.commit_sha),
+        merge_request_url=(
+            await hoster.get_merge_request_url(incarnation.incarnation_repository, incarnation.merge_request_id)
+        )
+        if incarnation.merge_request_id
+        else None,
     )
