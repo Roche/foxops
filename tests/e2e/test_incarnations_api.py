@@ -4,6 +4,7 @@ from urllib.parse import quote_plus
 
 import pytest
 from httpx import AsyncClient
+from pytest_mock import MockFixture
 
 from .assertions import (
     assert_file_in_repository,
@@ -22,6 +23,7 @@ async def should_initialize_incarnation_in_root_of_empty_repository_when_creatin
     gitlab_test_client: AsyncClient,
     template_repository: str,
     empty_incarnation_gitlab_repository: str,
+    mocker: MockFixture,
 ):
     # WHEN
     response = await api_client.post(
@@ -42,6 +44,8 @@ async def should_initialize_incarnation_in_root_of_empty_repository_when_creatin
         "incarnation_repository": empty_incarnation_gitlab_repository,
         "target_directory": ".",
         "status": "success",
+        "commit_url": mocker.ANY,
+        "merge_request_url": mocker.ANY,
     }
     await assert_file_in_repository(
         gitlab_test_client,
@@ -57,6 +61,7 @@ async def should_initialize_incarnation_in_root_of_repository_with_fvars_file_wh
     gitlab_test_client: AsyncClient,
     template_repository: str,
     empty_incarnation_gitlab_repository: str,
+    mocker: MockFixture,
 ):
     # GIVEN
     (
@@ -89,6 +94,8 @@ async def should_initialize_incarnation_in_root_of_repository_with_fvars_file_wh
         "id": 1,
         "incarnation_repository": empty_incarnation_gitlab_repository,
         "target_directory": ".",
+        "commit_url": mocker.ANY,
+        "merge_request_url": mocker.ANY,
         "status": "success",
     }
     await assert_file_in_repository(
@@ -105,6 +112,7 @@ async def should_initialize_incarnation_in_root_of_nonempty_incarnation_in_a_mer
     gitlab_test_client: AsyncClient,
     template_repository: str,
     empty_incarnation_gitlab_repository: str,
+    mocker: MockFixture,
 ):
     # GIVEN
     (
@@ -137,6 +145,8 @@ async def should_initialize_incarnation_in_root_of_nonempty_incarnation_in_a_mer
         "id": 1,
         "incarnation_repository": empty_incarnation_gitlab_repository,
         "target_directory": ".",
+        "commit_url": mocker.ANY,
+        "merge_request_url": mocker.ANY,
         "status": "pending",
     }
     merge_request_source_branch = await assert_initialization_merge_request_exists(
@@ -157,6 +167,7 @@ async def should_initialize_incarnation_in_root_of_nonempty_incarnation_in_defau
     gitlab_test_client: AsyncClient,
     template_repository: str,
     empty_incarnation_gitlab_repository: str,
+    mocker: MockFixture,
 ):
     # GIVEN
     (
@@ -190,6 +201,8 @@ async def should_initialize_incarnation_in_root_of_nonempty_incarnation_in_defau
         "id": 1,
         "incarnation_repository": empty_incarnation_gitlab_repository,
         "target_directory": ".",
+        "commit_url": mocker.ANY,
+        "merge_request_url": mocker.ANY,
         "status": "success",
     }
     await assert_file_in_repository(
@@ -206,6 +219,7 @@ async def should_initialize_incarnation_in_root_of_nonempty_repository_with_fvar
     gitlab_test_client: AsyncClient,
     template_repository: str,
     empty_incarnation_gitlab_repository: str,
+    mocker: MockFixture,
 ):
     # GIVEN
     (
@@ -249,6 +263,8 @@ async def should_initialize_incarnation_in_root_of_nonempty_repository_with_fvar
         "id": 1,
         "incarnation_repository": empty_incarnation_gitlab_repository,
         "target_directory": ".",
+        "commit_url": mocker.ANY,
+        "merge_request_url": mocker.ANY,
         "status": "pending",
     }
     merge_request_branch_name = await assert_initialization_merge_request_exists(
@@ -268,6 +284,7 @@ async def should_err_in_initialization_if_variable_is_missing(
     api_client: AsyncClient,
     template_repository: str,
     empty_incarnation_gitlab_repository: str,
+    mocker: MockFixture,
 ):
     # WHEN
     response = await api_client.post(
@@ -294,6 +311,7 @@ async def should_initialize_incarnation_in_subdir_of_empty_repository_when_creat
     gitlab_test_client: AsyncClient,
     template_repository: str,
     empty_incarnation_gitlab_repository: str,
+    mocker: MockFixture,
 ):
     # WHEN
     response = await api_client.post(
@@ -314,6 +332,8 @@ async def should_initialize_incarnation_in_subdir_of_empty_repository_when_creat
         "id": 1,
         "incarnation_repository": empty_incarnation_gitlab_repository,
         "target_directory": "subdir",
+        "commit_url": mocker.ANY,
+        "merge_request_url": mocker.ANY,
         "status": "success",
     }
     await assert_file_in_repository(
@@ -330,6 +350,7 @@ async def should_initialize_incarnations_in_subdirs_of_empty_repository_when_cre
     gitlab_test_client: AsyncClient,
     template_repository: str,
     empty_incarnation_gitlab_repository: str,
+    mocker: MockFixture,
 ):
     # WHEN
     subdir1_response = await api_client.post(
@@ -363,12 +384,16 @@ async def should_initialize_incarnations_in_subdirs_of_empty_repository_when_cre
         "id": 1,
         "incarnation_repository": empty_incarnation_gitlab_repository,
         "target_directory": "subdir1",
+        "commit_url": mocker.ANY,
+        "merge_request_url": mocker.ANY,
         "status": "success",
     }
     assert subdir2_incarnation == {
         "id": 2,
         "incarnation_repository": empty_incarnation_gitlab_repository,
         "target_directory": "subdir2",
+        "commit_url": mocker.ANY,
+        "merge_request_url": mocker.ANY,
         "status": "success",
     }
     await assert_file_in_repository(
@@ -390,6 +415,7 @@ async def should_create_merge_request_when_file_changed_during_update(
     api_client: AsyncClient,
     gitlab_test_client: AsyncClient,
     incarnation_gitlab_repository_in_v1: tuple[str, str],
+    mocker: MockFixture,
 ):
     # GIVEN
     incarnation_repository, incarnation_id = incarnation_gitlab_repository_in_v1
@@ -411,6 +437,8 @@ async def should_create_merge_request_when_file_changed_during_update(
         "id": 1,
         "incarnation_repository": incarnation_repository,
         "target_directory": ".",
+        "commit_url": mocker.ANY,
+        "merge_request_url": mocker.ANY,
         "status": "pending",
     }
     update_branch_name = await assert_update_merge_request_exists(gitlab_test_client, incarnation_repository)
@@ -428,6 +456,7 @@ async def should_create_merge_request_when_file_changed_with_fvars_during_update
     api_client: AsyncClient,
     gitlab_test_client: AsyncClient,
     incarnation_gitlab_repository_in_v1: tuple[str, str],
+    mocker: MockFixture,
 ):
     # GIVEN
     incarnation_repository, incarnation_id = incarnation_gitlab_repository_in_v1
@@ -460,6 +489,8 @@ async def should_create_merge_request_when_file_changed_with_fvars_during_update
         "id": 1,
         "incarnation_repository": incarnation_repository,
         "target_directory": ".",
+        "commit_url": mocker.ANY,
+        "merge_request_url": mocker.ANY,
         "status": "pending",
     }
     update_branch_name = await assert_update_merge_request_exists(gitlab_test_client, incarnation_repository)
@@ -477,6 +508,7 @@ async def should_present_conflict_in_merge_request_when_updating(
     api_client: AsyncClient,
     gitlab_test_client: AsyncClient,
     incarnation_gitlab_repository_in_v1: tuple[str, str],
+    mocker: MockFixture,
 ):
     # GIVEN
     incarnation_repository, incarnation_id = incarnation_gitlab_repository_in_v1
@@ -511,6 +543,8 @@ async def should_present_conflict_in_merge_request_when_updating(
         "id": 1,
         "incarnation_repository": incarnation_repository,
         "target_directory": ".",
+        "commit_url": mocker.ANY,
+        "merge_request_url": mocker.ANY,
         "status": "pending",
     }
     await assert_update_merge_request_with_conflicts_exists(
@@ -525,6 +559,7 @@ async def should_automerge_merge_request_when_flag_is_true(
     api_client: AsyncClient,
     gitlab_test_client: AsyncClient,
     incarnation_gitlab_repository_in_v1: tuple[str, str],
+    mocker: MockFixture,
 ):
     # GIVEN
     incarnation_repository, incarnation_id = incarnation_gitlab_repository_in_v1
@@ -546,6 +581,8 @@ async def should_automerge_merge_request_when_flag_is_true(
         "id": 1,
         "incarnation_repository": incarnation_repository,
         "target_directory": ".",
+        "commit_url": mocker.ANY,
+        "merge_request_url": mocker.ANY,
         "status": "success",
     }
     await assert_file_in_repository(
