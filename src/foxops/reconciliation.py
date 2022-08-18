@@ -20,7 +20,7 @@ from foxops.engine.update import get_data_mismatch
 from foxops.errors import RetryableError
 from foxops.external.git import GitRepository, TemporaryGitRepository
 from foxops.external.gitlab import AsyncGitlabClient, GitlabNotFoundException
-from foxops.logging import get_logger
+from foxops.loggingcfg import get_logger
 from foxops.models import (
     DesiredIncarnationStateConfig,
     IncarnationRemoteGitRepositoryState,

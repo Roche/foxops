@@ -18,7 +18,7 @@ from foxops.engine.models import (
 )
 from foxops.engine.patching.git_diff_patch import diff_and_patch
 from foxops.engine.update import update_incarnation_from_git_template_repository
-from foxops.logging import get_logger, setup_logging
+from foxops.loggingcfg import get_logger, setup_logging
 
 app = typer.Typer()
 

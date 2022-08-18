@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from ruamel.yaml import YAML
 from structlog.stdlib import BoundLogger
 
-from foxops.logging import get_logger, setup_logging
+from foxops.loggingcfg import get_logger, setup_logging
 from foxops.models import DesiredIncarnationStateConfig
 from foxops.reconciliation import AsyncGitlabClient, ReconciliationState, reconcile
 from foxops.settings import Settings

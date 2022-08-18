@@ -16,7 +16,7 @@ from ruamel.yaml import YAML
 
 from foxops.external.git import GitRepository, TemporaryGitRepository, git_exec
 from foxops.external.gitlab import GitlabNotFoundException
-from foxops.logging import get_logger
+from foxops.loggingcfg import get_logger
 from foxops.reconciliation import generate_foxops_branch_name
 from tests.e2e.helpers import (
     GITLAB_BASE_GROUP_ID,

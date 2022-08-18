@@ -2,7 +2,7 @@ import asyncio
 import subprocess
 
 from .errors import FoxopsError
-from .logging import get_logger
+from .loggingcfg import get_logger
 
 logger = get_logger("utils")
 
@@ -37,12 +37,15 @@ async def check_call(
         *args,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
+        stdin=asyncio.subprocess.PIPE,
         **kwargs,
     )
 
     try:
+        #stdout, _ = await proc.communicate()
+        #stdout and logger.debug(stdout)
         await asyncio.wait_for(proc.wait(), timeout=timeout)
-    except asyncio.TimeoutError:
+    except asyncio.TimeoutError as e:
         proc.kill()
         stdout_buffer = None if proc.stdout is None else bytes(proc.stdout._buffer)  # type: ignore
         stderr_buffer = None if proc.stderr is None else bytes(proc.stderr._buffer)  # type: ignore

@@ -84,19 +84,24 @@ class GitRepository:
         return await self._run("commit", "-m", message)
 
     async def diff(self, ref_old: str, ref_new: str) -> str:
-        proc = await self._run(
-            "--no-pager",
-            "diff",
-            f"{ref_old}..{ref_new}",
-            expected_returncodes=frozenset({0, 1}),
-            timeout=30,
-        )
+        cmdline = f"git --no-pager diff {ref_old}..{ref_new}".split()
+        proc = await asyncio.create_subprocess_exec(*cmdline,
+                                                    stdout=asyncio.subprocess.PIPE,
+                                                    stderr=asyncio.subprocess.PIPE,
+                                                    stdin=asyncio.subprocess.PIPE,
+                                                    cwd=str(self.directory)
+                                                    )
+        stdout, stderr = await proc.communicate()
 
-        output = ""
-        if proc.stdout is not None:
-            output = (await proc.stdout.read()).decode()
+        if proc.returncode not in {0, 1}:
+            raise CalledProcessError(
+                proc.returncode,
+                cmdline,
+                stdout,
+                stderr,
+            )
 
-        return output
+        return stdout.decode()
 
     async def push(self):
         proc = await self._run("branch", "--show-current")
