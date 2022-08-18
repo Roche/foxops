@@ -56,4 +56,16 @@ def get_app():
 
 
 if __name__ == "__main__":
-    app = get_app()
+    import uvicorn  # type: ignore
+
+    uvicorn.run(
+        app=get_app(),
+        host="127.0.0.1",
+        port=5001,
+        reload=False,
+        log_level="debug",
+        debug=True,
+        workers=1,
+        limit_concurrency=1,
+        limit_max_requests=1,
+    )
