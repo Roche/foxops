@@ -79,6 +79,7 @@ filterwarnings = [
 markers = [
     "e2e: end-to-end tests",
     "frontend: frontend tests",
+    "api: api tests",
 ]
 asyncio_mode = "auto"
 python_functions = "should_* test_*"

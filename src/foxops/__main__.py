@@ -13,7 +13,7 @@ from foxops.dependencies import (
 from foxops.logger import get_logger, setup_logging
 from foxops.middlewares import request_middleware
 from foxops.openapi import custom_openapi
-from foxops.routers import auth, incarnations, version
+from foxops.routers import auth, incarnations, not_found, version
 
 #: Holds the module logger instance
 logger = get_logger(__name__)
@@ -65,6 +65,8 @@ def create_app():
 
     app.include_router(public_router)
     app.include_router(protected_router)
+
+    app.include_router(not_found.router)
 
     # Add static content
     for frontend_dir in FRONTEND_SUBDIRS:
