@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
-from foxops.__main__ import get_app
+from foxops.__main__ import create_app
 from foxops.database import DAL
 from foxops.dependencies import get_dal
 from foxops.logger import setup_logging
@@ -57,7 +57,7 @@ async def test_async_engine(tmp_path: Path) -> AsyncGenerator[AsyncEngine, None]
 
 @pytest.fixture(name="api_app")
 def get_api_app() -> FastAPI:
-    return get_app()
+    return create_app()
 
 
 @pytest.fixture(name="dal")

@@ -41,4 +41,4 @@ RUN python -m pip install /tmp/*.whl
 RUN rm -f /tmp/*.whl
 
 EXPOSE 80
-CMD [ "uvicorn", "foxops.__main__:get_app", "--factory", "--proxy-headers", "--host", "0.0.0.0", "--port", "80" ]
+CMD [ "uvicorn", "foxops.__main__:create_app", "--factory", "--proxy-headers", "--host", "0.0.0.0", "--port", "80" ]

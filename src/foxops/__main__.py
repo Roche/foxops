@@ -11,7 +11,7 @@ from foxops.openapi import custom_openapi
 from foxops.routers import incarnations, version
 
 
-def get_app():
+def create_app():
     app = FastAPI()
 
     settings = get_settings()
@@ -66,7 +66,7 @@ def main_dev():
     import uvicorn  # type: ignore
 
     uvicorn.run(
-        app=get_app(),
+        app=create_app(),
         host="127.0.0.1",
         port=5001,
         reload=False,
