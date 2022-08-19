@@ -85,12 +85,13 @@ class GitRepository:
 
     async def diff(self, ref_old: str, ref_new: str) -> str:
         cmdline = f"git --no-pager diff {ref_old}..{ref_new}".split()
-        proc = await asyncio.create_subprocess_exec(*cmdline,
-                                                    stdout=asyncio.subprocess.PIPE,
-                                                    stderr=asyncio.subprocess.PIPE,
-                                                    stdin=asyncio.subprocess.PIPE,
-                                                    cwd=str(self.directory)
-                                                    )
+        proc = await asyncio.create_subprocess_exec(
+            *cmdline,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            stdin=asyncio.subprocess.PIPE,
+            cwd=str(self.directory),
+        )
         stdout, stderr = await proc.communicate()
 
         if proc.returncode not in {0, 1}:

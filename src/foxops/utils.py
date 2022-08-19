@@ -42,8 +42,6 @@ async def check_call(
     )
 
     try:
-        #stdout, _ = await proc.communicate()
-        #stdout and logger.debug(stdout)
         await asyncio.wait_for(proc.wait(), timeout=timeout)
     except asyncio.TimeoutError as e:
         proc.kill()
