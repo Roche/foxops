@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
-from foxops.__main__ import get_app
+from foxops.__main__ import FRONTEND_SUBDIRS, create_app
 from foxops.database import DAL
 from foxops.dependencies import get_dal
 from foxops.logger import setup_logging
@@ -55,9 +55,26 @@ async def test_async_engine(tmp_path: Path) -> AsyncGenerator[AsyncEngine, None]
     yield async_engine
 
 
-@pytest.fixture(name="api_app")
-def get_api_app() -> FastAPI:
-    return get_app()
+@pytest.fixture(name="frontend", scope="module", autouse=True)
+def create_dummy_frontend(tmp_path_factory: pytest.TempPathFactory):
+    frontend_dir = tmp_path_factory.mktemp("frontend")
+    for frontend_subdir in FRONTEND_SUBDIRS:
+        (frontend_dir / frontend_subdir).mkdir(parents=True)
+    (frontend_dir / "index.html").write_text("Hello World")
+    os.environ["FOXOPS_FRONTEND_DIST_DIR"] = str(frontend_dir)
+    return frontend_dir
+
+
+@pytest.fixture(scope="module", autouse=True)
+def set_settings_env(static_api_token: str):
+    os.environ["FOXOPS_GITLAB_ADDRESS"] = "https://nonsense.com/api/v4"
+    os.environ["FOXOPS_GITLAB_TOKEN"] = "nonsense"
+    os.environ["FOXOPS_STATIC_TOKEN"] = static_api_token
+
+
+@pytest.fixture(name="app")
+def create_foxops_app() -> FastAPI:
+    return create_app()
 
 
 @pytest.fixture(name="dal")
@@ -74,23 +91,27 @@ def get_static_api_token() -> str:
     return "test-token"
 
 
-@pytest.fixture(scope="module", autouse=True)
-def set_settings_env(static_api_token: str):
-    os.environ["FOXOPS_GITLAB_ADDRESS"] = "https://nonsense.com/api/v4"
-    os.environ["FOXOPS_GITLAB_TOKEN"] = "nonsense"
-    os.environ["FOXOPS_STATIC_TOKEN"] = static_api_token
-
-
-@pytest.fixture(name="api_client")
-async def api_client(dal: DAL, api_app: FastAPI, static_api_token: str) -> AsyncGenerator[AsyncClient, None]:
+@pytest.fixture(name="unauthenticated_client")
+async def create_unauthenticated_client(dal: DAL, app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
     def _test_get_dal() -> DAL:
         return dal
 
-    api_app.dependency_overrides[get_dal] = _test_get_dal
+    app.dependency_overrides[get_dal] = _test_get_dal
 
     async with AsyncClient(
-        app=api_app,
-        base_url="http://test/api",
-        headers={"Authorization": f"Bearer {static_api_token}"},
+        app=app,
+        base_url="http://test",
     ) as ac:
         yield ac
+
+
+@pytest.fixture(name="authenticated_client")
+async def create_authenticated_client(unauthenticated_client: AsyncClient, static_api_token: str) -> AsyncClient:
+    unauthenticated_client.headers["Authorization"] = f"Bearer {static_api_token}"
+    return unauthenticated_client
+
+
+@pytest.fixture(name="api_client")
+async def create_api_client(authenticated_client: AsyncClient) -> AsyncClient:
+    authenticated_client.base_url = f"{authenticated_client.base_url}/api"  # type: ignore
+    return authenticated_client

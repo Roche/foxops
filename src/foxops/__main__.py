@@ -1,17 +1,30 @@
-from fastapi import FastAPI
+from fastapi import APIRouter, Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse
 
 from foxops import __version__
-from foxops.dependencies import get_dal, get_hoster, get_settings
+from foxops.dependencies import (
+    get_dal,
+    get_hoster,
+    get_settings,
+    static_token_auth_scheme,
+)
 from foxops.logger import get_logger, setup_logging
 from foxops.middlewares import request_middleware
 from foxops.openapi import custom_openapi
-from foxops.routers import incarnations, version
+from foxops.routers import auth, incarnations, not_found, version
+
+#: Holds the module logger instance
+logger = get_logger(__name__)
+
+#: Holds a list of directories within the frontend build distribution.
+#  Those directories are mounted under `/`.
+#  FIXME: figure out a way how we could wildcard this ...
+FRONTEND_SUBDIRS = ["assets", "favicons"]
 
 
-def get_app():
+def create_app():
     app = FastAPI()
 
     settings = get_settings()
@@ -29,7 +42,6 @@ def get_app():
 
         setup_logging(level=settings.log_level)
 
-        logger = get_logger(__name__)
         logger.info(f"Started foxops {__version__}")
 
     # Add middlewares
@@ -42,17 +54,32 @@ def get_app():
         allow_headers=["*"],
     )
 
-    app.include_router(version.router)
+    # Add routes to the publicly available router (no authentication)
+    public_router = APIRouter()
+    public_router.include_router(version.router)
+    public_router.include_router(auth.router)
 
-    # Add routers to app
-    app.include_router(incarnations.router)
+    # Add routes to the protected router (authentication required)
+    protected_router = APIRouter(dependencies=[Depends(static_token_auth_scheme)])
+    protected_router.include_router(incarnations.router)
+
+    app.include_router(public_router)
+    app.include_router(protected_router)
+
+    app.include_router(not_found.router)
 
     # Add static content
-    app.mount("/assets", StaticFiles(directory=settings.frontend_dist_dir / "assets", html=True), name="ui-assets")
-    app.mount("/favicons", StaticFiles(directory=settings.frontend_dist_dir / "favicons"), name="ui-favicons")
+    for frontend_dir in FRONTEND_SUBDIRS:
+        app.mount(
+            f"/{frontend_dir}",
+            StaticFiles(directory=settings.frontend_dist_dir / frontend_dir, html=True),
+            name=f"ui-{frontend_dir}",
+        )
 
-    @app.get("/", include_in_schema=False)
-    async def root():
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def _(full_path: str):
+        """Serve the frontend."""
+        logger.debug("Serving frontend path", path=full_path)
         return FileResponse(settings.frontend_dist_dir / "index.html")
 
     # Customize OpenAPI specification document
@@ -66,7 +93,7 @@ def main_dev():
     import uvicorn  # type: ignore
 
     uvicorn.run(
-        app=get_app(),
+        app=create_app(),
         host="127.0.0.1",
         port=5001,
         reload=False,
