@@ -55,8 +55,8 @@ async def test_async_engine(tmp_path: Path) -> AsyncGenerator[AsyncEngine, None]
     yield async_engine
 
 
-@pytest.fixture(name="api_app")
-def get_api_app() -> FastAPI:
+@pytest.fixture(name="app")
+def create_app() -> FastAPI:
     return create_app()
 
 
@@ -82,14 +82,14 @@ def set_settings_env(static_api_token: str):
 
 
 @pytest.fixture(name="api_client")
-async def api_client(dal: DAL, api_app: FastAPI, static_api_token: str) -> AsyncGenerator[AsyncClient, None]:
+async def api_client(dal: DAL, app: FastAPI, static_api_token: str) -> AsyncGenerator[AsyncClient, None]:
     def _test_get_dal() -> DAL:
         return dal
 
-    api_app.dependency_overrides[get_dal] = _test_get_dal
+    app.dependency_overrides[get_dal] = _test_get_dal
 
     async with AsyncClient(
-        app=api_app,
+        app=app,
         base_url="http://test/api",
         headers={"Authorization": f"Bearer {static_api_token}"},
     ) as ac:

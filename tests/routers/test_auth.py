@@ -6,14 +6,14 @@ from foxops.dependencies import static_token_auth_scheme
 
 
 @pytest.mark.asyncio
-async def should_err_if_authorization_header_is_missing(api_app: FastAPI):
+async def should_err_if_authorization_header_is_missing(app: FastAPI):
     # GIVEN
-    @api_app.get("/api/test")
+    @app.get("/api/test")
     async def _(_=Depends(static_token_auth_scheme)):
         return "OK"
 
     # WHEN
-    async with AsyncClient(app=api_app, base_url="http://test/api", follow_redirects=True) as client:
+    async with AsyncClient(app=app, base_url="http://test/api", follow_redirects=True) as client:
         response = await client.get("/test")
 
     # THEN
@@ -22,14 +22,14 @@ async def should_err_if_authorization_header_is_missing(api_app: FastAPI):
 
 
 @pytest.mark.asyncio
-async def should_err_if_authorization_header_is_empty(api_app: FastAPI):
+async def should_err_if_authorization_header_is_empty(app: FastAPI):
     # GIVEN
-    @api_app.get("/api/test")
+    @app.get("/api/test")
     async def _(_=Depends(static_token_auth_scheme)):
         return "OK"
 
     # WHEN
-    async with AsyncClient(app=api_app, base_url="http://test/api", follow_redirects=True) as client:
+    async with AsyncClient(app=app, base_url="http://test/api", follow_redirects=True) as client:
         response = await client.get("/test", headers={"Authorization": ""})
 
     # THEN
@@ -38,14 +38,14 @@ async def should_err_if_authorization_header_is_empty(api_app: FastAPI):
 
 
 @pytest.mark.asyncio
-async def should_err_if_authorization_header_is_not_bearer(api_app: FastAPI):
+async def should_err_if_authorization_header_is_not_bearer(app: FastAPI):
     # GIVEN
-    @api_app.get("/api/test")
+    @app.get("/api/test")
     async def _(_=Depends(static_token_auth_scheme)):
         return "OK"
 
     # WHEN
-    async with AsyncClient(app=api_app, base_url="http://test/api", follow_redirects=True) as client:
+    async with AsyncClient(app=app, base_url="http://test/api", follow_redirects=True) as client:
         response = await client.get("/test", headers={"Authorization": "foobar"})
 
     # THEN
@@ -54,14 +54,14 @@ async def should_err_if_authorization_header_is_not_bearer(api_app: FastAPI):
 
 
 @pytest.mark.asyncio
-async def should_err_if_authorization_header_is_empty_bearer(api_app: FastAPI):
+async def should_err_if_authorization_header_is_empty_bearer(app: FastAPI):
     # GIVEN
-    @api_app.get("/api/test")
+    @app.get("/api/test")
     async def _(_=Depends(static_token_auth_scheme)):
         return "OK"
 
     # WHEN
-    async with AsyncClient(app=api_app, base_url="http://test/api", follow_redirects=True) as client:
+    async with AsyncClient(app=app, base_url="http://test/api", follow_redirects=True) as client:
         response = await client.get("/test", headers={"Authorization": "Bearer"})
 
     # THEN
@@ -70,14 +70,14 @@ async def should_err_if_authorization_header_is_empty_bearer(api_app: FastAPI):
 
 
 @pytest.mark.asyncio
-async def should_err_if_authorization_header_is_missing_bearer_token(api_app: FastAPI):
+async def should_err_if_authorization_header_is_missing_bearer_token(app: FastAPI):
     # GIVEN
-    @api_app.get("/api/test")
+    @app.get("/api/test")
     async def _(_=Depends(static_token_auth_scheme)):
         return "OK"
 
     # WHEN
-    async with AsyncClient(app=api_app, base_url="http://test/api", follow_redirects=True) as client:
+    async with AsyncClient(app=app, base_url="http://test/api", follow_redirects=True) as client:
         response = await client.get("/test", headers={"Authorization": "Bearer "})
 
     # THEN
@@ -86,14 +86,14 @@ async def should_err_if_authorization_header_is_missing_bearer_token(api_app: Fa
 
 
 @pytest.mark.asyncio
-async def should_err_if_token_is_wrong(api_app: FastAPI):
+async def should_err_if_token_is_wrong(app: FastAPI):
     # GIVEN
-    @api_app.get("/api/test")
+    @app.get("/api/test")
     async def _(_=Depends(static_token_auth_scheme)):
         return "OK"
 
     # WHEN
-    async with AsyncClient(app=api_app, base_url="http://test/api", follow_redirects=True) as client:
+    async with AsyncClient(app=app, base_url="http://test/api", follow_redirects=True) as client:
         response = await client.get("/test", headers={"Authorization": "Bearer wrong"})
 
     # THEN
@@ -102,14 +102,14 @@ async def should_err_if_token_is_wrong(api_app: FastAPI):
 
 
 @pytest.mark.asyncio
-async def should_allow_access_if_token_is_correct(api_app: FastAPI, static_api_token: str):
+async def should_allow_access_if_token_is_correct(app: FastAPI, static_api_token: str):
     # GIVEN
-    @api_app.get("/api/test")
+    @app.get("/api/test")
     async def _(_=Depends(static_token_auth_scheme)):
         return "OK"
 
     # WHEN
-    async with AsyncClient(app=api_app, base_url="http://test/api", follow_redirects=True) as client:
+    async with AsyncClient(app=app, base_url="http://test/api", follow_redirects=True) as client:
         response = await client.get("/test", headers={"Authorization": f"Bearer {static_api_token}"})
 
     # THEN
