@@ -56,7 +56,7 @@ async def test_async_engine(tmp_path: Path) -> AsyncGenerator[AsyncEngine, None]
 
 
 @pytest.fixture(name="app")
-def create_app() -> FastAPI:
+def create_foxops_app() -> FastAPI:
     return create_app()
 
 
@@ -81,8 +81,8 @@ def set_settings_env(static_api_token: str):
     os.environ["FOXOPS_STATIC_TOKEN"] = static_api_token
 
 
-@pytest.fixture(name="api_client")
-async def api_client(dal: DAL, app: FastAPI, static_api_token: str) -> AsyncGenerator[AsyncClient, None]:
+@pytest.fixture(name="unauthenticated_client")
+async def create_unauthenticated_client(dal: DAL, app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
     def _test_get_dal() -> DAL:
         return dal
 
@@ -90,7 +90,18 @@ async def api_client(dal: DAL, app: FastAPI, static_api_token: str) -> AsyncGene
 
     async with AsyncClient(
         app=app,
-        base_url="http://test/api",
-        headers={"Authorization": f"Bearer {static_api_token}"},
+        base_url="http://test",
     ) as ac:
         yield ac
+
+
+@pytest.fixture(name="authenticated_client")
+async def create_authenticated_client(unauthenticated_client: AsyncClient, static_api_token: str) -> AsyncClient:
+    unauthenticated_client.headers["Authorization"] = f"Bearer {static_api_token}"
+    return unauthenticated_client
+
+
+@pytest.fixture(name="api_client")
+async def create_api_client(authenticated_client: AsyncClient) -> AsyncClient:
+    authenticated_client.base_url = f"{authenticated_client.base_url}/api"
+    return authenticated_client

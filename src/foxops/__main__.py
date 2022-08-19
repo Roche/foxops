@@ -1,10 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, APIRouter, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse
 
 from foxops import __version__
-from foxops.dependencies import get_dal, get_hoster, get_settings
+from foxops.dependencies import get_dal, get_hoster, get_settings, static_token_auth_scheme
 from foxops.logger import get_logger, setup_logging
 from foxops.middlewares import request_middleware
 from foxops.openapi import custom_openapi
@@ -42,17 +42,24 @@ def create_app():
         allow_headers=["*"],
     )
 
-    app.include_router(version.router)
+    # Add routes to the publicly available router (no authentication)
+    public_router = APIRouter()
+    public_router.include_router(version.router)
 
-    # Add routers to app
-    app.include_router(incarnations.router)
+    # Add routes to the protected router (authentication required)
+    protected_router = APIRouter(dependencies=[Depends(static_token_auth_scheme)])
+    protected_router.include_router(incarnations.router)
+
+    app.include_router(public_router)
+    app.include_router(protected_router)
 
     # Add static content
     app.mount("/assets", StaticFiles(directory=settings.frontend_dist_dir / "assets", html=True), name="ui-assets")
     app.mount("/favicons", StaticFiles(directory=settings.frontend_dist_dir / "favicons"), name="ui-favicons")
 
-    @app.get("/", include_in_schema=False)
-    async def root():
+    @public_router.get("/", include_in_schema=False)
+    async def _():
+        """Serve the frontend."""
         return FileResponse(settings.frontend_dist_dir / "index.html")
 
     # Customize OpenAPI specification document

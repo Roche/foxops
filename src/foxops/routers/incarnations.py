@@ -5,7 +5,6 @@ from foxops.dependencies import (
     get_dal,
     get_hoster,
     get_reconciliation,
-    static_token_auth_scheme,
 )
 from foxops.errors import (
     IncarnationAlreadyInitializedError,
@@ -24,7 +23,7 @@ from foxops.models import (
 from foxops.models.errors import ApiError
 
 #: Holds the router for the incarnations API endpoints
-router = APIRouter(prefix="/api/incarnations", tags=["incarnations"], dependencies=[Depends(static_token_auth_scheme)])
+router = APIRouter(prefix="/api/incarnations", tags=["incarnations"])
 
 #: Holds the logger for these routes
 logger = get_logger(__name__)
