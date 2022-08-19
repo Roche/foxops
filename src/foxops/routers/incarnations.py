@@ -1,11 +1,7 @@
 from fastapi import APIRouter, Depends, Response, status
 
 from foxops.database import DAL
-from foxops.dependencies import (
-    get_dal,
-    get_hoster,
-    get_reconciliation,
-)
+from foxops.dependencies import get_dal, get_hoster, get_reconciliation
 from foxops.errors import (
     IncarnationAlreadyInitializedError,
     IncarnationNotFoundError,
