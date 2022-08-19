@@ -3,12 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse
 
+from foxops import __version__
 from foxops.dependencies import get_dal, get_hoster, get_settings
-from foxops.logger import setup_logging, get_logger
+from foxops.logger import get_logger, setup_logging
 from foxops.middlewares import request_middleware
 from foxops.openapi import custom_openapi
-from foxops.routers import incarnations
-from foxops import __version__
+from foxops.routers import incarnations, version
 
 
 def get_app():
@@ -41,6 +41,8 @@ def get_app():
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    app.include_router(version.router)
 
     # Add routers to app
     app.include_router(incarnations.router)
