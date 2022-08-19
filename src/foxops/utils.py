@@ -43,7 +43,7 @@ async def check_call(
 
     try:
         await asyncio.wait_for(proc.wait(), timeout=timeout)
-    except asyncio.TimeoutError as e:
+    except asyncio.TimeoutError:
         proc.kill()
         stdout_buffer = None if proc.stdout is None else bytes(proc.stdout._buffer)  # type: ignore
         stderr_buffer = None if proc.stderr is None else bytes(proc.stderr._buffer)  # type: ignore
