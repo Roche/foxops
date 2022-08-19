@@ -4,10 +4,11 @@ from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse
 
 from foxops.dependencies import get_dal, get_hoster, get_settings
-from foxops.logger import setup_logging
+from foxops.logger import setup_logging, get_logger
 from foxops.middlewares import request_middleware
 from foxops.openapi import custom_openapi
 from foxops.routers import incarnations
+from foxops import __version__
 
 
 def get_app():
@@ -27,6 +28,9 @@ def get_app():
         await dal.initialize_db()
 
         setup_logging(level=settings.log_level)
+
+        logger = get_logger(__name__)
+        logger.info(f"Started foxops {__version__}")
 
     # Add middlewares
     app.middleware("http")(request_middleware)

@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 
+from foxops import __version__
+
 
 def custom_openapi(app: FastAPI):
     def _wrapper():
@@ -8,7 +10,7 @@ def custom_openapi(app: FastAPI):
             return app.openapi_schema
         openapi_schema = get_openapi(
             title="foxops 🦊",
-            version="2.0.0",
+            version=__version__,
             description="OpenAPI Specification for foxops 🦊",
             routes=app.routes,
         )
