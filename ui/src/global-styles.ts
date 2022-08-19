@@ -4,7 +4,7 @@ import normalize from 'normalize.css'
 const globalStyles = css`
   ${normalize}
   :root {
-    --base-bg: rgb(240, 240, 240);
+    --base-bg: #fff;
     --black: #333333;
     --pale-grey: #e0e0e0;
     --grey: #d2d2d2;

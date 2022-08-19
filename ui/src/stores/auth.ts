@@ -1,6 +1,6 @@
 import create from 'zustand'
 import { persist } from 'zustand/middleware'
-import { createStorageKey, STORAGE_KEYS } from '../services/storage'
+import { STORAGE_KEYS } from '../services/storage'
 
 interface AuthStore {
   token: null | string,

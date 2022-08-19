@@ -1,8 +1,6 @@
 import styled from '@emotion/styled'
 import { useQuery } from '@tanstack/react-query'
-import { api } from '../../services/api'
 import { incarnations } from '../../services/incarnations'
-import { useAuthStore } from '../../stores/auth'
 
 const Section = styled.div({
   maxWidth: 1200,
@@ -30,7 +28,7 @@ const Table = styled.table({
 })
 
 export const IncarnationsList = () => {
-  const { isLoading, isError, isSuccess, data } = useQuery(['incarnations'], incarnations.get) // TODO: wrap it to useIncarnationsQuery
+  const { isLoading, isError, data } = useQuery(['incarnations'], incarnations.get) // TODO: wrap it to useIncarnationsQuery
   if (isLoading) {
     return <Section>Loading...</Section>
   }

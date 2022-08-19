@@ -22,7 +22,7 @@ export const api: API = {
   setToken: (token: string | null) => {
     api.token = token
   },
-  makeUrl: (path: string) => `${import.meta.env.VITE_FOXOPS_API_URL ?? ''}${path}`,
+  makeUrl: (path: string) => `${process.env.FOXOPS_API_URL ?? ''}${path}`,
   makeRequest: async <Req, Res>({
     url,
     method,
@@ -44,11 +44,11 @@ export const api: API = {
     if (mockedData) {
       return Promise.resolve(mockedData)
     }
-
     // make request
     const response = await fetch(api.makeUrl(url), {
       method,
-      body: requestBody
+      body: requestBody,
+      headers
     })
 
     // handle response

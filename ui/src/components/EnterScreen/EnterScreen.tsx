@@ -6,6 +6,7 @@ import { Login } from '../Login/Login'
 
 export const EnterScreen = () => {
   const { token } = useAuthStore()
+  if (token) api.setToken(token)
   useEffect(() => {
     api.setToken(token)
   }, [token])

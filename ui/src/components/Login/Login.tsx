@@ -1,6 +1,5 @@
 import styled from '@emotion/styled'
 import { useState } from 'react'
-import { api } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
 import { Logo } from '../common/Logo/Logo'
 import { TextField } from '../common/TextField/TextField'
