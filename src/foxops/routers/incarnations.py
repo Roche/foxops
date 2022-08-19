@@ -31,7 +31,7 @@ logger = get_logger(__name__)
 
 
 @router.get(
-    "/",
+    "",
     responses={
         status.HTTP_200_OK: {
             "description": "The list of incarnations in the inventory",
@@ -73,7 +73,7 @@ async def list_incarnations(
 
 
 @router.post(
-    "/",
+    "",
     responses={
         status.HTTP_200_OK: {
             "description": "The incarnation is already initialized and was imported to the inventory. Only applicable with `allow_import=True`.",
