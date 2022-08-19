@@ -96,7 +96,7 @@ class GitRepository:
 
         if proc.returncode not in {0, 1}:
             raise CalledProcessError(
-                proc.returncode,
+                int(proc.returncode),
                 cmdline,
                 stdout,
                 stderr,
