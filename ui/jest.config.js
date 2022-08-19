@@ -7,5 +7,8 @@ module.exports = {
   setupFilesAfterEnv: [
     '<rootDir>/support/setup-tests.ts'
   ],
-  coverageDirectory: '<rootDir>/../coverage'
+  coverageDirectory: '<rootDir>/../coverage',
+  moduleNameMapper: {
+    '\\.(css|less|scss)$': '<rootDir>/support/style-mock.ts'
+  }
 }
