@@ -55,7 +55,8 @@ def get_app():
     return app
 
 
-if __name__ == "__main__":
+def main_dev():
+    """Main entrypoint for LOCAL DEVELOPMENT ONLY!"""
     import uvicorn  # type: ignore
 
     uvicorn.run(
@@ -69,3 +70,7 @@ if __name__ == "__main__":
         limit_concurrency=1,
         limit_max_requests=1,
     )
+
+
+if __name__ == "__main__":
+    main_dev()
