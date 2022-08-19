@@ -94,7 +94,7 @@ class GitRepository:
         )
         stdout, stderr = await proc.communicate()
 
-        if proc.returncode not in {0, 1}:
+        if proc.returncode is not None and proc.returncode not in {0, 1}:
             raise CalledProcessError(
                 int(proc.returncode),
                 cmdline,
