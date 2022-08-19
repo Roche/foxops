@@ -91,7 +91,6 @@ async def api_client(dal: DAL, api_app: FastAPI, static_api_token: str) -> Async
     async with AsyncClient(
         app=api_app,
         base_url="http://test/api",
-        follow_redirects=True,
         headers={"Authorization": f"Bearer {static_api_token}"},
     ) as ac:
         yield ac
