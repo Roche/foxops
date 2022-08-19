@@ -17,12 +17,14 @@ interface API {
   post: RequestFunc,
   makeUrl: (path: string) => string,
 }
+
+const API_PREFIX = '/api'
 export const api: API = {
   token: null,
   setToken: (token: string | null) => {
     api.token = token
   },
-  makeUrl: (path: string) => `${process.env.FOXOPS_API_URL ?? ''}${path}`,
+  makeUrl: (path: string) => `${process.env.FOXOPS_API_URL ?? ''}${API_PREFIX}${path}`,
   makeRequest: async <Req, Res>({
     url,
     method,
