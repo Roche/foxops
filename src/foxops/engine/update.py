@@ -1,43 +1,14 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from dictdiffer import diff
-
 from foxops import utils
 from foxops.engine.fvars import merge_template_data_with_fvars
 from foxops.engine.initialization import _initialize_incarnation
-from foxops.engine.models import (
-    IncarnationState,
-    TemplateData,
-    fill_missing_optionals_with_defaults,
-    load_incarnation_state,
-    load_template_config,
-)
+from foxops.engine.models import IncarnationState, TemplateData, load_incarnation_state
 from foxops.logger import get_logger
 
 #: Holds the module logger
 logger = get_logger(__name__)
-
-
-def get_data_mismatch(
-    desired_template_data: TemplateData,
-    actual_template_data: TemplateData,
-    template_root_dir: Path,
-) -> list:
-    template_config = load_template_config(template_root_dir / "fengine.yaml")
-
-    # fill defaults in passed data
-    template_data_with_defaults = fill_missing_optionals_with_defaults(
-        provided_template_data=desired_template_data,
-        template_config=template_config,
-    )
-
-    return list(
-        diff(
-            actual_template_data,
-            template_data_with_defaults,
-        )
-    )
 
 
 async def update_incarnation_from_git_template_repository(
