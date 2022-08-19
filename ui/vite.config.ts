@@ -6,6 +6,8 @@ import envPlugin from 'vite-plugin-environment'
 export default defineConfig({
   plugins: [
     react(),
-    envPlugin(['FOXOPS_API_URL'])
+    envPlugin({
+      FOXOPS_API_URL: ''
+    })
   ]
 })
