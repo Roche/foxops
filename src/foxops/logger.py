@@ -2,7 +2,12 @@ import logging
 from typing import Sequence
 
 import structlog
-from structlog.contextvars import bind_contextvars, merge_contextvars
+from structlog.contextvars import (
+    bind_contextvars,
+    bound_contextvars,
+    merge_contextvars,
+    unbind_contextvars,
+)
 from structlog.types import Processor
 
 shared_processors: Sequence[Processor] = [
@@ -71,6 +76,8 @@ def setup_logging(level: int | str) -> None:
 
 
 bind = bind_contextvars
+unbind = unbind_contextvars
+bound = bound_contextvars
 
 
 def get_logger(*args, **kwargs) -> structlog.stdlib.BoundLogger:
