@@ -1,7 +1,18 @@
 import styled from '@emotion/styled'
 
-const Component = styled.h1``
+interface LogoProps {
+  size?: null | string | number
+}
 
-export const Logo = () => (
-  <Component data-testid="Logo">foxops 🦊</Component>
+const Component = styled('div', { shouldForwardProp: prop => prop !== 'size' })(
+  ({ size }: LogoProps) => ({
+    fontSize: size ?? 24,
+    fontWeight: 700
+  })
+)
+
+export const Logo = ({
+  size
+}: LogoProps) => (
+  <Component data-testid="Logo" size={size}>foxops 🦊</Component>
 )

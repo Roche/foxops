@@ -1,5 +1,5 @@
 
-import { render, screen } from '@testing-library/react'
+import { render, screen } from '../../../support/setup-tests'
 import { Logo } from './Logo'
 
 test('renders Logo component', () => {

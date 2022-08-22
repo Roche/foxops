@@ -1,5 +1,5 @@
 
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '../../../support/setup-tests'
 import { TextField } from './TextField'
 
 test('renders TextField component', () => {

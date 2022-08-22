@@ -1,34 +1,41 @@
-import { css } from '@emotion/react'
+import { css, Theme } from '@emotion/react'
 import normalize from 'normalize.css'
 
-const globalStyles = css`
+export const createGlobalStyles = ({
+  colors: {
+    baseBg,
+    text,
+    orange
+  }
+}: Theme) => css`
   ${normalize}
   :root {
-    --base-bg: #fff;
-    --black: #333333;
-    --pale-grey: #e0e0e0;
-    --grey: #d2d2d2;
-    --dark-grey: #8a8a8a;
-    --pale-orange: #fcbf49;
-    --orange: #ee6e00;
-    --easing: cubic-bezier(.66,.09,.85,.52);
+    --base-easing: cubic-bezier(.66,.09,.85,.52);
+    --ease-in: ease-in;
+    --ease-out: ease-out;
     --monospace-font: 'Lucida Console', Monaco, Monospace;
-    background-color: var(--base-bg);
-    color: var(--black);
+    color: ${text};
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
       "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji",
       "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  }
+  html {
+    background-color: ${baseBg};
   }
   html, body {
     height: 100%;
   }
   #root {
-    min-height: 100%;
+    height: 100%;
     overflow: hidden;
   }
   * {
     box-sizing: border-box;
   }
+  svg {
+    vertical-align: middle;
+  }
+  a {
+    color: ${orange}
+  }
 `
-
-export default globalStyles

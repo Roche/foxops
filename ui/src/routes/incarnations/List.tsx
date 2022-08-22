@@ -8,12 +8,16 @@ const Section = styled.div({
   padding: 8
 })
 
-const Table = styled.table({
+const Table = styled.table(({ theme }) => ({
   width: '100%',
   borderCollapse: 'collapse',
   'td, th': {
     padding: 8,
-    borderBottom: '1px solid var(--grey)'
+    borderBottom: `1px solid ${theme.colors.grey}`,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    maxWidth: '200px'
   },
   th: {
     fontWeight: 700,
@@ -25,7 +29,7 @@ const Table = styled.table({
   'thead tr': {
 
   }
-})
+}))
 
 export const IncarnationsList = () => {
   const { isLoading, isError, data } = useQuery(['incarnations'], incarnations.get) // TODO: wrap it to useIncarnationsQuery
@@ -44,7 +48,8 @@ export const IncarnationsList = () => {
             <th>Id</th>
             <th>Repository</th>
             <th>Target directory</th>
-            <th>Status</th>
+            <th>Commit</th>
+            <th>Merge Request</th>
           </tr>
         </thead>
         <tbody>
@@ -53,7 +58,8 @@ export const IncarnationsList = () => {
               <td>{x.id}</td>
               <td>{x.incarnationRepository}</td>
               <td>{x.targetDirectory}</td>
-              <td>coming soon&hellip;</td>
+              <td><a href={x.commitUrl} title={x.commitUrl} target="_blank" rel="noreferrer">{x.commitUrl}</a></td>
+              <td>{x.mergeRequestUrl}</td>
             </tr>
           ))}
         </tbody>

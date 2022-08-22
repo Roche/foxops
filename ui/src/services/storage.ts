@@ -5,7 +5,8 @@ export const getStorage = () => sessionStorage // will be changed to localStorag
 export const createStorageKey = (key: string) => `${PREFIX}-${key}`
 
 export const STORAGE_KEYS = {
-  AUTH: createStorageKey('auth')
+  AUTH: createStorageKey('auth'),
+  THEME: createStorageKey('theme')
 }
 
 export const getAuthToken = () => {
