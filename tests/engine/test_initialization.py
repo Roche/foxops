@@ -17,7 +17,6 @@ async def init_repository(repository_dir: Path) -> None:
     return (await proc.stdout.read()).decode().strip()  # type: ignore
 
 
-@pytest.mark.asyncio
 async def test_initialize_template_at_root_of_incarnation_repository(tmp_path: Path):
     # GIVEN
     (tmp_path / "fengine.yaml").write_text(
@@ -64,7 +63,6 @@ template_repository_version_hash: {repository_head}
     )
 
 
-@pytest.mark.asyncio
 async def test_initialize_template_at_root_of_incarnation_repository_with_existing_file(
     tmp_path: Path,
 ):
@@ -116,7 +114,6 @@ template_repository_version_hash: {repository_head}
     )
 
 
-@pytest.mark.asyncio
 async def test_initialize_template_fails_when_variables_are_not_set(tmp_path):
     # GIVEN
     (tmp_path / "fengine.yaml").write_text(
@@ -148,7 +145,6 @@ variables:
         )
 
 
-@pytest.mark.asyncio
 async def test_initialize_template_used_passed_value_instead_default_for_optional_variables(
     tmp_path,
 ):
@@ -186,7 +182,6 @@ variables:
     assert (incarnation_dir / "README.md").read_text() == "John Doe knows that 1+2 = 3"
 
 
-@pytest.mark.asyncio
 async def test_initialize_template_allows_optional_variables(tmp_path):
     # GIVEN
     (tmp_path / "fengine.yaml").write_text(
@@ -222,7 +217,6 @@ variables:
     assert (incarnation_dir / "README.md").read_text() == "John Doe knows that 1+2 = 42"
 
 
-@pytest.mark.asyncio
 async def test_initialize_template_ignores_but_warns_about_additional_variables(tmp_path, mocker):
     # GIVEN
     (tmp_path / "fengine.yaml").write_text(
@@ -264,7 +258,6 @@ variables:
     assert incarnation_state is not None
 
 
-@pytest.mark.asyncio
 async def test_initialize_template_with_variables_from_fvars_file(tmp_path: Path):
     # GIVEN
     (tmp_path / "fengine.yaml").write_text(
@@ -316,7 +309,6 @@ template_repository_version_hash: {repository_head}
     )
 
 
-@pytest.mark.asyncio
 async def test_initialize_template_template_data_precedence_over_fvars(tmp_path: Path):
     # GIVEN
     (tmp_path / "fengine.yaml").write_text(
@@ -368,7 +360,6 @@ template_repository_version_hash: {repository_head}
     )
 
 
-@pytest.mark.asyncio
 async def test_initialize_template_empty_fvars_file(tmp_path: Path):
     # GIVEN
     (tmp_path / "fengine.yaml").write_text(

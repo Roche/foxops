@@ -6,7 +6,6 @@ import pytest
 from foxops.utils import check_call
 
 
-@pytest.mark.asyncio
 async def test_check_call_should_raise_exception_on_non_zero_exit_code():
     # GIVEN
     program = "false"
@@ -17,7 +16,6 @@ async def test_check_call_should_raise_exception_on_non_zero_exit_code():
         await check_call(program)
 
 
-@pytest.mark.asyncio
 async def test_check_call_should_raise_exception_on_non_zero_exit_code_with_stderr(
     tmp_path,
 ):
@@ -31,7 +29,6 @@ async def test_check_call_should_raise_exception_on_non_zero_exit_code_with_stde
         await check_call(program, *args, cwd=tmp_path)
 
 
-@pytest.mark.asyncio
 async def test_check_call_should_pass_for_zero_exit_code():
     # GIVEN
     program = "true"
@@ -40,7 +37,6 @@ async def test_check_call_should_pass_for_zero_exit_code():
     await check_call(program)
 
 
-@pytest.mark.asyncio
 async def test_check_call_should_forward_args():
     # GIVEN
     program = "echo"
@@ -53,7 +49,6 @@ async def test_check_call_should_forward_args():
     assert await proc.stdout.read() == b"Hello World\n"
 
 
-@pytest.mark.asyncio
 async def test_check_call_should_kill_process_when_timeout_is_exceeded():
     # GIVEN
     program = "sleep"

@@ -3,7 +3,7 @@ from http import HTTPStatus
 import pytest
 from httpx import AsyncClient
 
-pytestmark = [pytest.mark.asyncio, pytest.mark.frontend]
+pytestmark = [pytest.mark.frontend]
 
 
 async def should_serve_frontend_index_on_root(unauthenticated_client: AsyncClient):

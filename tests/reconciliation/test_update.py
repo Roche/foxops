@@ -15,7 +15,6 @@ from foxops.models import (
 from foxops.reconciliation import update_incarnation
 
 
-@pytest.mark.asyncio
 async def should_not_update_if_branch_is_pending(
     mocker: MockFixture,
     test_dis: DesiredIncarnationState,
@@ -37,7 +36,6 @@ async def should_not_update_if_branch_is_pending(
     assert update is None
 
 
-@pytest.mark.asyncio
 async def should_err_if_incarnation_not_initialized(
     mocker: MockFixture,
     test_dis: DesiredIncarnationState,
@@ -60,7 +58,6 @@ async def should_err_if_incarnation_not_initialized(
         await update_incarnation(hoster, incarnation_mock, dis_patch)
 
 
-@pytest.mark.asyncio
 async def should_update_incarnation_to_new_version_in_merge_request(
     mocker: MockFixture,
     test_template_repository: GitRepository,
@@ -105,7 +102,6 @@ async def should_update_incarnation_to_new_version_in_merge_request(
     assert merge_request_called.get()
 
 
-@pytest.mark.asyncio
 async def should_update_incarnation_to_new_template_data_in_merge_request(
     mocker: MockFixture,
     test_template_repository: GitRepository,
@@ -150,7 +146,6 @@ async def should_update_incarnation_to_new_template_data_in_merge_request(
     assert merge_request_called.get()
 
 
-@pytest.mark.asyncio
 async def should_no_op_if_there_is_no_update_to_be_done(
     mocker: MockFixture,
     test_template_repository: GitRepository,

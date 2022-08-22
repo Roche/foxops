@@ -17,7 +17,6 @@ async def init_repository(repository_dir: Path) -> None:
     return (await proc.stdout.read()).decode().strip()  # type: ignore
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "diff_patch_func",
     [diff_and_patch],
@@ -45,7 +44,6 @@ async def test_diff_and_patch_update_single_file_without_conflict(diff_patch_fun
     assert (to_patch_directory / "file.txt").read_text() == "new content"
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize("diff_patch_func", [diff_and_patch])
 async def test_diff_and_patch_adding_new_file_without_conflict(diff_patch_func, tmp_path):
     # GIVEN
@@ -70,7 +68,6 @@ async def test_diff_and_patch_adding_new_file_without_conflict(diff_patch_func, 
     assert (to_patch_directory / "new-file.txt").read_text() == "new content"
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize("diff_patch_func", [diff_and_patch])
 async def test_diff_and_patch_removing_file_without_conflict(diff_patch_func, tmp_path):
     # GIVEN
@@ -96,7 +93,6 @@ async def test_diff_and_patch_removing_file_without_conflict(diff_patch_func, tm
     assert not (to_patch_directory / "deprecated-file.txt").exists()
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize("diff_patch_func", [diff_and_patch])
 async def test_diff_and_patch_no_change_when_updating_to_template_version_with_identical_change(
     diff_patch_func,
@@ -170,7 +166,6 @@ r2 {...}
     )
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize("diff_patch_func", [diff_and_patch])
 async def test_diff_and_patch_conflict_for_nearby_changes_in_template_and_incarnation(
     diff_patch_func,
@@ -237,7 +232,6 @@ c
     assert Path("myfile.txt") in files_with_conflicts
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize("diff_patch_func", [diff_and_patch])
 async def test_diff_and_patch_success_when_changes_in_different_places_in_template_and_incarnation(
     diff_patch_func,
@@ -328,7 +322,6 @@ mychange
     )
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize("diff_patch_func", [diff_and_patch])
 async def test_diff_and_patch_success_when_update_in_fvars_file(
     diff_patch_func,
@@ -391,7 +384,6 @@ variables:
     assert (incarnation_directory / "myfile.txt").read_text() == "From: Updated John Doe"
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize("diff_patch_func", [diff_and_patch])
 async def test_diff_and_patch_success_when_deleting_file_in_template(
     diff_patch_func,

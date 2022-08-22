@@ -11,8 +11,9 @@ from foxops.dependencies import get_hoster
 from foxops.errors import IncarnationAlreadyInitializedError
 from foxops.routers.incarnations import get_reconciliation
 
+pytestmark = [pytest.mark.api]
 
-@pytest.mark.asyncio
+
 async def test_api_get_incarnations_returns_empty_list_for_empty_incarnation_inventory(
     api_client: AsyncClient,
 ):
@@ -24,7 +25,6 @@ async def test_api_get_incarnations_returns_empty_list_for_empty_incarnation_inv
     assert response.json() == []
 
 
-@pytest.mark.asyncio
 async def test_api_get_incarnations_returns_incarnations_from_inventory(
     api_client: AsyncClient,
     dal: DAL,
@@ -50,7 +50,6 @@ async def test_api_get_incarnations_returns_incarnations_from_inventory(
     ]
 
 
-@pytest.mark.asyncio
 async def test_api_create_incarnation_adds_new_incarnation_to_inventory(
     api_client: AsyncClient,
     app: FastAPI,
@@ -91,7 +90,6 @@ async def test_api_create_incarnation_adds_new_incarnation_to_inventory(
     }
 
 
-@pytest.mark.asyncio
 async def test_api_create_incarnation_already_exists_without_allowing_import(
     api_client: AsyncClient,
     app: FastAPI,
@@ -129,7 +127,6 @@ async def test_api_create_incarnation_already_exists_without_allowing_import(
     assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
-@pytest.mark.asyncio
 async def test_api_create_incarnation_already_exists_allowing_import_without_a_mismatch(
     api_client: AsyncClient,
     app: FastAPI,
@@ -182,7 +179,6 @@ async def test_api_create_incarnation_already_exists_allowing_import_without_a_m
     }
 
 
-@pytest.mark.asyncio
 async def test_api_create_incarnation_already_exists_allowing_import_with_a_mismatch(
     api_client: AsyncClient,
     app: FastAPI,
@@ -235,7 +231,6 @@ async def test_api_create_incarnation_already_exists_allowing_import_with_a_mism
     }
 
 
-@pytest.mark.asyncio
 async def test_api_delete_incarnation_removes_incarnation_from_inventory(
     api_client: AsyncClient,
     dal: DAL,

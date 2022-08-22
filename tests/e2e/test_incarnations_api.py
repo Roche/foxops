@@ -14,10 +14,9 @@ from .assertions import (
 )
 
 # mark all tests in this module as e2e
-pytestmark = pytest.mark.e2e
+pytestmark = [pytest.mark.e2e, pytest.mark.api]
 
 
-@pytest.mark.asyncio
 async def should_initialize_incarnation_in_root_of_empty_repository_when_creating_incarnation(
     api_client: AsyncClient,
     gitlab_test_client: AsyncClient,
@@ -55,7 +54,6 @@ async def should_initialize_incarnation_in_root_of_empty_repository_when_creatin
     )
 
 
-@pytest.mark.asyncio
 async def should_initialize_incarnation_in_root_of_repository_with_fvars_file_when_creating_incarnation(
     api_client: AsyncClient,
     gitlab_test_client: AsyncClient,
@@ -106,7 +104,6 @@ async def should_initialize_incarnation_in_root_of_repository_with_fvars_file_wh
     )
 
 
-@pytest.mark.asyncio
 async def should_initialize_incarnation_in_root_of_nonempty_incarnation_in_a_merge_request(
     api_client: AsyncClient,
     gitlab_test_client: AsyncClient,
@@ -161,7 +158,6 @@ async def should_initialize_incarnation_in_root_of_nonempty_incarnation_in_a_mer
     )
 
 
-@pytest.mark.asyncio
 async def should_initialize_incarnation_in_root_of_nonempty_incarnation_in_default_branch_with_automerge(
     api_client: AsyncClient,
     gitlab_test_client: AsyncClient,
@@ -213,7 +209,6 @@ async def should_initialize_incarnation_in_root_of_nonempty_incarnation_in_defau
     )
 
 
-@pytest.mark.asyncio
 async def should_initialize_incarnation_in_root_of_nonempty_repository_with_fvars_file_when_creating_incarnation(
     api_client: AsyncClient,
     gitlab_test_client: AsyncClient,
@@ -279,7 +274,6 @@ async def should_initialize_incarnation_in_root_of_nonempty_repository_with_fvar
     )
 
 
-@pytest.mark.asyncio
 async def should_err_in_initialization_if_variable_is_missing(
     api_client: AsyncClient,
     template_repository: str,
@@ -305,7 +299,6 @@ async def should_err_in_initialization_if_variable_is_missing(
     )
 
 
-@pytest.mark.asyncio
 async def should_initialize_incarnation_in_subdir_of_empty_repository_when_creating_incarnation(
     api_client: AsyncClient,
     gitlab_test_client: AsyncClient,
@@ -344,7 +337,6 @@ async def should_initialize_incarnation_in_subdir_of_empty_repository_when_creat
     )
 
 
-@pytest.mark.asyncio
 async def should_initialize_incarnations_in_subdirs_of_empty_repository_when_creating_incarnation(
     api_client: AsyncClient,
     gitlab_test_client: AsyncClient,
@@ -410,7 +402,6 @@ async def should_initialize_incarnations_in_subdirs_of_empty_repository_when_cre
     )
 
 
-@pytest.mark.asyncio
 async def should_create_merge_request_when_file_changed_during_update(
     api_client: AsyncClient,
     gitlab_test_client: AsyncClient,
@@ -451,7 +442,6 @@ async def should_create_merge_request_when_file_changed_during_update(
     )
 
 
-@pytest.mark.asyncio
 async def should_create_merge_request_when_file_changed_with_fvars_during_update(
     api_client: AsyncClient,
     gitlab_test_client: AsyncClient,
@@ -503,7 +493,6 @@ async def should_create_merge_request_when_file_changed_with_fvars_during_update
     )
 
 
-@pytest.mark.asyncio
 async def should_present_conflict_in_merge_request_when_updating(
     api_client: AsyncClient,
     gitlab_test_client: AsyncClient,
@@ -554,7 +543,6 @@ async def should_present_conflict_in_merge_request_when_updating(
     )
 
 
-@pytest.mark.asyncio
 async def should_automerge_merge_request_when_flag_is_true(
     api_client: AsyncClient,
     gitlab_test_client: AsyncClient,
