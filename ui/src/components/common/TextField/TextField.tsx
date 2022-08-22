@@ -1,24 +1,26 @@
+import { Theme } from '@emotion/react'
 import styled from '@emotion/styled'
 
-const sharedStyles = {
-  border: '1px solid var(--grey)',
+const sharedStyles = ({ theme }: { theme: Theme }) => ({
+  border: `1px solid ${theme.colors.inputBorder}`,
   fontSize: 16,
   padding: '8px',
   width: '100%',
   borderRadius: 4,
-  background: '#fff',
-  transition: 'box-shadow 0.2s var(--easing)',
+  background: theme.colors.baseBg,
+  color: theme.colors.text,
+  transition: 'box-shadow 0.2s var(--base-easing)',
   ':focus': {
     outline: 'none',
-    boxShadow: '0 0 0 2px var(--pale-orange)'
+    boxShadow: `0 0 0 2px ${theme.colors.paleOrange}`
   }
-}
+})
 
 const InputComponent = styled.input(sharedStyles)
-const TextareaComponent = styled.textarea({
-  ...sharedStyles,
+const TextareaComponent = styled.textarea((props: { theme: Theme }) => ({
+  ...sharedStyles(props),
   resize: 'vertical'
-})
+}))
 
 interface TextFieldProps {
   placeholder?: string,

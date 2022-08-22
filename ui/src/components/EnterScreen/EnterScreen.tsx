@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
+import { Navigate } from 'react-router-dom'
 import { api } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
-import { IncarnationsList } from '../Incarnations/List'
-import { Login } from '../Login/Login'
+import { Layout } from '../Layout/Layout'
 
 export const EnterScreen = () => {
   const { token } = useAuthStore()
@@ -11,7 +11,7 @@ export const EnterScreen = () => {
     api.setToken(token)
   }, [token])
   if (!token) {
-    return <Login />
+    return <Navigate to="/login" />
   }
-  return <IncarnationsList />
+  return <Layout />
 }

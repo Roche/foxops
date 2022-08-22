@@ -4,14 +4,14 @@ import { STORAGE_KEYS } from '../services/storage'
 
 interface AuthStore {
   token: null | string,
-  setToken: (token: string) => void,
+  setToken: (token: null | string) => void,
 }
 
 export const useAuthStore = create<AuthStore>()(
   persist(
     set => ({
       token: null,
-      setToken: (token: string) => set(() => ({ token }))
+      setToken: (token: null | string) => set(() => ({ token }))
     }),
     {
       name: STORAGE_KEYS.AUTH,

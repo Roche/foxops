@@ -7,7 +7,8 @@ export default defineConfig({
   plugins: [
     react(),
     envPlugin({
-      FOXOPS_API_URL: ''
+      FOXOPS_API_URL: '',
+      FOXOPS_STATIC_TOKEN: ''
     })
   ]
 })
