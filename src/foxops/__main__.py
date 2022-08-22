@@ -70,9 +70,13 @@ def create_app():
 
     # Add static content
     for frontend_dir in FRONTEND_SUBDIRS:
+        path = settings.frontend_dist_dir / frontend_dir
+        if not path.exists():
+            continue
+
         app.mount(
             f"/{frontend_dir}",
-            StaticFiles(directory=settings.frontend_dist_dir / frontend_dir, html=True),
+            StaticFiles(directory=path, html=True),
             name=f"ui-{frontend_dir}",
         )
 
