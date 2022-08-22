@@ -1,7 +1,7 @@
-import asyncio
 import base64
 import uuid
 from collections import namedtuple
+from datetime import timedelta
 
 import pytest
 from httpx import AsyncClient, HTTPStatusError
@@ -93,17 +93,13 @@ async def should_return_success_reconciliation_status_for_default_branch_commit_
 async def should_return_pending_reconciliation_status_for_default_branch_commit_with_pending_pipeline(
     test_gitlab_hoster: Hoster, test_repository: RepositoryTestData
 ):
-    # GIVEN
-
-    # Give GitLab some time to create the pipeline
-    await asyncio.sleep(5)
-
     # WHEN
     status = await test_gitlab_hoster.get_reconciliation_status(
         incarnation_repository=test_repository.project["path_with_namespace"],
         target_directory=".",
         commit_sha=test_repository.commit_sha_branch_with_pipeline,
         merge_request_id=None,
+        pipeline_timeout=timedelta(seconds=10),
     )
 
     # THEN

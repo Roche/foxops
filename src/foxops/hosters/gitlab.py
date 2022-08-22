@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import shutil
 from contextlib import asynccontextmanager
@@ -25,7 +26,7 @@ from foxops.hosters.types import (
     ReconciliationStatus,
     RepositoryMetadata,
 )
-from foxops.logger import get_logger
+from foxops.logger import bound, get_logger
 
 #: Holds the module logger
 logger = get_logger(__name__)
@@ -277,35 +278,61 @@ class GitLab:
         return await __merge(merge_request)
 
     async def get_reconciliation_status(
-        self, incarnation_repository: str, target_directory: str, commit_sha: GitSha, merge_request_id: str | None
+        self,
+        incarnation_repository: str,
+        target_directory: str,
+        commit_sha: GitSha,
+        merge_request_id: str | None,
+        pipeline_timeout: timedelta | None = None,
     ) -> ReconciliationStatus:
-        async def _get_commit_status(commit_sha: GitSha) -> ReconciliationStatus:
+        if pipeline_timeout is None:
+            pipeline_timeout = timedelta()
+
+        async def _get_commit_status(commit_sha: GitSha, pipeline_timeout: timedelta) -> ReconciliationStatus:
             response = await self.client.get(
                 f"/projects/{quote_plus(incarnation_repository)}/repository/commits/{commit_sha}"
             )
             response.raise_for_status()
             commit: Commit = response.json()
 
-            if commit["status"] is None and commit["last_pipeline"] is None:
-                return ReconciliationStatus.SUCCESS
+            with bound(commit=commit):
+                if commit["status"] is None and commit["last_pipeline"] is None:
+                    has_pipeline_config = await self._has_gitlab_ci_configuration(incarnation_repository, commit_sha)
+                    if has_pipeline_config:
+                        if pipeline_timeout.total_seconds() > 0:
+                            logger.debug(
+                                f"Reconciliation status: no commit status and no pipeline, and pipeline_timeout is {pipeline_timeout.total_seconds()} seconds, sleeping 1 second and retry"
+                            )
+                            await asyncio.sleep(1)
+                            return await _get_commit_status(commit_sha, pipeline_timeout - timedelta(seconds=1))
 
-            if commit["status"] == "success":
-                return ReconciliationStatus.SUCCESS
+                    logger.debug(
+                        "Reconciliation status: no commit status and no pipeline, assuming SUCCESS",
+                        has_pipeline_config=has_pipeline_config,
+                    )
+                    return ReconciliationStatus.SUCCESS
 
-            if commit["status"] in {"created", "pending", "running"}:
-                return ReconciliationStatus.PENDING
+                if commit["status"] == "success":
+                    logger.debug("Reconciliation status: commit status is success, returning SUCCESS")
+                    return ReconciliationStatus.SUCCESS
 
-            if commit["status"] in {"failed", "canceled"}:
-                return ReconciliationStatus.FAILED
+                if commit["status"] in {"created", "pending", "running"}:
+                    logger.debug(f"Reconciliation status: commit status is {commit['status']}, returning PENDING")
+                    return ReconciliationStatus.PENDING
 
-            logger.error(
-                f"Incarnation '{incarnation_repository}' / '{target_directory}' has an unknown commit status '{commit['status']}' for commit '{commit_sha}'"
-            )
+                if commit["status"] in {"failed", "canceled"}:
+                    logger.debug(f"Reconciliation status: commit status is {commit['status']}, returning FAILED")
+                    return ReconciliationStatus.FAILED
+
+                logger.error(
+                    f"Incarnation '{incarnation_repository}' / '{target_directory}' has an unknown commit status '{commit['status']}' for commit '{commit_sha}'"
+                )
+
             return ReconciliationStatus.UNKNOWN
 
         if merge_request_id is None:
             logger.debug(f"No merge request id given, therefore checking commit status of '{commit_sha}'")
-            return await _get_commit_status(commit_sha)
+            return await _get_commit_status(commit_sha, pipeline_timeout=pipeline_timeout)
 
         logger.debug("Checking merge request status")
         response = await self.client.get(
@@ -314,31 +341,50 @@ class GitLab:
         response.raise_for_status()
         merge_request: MergeRequest = response.json()
 
-        if merge_request["state"] == "opened":
-            if merge_request["merge_status"] in {"cannot_be_merged", "cannot_be_merged_recheck"}:
+        with bound(merge_request=merge_request):
+            if merge_request["state"] == "opened":
+                if merge_request["merge_status"] in {"cannot_be_merged", "cannot_be_merged_recheck"}:
+                    logger.debug(
+                        f"Reconciliation status: merge request state is open and status is {merge_request['merge_status']}, returning FAILED"
+                    )
+                    return ReconciliationStatus.FAILED
+
+                if merge_request["head_pipeline"] is not None and merge_request["head_pipeline"]["status"] in {
+                    "failed",
+                    "canceled",
+                }:
+                    logger.debug(
+                        f"Reconciliation status: merge request state is open and pipeline status is {merge_request['head_pipeline']['status']}, returning FAILED"
+                    )
+                    return ReconciliationStatus.FAILED
+
+                logger.debug("Reconciliation status: merge request state is open, returning PENDING")
+                return ReconciliationStatus.PENDING
+            elif merge_request["state"] == "merged":
+                if merge_request["merge_commit_sha"] is not None:
+                    logger.debug(
+                        f"Reconciliation status: merge request is merged at {merge_request['merge_commit_sha']}, checking its commit status ..."
+                    )
+                    merge_commit_sha = merge_request["merge_commit_sha"]
+                    return await _get_commit_status(merge_commit_sha, pipeline_timeout=pipeline_timeout)
+            elif merge_request["state"] == "closed":
+                logger.debug("Reconciliation status: merge request is closed, returning FAILED")
                 return ReconciliationStatus.FAILED
 
-            if merge_request["head_pipeline"] is not None and merge_request["head_pipeline"]["status"] in {
-                "failed",
-                "canceled",
-            }:
-                return ReconciliationStatus.FAILED
-
-            return ReconciliationStatus.PENDING
-        elif merge_request["state"] == "merged":
-            if merge_request["merge_commit_sha"] is not None:
-                merge_commit_sha = merge_request["merge_commit_sha"]
-                return await _get_commit_status(merge_commit_sha)
-        elif merge_request["state"] == "closed":
-            return ReconciliationStatus.FAILED
-
-        logger.error(
-            f"Incarnation '{incarnation_repository}' / '{target_directory}' has an unknown merge request status '{merge_request['state']}' for merge request '{merge_request_id}'"
-        )
-        return ReconciliationStatus.UNKNOWN
+            logger.error(
+                f"Incarnation '{incarnation_repository}' / '{target_directory}' has an unknown merge request status '{merge_request['state']}' for merge request '{merge_request_id}'"
+            )
+            return ReconciliationStatus.UNKNOWN
 
     async def get_commit_url(self, incarnation_repository: str, commit_sha: GitSha) -> str:
         return f"{self.web_address}/{incarnation_repository}/-/commit/{commit_sha}"
 
     async def get_merge_request_url(self, incarnation_repository: str, merge_request_id: str) -> str:
         return f"{self.web_address}/{incarnation_repository}/-/merge_requests/{merge_request_id}"
+
+    async def _has_gitlab_ci_configuration(self, incarnation_repository: str, ref: str) -> bool:
+        response = await self.client.head(
+            f"/projects/{quote_plus(incarnation_repository)}/repository/files/{quote_plus('.gitlab-ci.yml')}",
+            params={"ref": ref},
+        )
+        return response.status_code == HTTPStatus.OK

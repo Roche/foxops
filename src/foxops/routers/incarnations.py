@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from fastapi import APIRouter, Depends, Response, status
 
 from foxops.database import DAL
@@ -281,6 +283,7 @@ async def get_incarnation_with_details(incarnation: Incarnation, hoster: Hoster)
         incarnation.target_directory,
         incarnation.commit_sha,
         incarnation.merge_request_id,
+        pipeline_timeout=timedelta(minutes=1),
     )
 
     return IncarnationWithDetails(
