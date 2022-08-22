@@ -24,28 +24,36 @@ async def should_initialize_incarnation_in_root_of_empty_repository_when_creatin
     empty_incarnation_gitlab_repository: str,
     mocker: MockFixture,
 ):
+    # GIVEN
+    template_repository_version = "v1.0.0"
+    template_data = {"name": "Jon", "age": "18"}
+
     # WHEN
     response = await api_client.post(
         "/incarnations",
         json={
             "incarnation_repository": empty_incarnation_gitlab_repository,
             "template_repository": template_repository,
-            "template_repository_version": "v1.0.0",
-            "template_data": {"name": "Jon", "age": 18},
+            "template_repository_version": template_repository_version,
+            "template_data": template_data,
         },
     )
     response.raise_for_status()
     incarnation = response.json()
 
     # THEN
-    assert incarnation == {
-        "id": 1,
-        "incarnation_repository": empty_incarnation_gitlab_repository,
-        "target_directory": ".",
-        "status": "success",
-        "commit_url": mocker.ANY,
-        "merge_request_url": mocker.ANY,
-    }
+    assert incarnation["incarnation_repository"] == empty_incarnation_gitlab_repository
+    assert incarnation["target_directory"] == "."
+    assert incarnation["status"] == "success"
+    assert incarnation["template_repository"] == template_repository
+    assert incarnation["template_repository_version"] == template_repository_version
+    assert incarnation["template_data"] == template_data
+
+    assert incarnation["id"] == mocker.ANY
+    assert incarnation["commit_url"] == mocker.ANY
+    assert incarnation["merge_request_url"] == mocker.ANY
+    assert incarnation["template_repository_version_hash"] == mocker.ANY
+
     await assert_file_in_repository(
         gitlab_test_client,
         empty_incarnation_gitlab_repository,
@@ -88,14 +96,12 @@ async def should_initialize_incarnation_in_root_of_repository_with_fvars_file_wh
     incarnation = response.json()
 
     # THEN
-    assert incarnation == {
-        "id": 1,
-        "incarnation_repository": empty_incarnation_gitlab_repository,
-        "target_directory": ".",
-        "commit_url": mocker.ANY,
-        "merge_request_url": mocker.ANY,
-        "status": "success",
-    }
+    assert incarnation["incarnation_repository"] == empty_incarnation_gitlab_repository
+    assert incarnation["target_directory"] == "."
+    assert incarnation["status"] == "success"
+    assert incarnation["commit_url"] == mocker.ANY
+    assert incarnation["merge_request_url"] == mocker.ANY
+
     await assert_file_in_repository(
         gitlab_test_client,
         empty_incarnation_gitlab_repository,
@@ -138,14 +144,12 @@ async def should_initialize_incarnation_in_root_of_nonempty_incarnation_in_a_mer
     incarnation = response.json()
 
     # THEN
-    assert incarnation == {
-        "id": 1,
-        "incarnation_repository": empty_incarnation_gitlab_repository,
-        "target_directory": ".",
-        "commit_url": mocker.ANY,
-        "merge_request_url": mocker.ANY,
-        "status": "pending",
-    }
+    assert incarnation["incarnation_repository"] == empty_incarnation_gitlab_repository
+    assert incarnation["target_directory"] == "."
+    assert incarnation["status"] == "pending"
+    assert incarnation["commit_url"] == mocker.ANY
+    assert incarnation["merge_request_url"] == mocker.ANY
+
     merge_request_source_branch = await assert_initialization_merge_request_exists(
         gitlab_test_client, empty_incarnation_gitlab_repository
     )
@@ -193,14 +197,11 @@ async def should_initialize_incarnation_in_root_of_nonempty_incarnation_in_defau
     incarnation = response.json()
 
     # THEN
-    assert incarnation == {
-        "id": 1,
-        "incarnation_repository": empty_incarnation_gitlab_repository,
-        "target_directory": ".",
-        "commit_url": mocker.ANY,
-        "merge_request_url": mocker.ANY,
-        "status": "success",
-    }
+    assert incarnation["incarnation_repository"] == empty_incarnation_gitlab_repository
+    assert incarnation["target_directory"] == "."
+    assert incarnation["status"] == "success"
+    assert incarnation["commit_url"] == mocker.ANY
+    assert incarnation["merge_request_url"] == mocker.ANY
     await assert_file_in_repository(
         gitlab_test_client,
         empty_incarnation_gitlab_repository,
@@ -254,14 +255,11 @@ async def should_initialize_incarnation_in_root_of_nonempty_repository_with_fvar
     incarnation = response.json()
 
     # THEN
-    assert incarnation == {
-        "id": 1,
-        "incarnation_repository": empty_incarnation_gitlab_repository,
-        "target_directory": ".",
-        "commit_url": mocker.ANY,
-        "merge_request_url": mocker.ANY,
-        "status": "pending",
-    }
+    assert incarnation["incarnation_repository"] == empty_incarnation_gitlab_repository
+    assert incarnation["target_directory"] == "."
+    assert incarnation["status"] == "pending"
+    assert incarnation["commit_url"] == mocker.ANY
+    assert incarnation["merge_request_url"] == mocker.ANY
     merge_request_branch_name = await assert_initialization_merge_request_exists(
         gitlab_test_client, empty_incarnation_gitlab_repository
     )
@@ -321,14 +319,11 @@ async def should_initialize_incarnation_in_subdir_of_empty_repository_when_creat
     incarnation = response.json()
 
     # THEN
-    assert incarnation == {
-        "id": 1,
-        "incarnation_repository": empty_incarnation_gitlab_repository,
-        "target_directory": "subdir",
-        "commit_url": mocker.ANY,
-        "merge_request_url": mocker.ANY,
-        "status": "success",
-    }
+    assert incarnation["incarnation_repository"] == empty_incarnation_gitlab_repository
+    assert incarnation["target_directory"] == "subdir"
+    assert incarnation["status"] == "success"
+    assert incarnation["commit_url"] == mocker.ANY
+    assert incarnation["merge_request_url"] == mocker.ANY
     await assert_file_in_repository(
         gitlab_test_client,
         empty_incarnation_gitlab_repository,
@@ -372,22 +367,20 @@ async def should_initialize_incarnations_in_subdirs_of_empty_repository_when_cre
     subdir2_incarnation = subdir2_response.json()
 
     # THEN
-    assert subdir1_incarnation == {
-        "id": 1,
-        "incarnation_repository": empty_incarnation_gitlab_repository,
-        "target_directory": "subdir1",
-        "commit_url": mocker.ANY,
-        "merge_request_url": mocker.ANY,
-        "status": "success",
-    }
-    assert subdir2_incarnation == {
-        "id": 2,
-        "incarnation_repository": empty_incarnation_gitlab_repository,
-        "target_directory": "subdir2",
-        "commit_url": mocker.ANY,
-        "merge_request_url": mocker.ANY,
-        "status": "success",
-    }
+    assert subdir1_incarnation["id"] == 1
+    assert subdir1_incarnation["incarnation_repository"] == empty_incarnation_gitlab_repository
+    assert subdir1_incarnation["target_directory"] == "subdir1"
+    assert subdir1_incarnation["status"] == "success"
+    assert subdir1_incarnation["commit_url"] == mocker.ANY
+    assert subdir1_incarnation["merge_request_url"] == mocker.ANY
+
+    assert subdir2_incarnation["id"] == 2
+    assert subdir2_incarnation["incarnation_repository"] == empty_incarnation_gitlab_repository
+    assert subdir2_incarnation["target_directory"] == "subdir2"
+    assert subdir2_incarnation["status"] == "success"
+    assert subdir2_incarnation["commit_url"] == mocker.ANY
+    assert subdir2_incarnation["merge_request_url"] == mocker.ANY
+
     await assert_file_in_repository(
         gitlab_test_client,
         empty_incarnation_gitlab_repository,
@@ -424,14 +417,12 @@ async def should_create_merge_request_when_file_changed_during_update(
     incarnation = response.json()
 
     # THEN
-    assert incarnation == {
-        "id": 1,
-        "incarnation_repository": incarnation_repository,
-        "target_directory": ".",
-        "commit_url": mocker.ANY,
-        "merge_request_url": mocker.ANY,
-        "status": "pending",
-    }
+    assert incarnation["incarnation_repository"] == incarnation_repository
+    assert incarnation["target_directory"] == "."
+    assert incarnation["status"] == "pending"
+    assert incarnation["commit_url"] == mocker.ANY
+    assert incarnation["merge_request_url"] == mocker.ANY
+
     update_branch_name = await assert_update_merge_request_exists(gitlab_test_client, incarnation_repository)
     await assert_file_in_repository(
         gitlab_test_client,
@@ -475,14 +466,12 @@ async def should_create_merge_request_when_file_changed_with_fvars_during_update
     incarnation = response.json()
 
     # THEN
-    assert incarnation == {
-        "id": 1,
-        "incarnation_repository": incarnation_repository,
-        "target_directory": ".",
-        "commit_url": mocker.ANY,
-        "merge_request_url": mocker.ANY,
-        "status": "pending",
-    }
+    assert incarnation["incarnation_repository"] == incarnation_repository
+    assert incarnation["target_directory"] == "."
+    assert incarnation["status"] == "pending"
+    assert incarnation["commit_url"] == mocker.ANY
+    assert incarnation["merge_request_url"] == mocker.ANY
+
     update_branch_name = await assert_update_merge_request_exists(gitlab_test_client, incarnation_repository)
     await assert_file_in_repository(
         gitlab_test_client,
@@ -528,14 +517,12 @@ async def should_present_conflict_in_merge_request_when_updating(
     incarnation = response.json()
 
     # THEN
-    assert incarnation == {
-        "id": 1,
-        "incarnation_repository": incarnation_repository,
-        "target_directory": ".",
-        "commit_url": mocker.ANY,
-        "merge_request_url": mocker.ANY,
-        "status": "pending",
-    }
+    assert incarnation["incarnation_repository"] == incarnation_repository
+    assert incarnation["target_directory"] == "."
+    assert incarnation["status"] == "pending"
+    assert incarnation["commit_url"] == mocker.ANY
+    assert incarnation["merge_request_url"] == mocker.ANY
+
     await assert_update_merge_request_with_conflicts_exists(
         gitlab_test_client,
         incarnation_repository,
@@ -565,14 +552,12 @@ async def should_automerge_merge_request_when_flag_is_true(
     incarnation = response.json()
 
     # THEN
-    assert incarnation == {
-        "id": 1,
-        "incarnation_repository": incarnation_repository,
-        "target_directory": ".",
-        "commit_url": mocker.ANY,
-        "merge_request_url": mocker.ANY,
-        "status": "success",
-    }
+    assert incarnation["incarnation_repository"] == incarnation_repository
+    assert incarnation["target_directory"] == "."
+    assert incarnation["status"] == "success"
+    assert incarnation["commit_url"] == mocker.ANY
+    assert incarnation["merge_request_url"] == mocker.ANY
+
     await assert_file_in_repository(
         gitlab_test_client,
         incarnation_repository,
