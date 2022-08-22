@@ -1,7 +1,6 @@
 import copy
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import MutableMapping
 
 from pydantic import BaseModel, Field
 from ruamel.yaml import YAML
@@ -18,7 +17,7 @@ yaml.default_flow_style = False
 #: Holds the type for all `template_data` dictionary values
 TemplateDataValue = str | int | float
 #: Holds the type for all `template_data` dictionaries
-TemplateData = MutableMapping[str, TemplateDataValue]
+TemplateData = dict[str, TemplateDataValue]
 
 
 @dataclass(frozen=True)

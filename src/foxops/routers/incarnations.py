@@ -290,7 +290,9 @@ async def get_incarnation_with_details(incarnation: Incarnation, hoster: Hoster)
         status=reconciliation_status,
     )
 
-    incarnation_state = await hoster.get_incarnation_state(incarnation.incarnation_repository, incarnation.target_directory)
+    incarnation_state = await hoster.get_incarnation_state(
+        incarnation.incarnation_repository, incarnation.target_directory
+    )
     if incarnation_state is not None:
         state = incarnation_state[1]
         response.template_repository = state.template_repository
