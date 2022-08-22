@@ -46,12 +46,8 @@ def use_testing_gitconfig():
 
 
 @pytest.fixture(name="test_async_engine")
-async def test_async_engine(tmp_path: Path) -> AsyncGenerator[AsyncEngine, None]:
-    local_db_file = tmp_path / "unit-test.db"
-    test_database_url = f"sqlite+aiosqlite:///{str(local_db_file)}"
-
-    async_engine = create_async_engine(test_database_url, future=True, echo=False, pool_pre_ping=True)
-
+async def test_async_engine() -> AsyncGenerator[AsyncEngine, None]:
+    async_engine = create_async_engine("sqlite+aiosqlite://", future=True, echo=False, pool_pre_ping=True)
     yield async_engine
 
 
