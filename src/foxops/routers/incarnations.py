@@ -1,12 +1,7 @@
 from fastapi import APIRouter, Depends, Response, status
 
 from foxops.database import DAL
-from foxops.dependencies import (
-    get_dal,
-    get_hoster,
-    get_reconciliation,
-    static_token_auth_scheme,
-)
+from foxops.dependencies import get_dal, get_hoster, get_reconciliation
 from foxops.errors import (
     IncarnationAlreadyInitializedError,
     IncarnationNotFoundError,
@@ -24,14 +19,14 @@ from foxops.models import (
 from foxops.models.errors import ApiError
 
 #: Holds the router for the incarnations API endpoints
-router = APIRouter(prefix="/api/incarnations", tags=["incarnations"], dependencies=[Depends(static_token_auth_scheme)])
+router = APIRouter(prefix="/api/incarnations", tags=["incarnations"])
 
 #: Holds the logger for these routes
 logger = get_logger(__name__)
 
 
 @router.get(
-    "/",
+    "",
     responses={
         status.HTTP_200_OK: {
             "description": "The list of incarnations in the inventory",
@@ -73,7 +68,7 @@ async def list_incarnations(
 
 
 @router.post(
-    "/",
+    "",
     responses={
         status.HTTP_200_OK: {
             "description": "The incarnation is already initialized and was imported to the inventory. Only applicable with `allow_import=True`.",
