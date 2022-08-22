@@ -8,7 +8,6 @@ from foxops.external.git import (
 )
 
 
-@pytest.mark.asyncio
 async def test_git_exec_throws_exception_on_nonzero_exit_code():
     # WHEN
     git_args = ["--invalid-flag"]
@@ -18,7 +17,6 @@ async def test_git_exec_throws_exception_on_nonzero_exit_code():
         await git_exec(*git_args)
 
 
-@pytest.mark.asyncio
 async def test_has_any_commits_returns_false_if_there_are_no_commits(tmp_path):
     # GIVEN
     repo = GitRepository(tmp_path)
@@ -31,7 +29,6 @@ async def test_has_any_commits_returns_false_if_there_are_no_commits(tmp_path):
     assert result is False
 
 
-@pytest.mark.asyncio
 async def test_has_any_commits_returns_true_if_there_are_commits(tmp_path):
     # GIVEN
     (tmp_path / "testfile").write_text("hello")

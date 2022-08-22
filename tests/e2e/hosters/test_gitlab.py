@@ -75,7 +75,6 @@ async def create_test_gitlab_hoster(gitlab_test_address: str, gitlab_test_user_t
     return GitLab(gitlab_test_address, gitlab_test_user_token)
 
 
-@pytest.mark.asyncio
 async def should_return_success_reconciliation_status_for_default_branch_commit_without_pipeline(
     test_gitlab_hoster: Hoster, test_repository: RepositoryTestData
 ):
@@ -91,7 +90,6 @@ async def should_return_success_reconciliation_status_for_default_branch_commit_
     assert status == ReconciliationStatus.SUCCESS
 
 
-@pytest.mark.asyncio
 async def should_return_pending_reconciliation_status_for_default_branch_commit_with_pending_pipeline(
     test_gitlab_hoster: Hoster, test_repository: RepositoryTestData
 ):
@@ -112,7 +110,6 @@ async def should_return_pending_reconciliation_status_for_default_branch_commit_
     assert status == ReconciliationStatus.PENDING
 
 
-@pytest.mark.asyncio
 async def should_return_pending_reconciliation_status_for_open_merge_request(
     test_gitlab_hoster: Hoster, gitlab_test_client: AsyncClient, test_repository: RepositoryTestData
 ):
@@ -140,7 +137,6 @@ async def should_return_pending_reconciliation_status_for_open_merge_request(
     assert status == ReconciliationStatus.PENDING
 
 
-@pytest.mark.asyncio
 async def should_return_success_reconciliation_status_for_merged_merge_request_without_pipeline_in_target_branch(
     test_gitlab_hoster: Hoster, gitlab_test_client: AsyncClient, test_repository: RepositoryTestData
 ):
@@ -182,7 +178,6 @@ async def should_return_success_reconciliation_status_for_merged_merge_request_w
     assert status == ReconciliationStatus.SUCCESS
 
 
-@pytest.mark.asyncio
 async def should_return_failed_reconciliation_status_for_closed_merge_request(
     test_gitlab_hoster: Hoster, gitlab_test_client: AsyncClient, test_repository: RepositoryTestData
 ):

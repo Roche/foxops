@@ -1,9 +1,7 @@
-import pytest
 from fastapi import FastAPI, status
 from httpx import AsyncClient
 
 
-@pytest.mark.asyncio
 async def should_err_if_authorization_header_is_missing(app: FastAPI):
     # WHEN
     async with AsyncClient(app=app, base_url="http://test", follow_redirects=True) as client:
@@ -14,7 +12,6 @@ async def should_err_if_authorization_header_is_missing(app: FastAPI):
     assert response.json() == {"detail": "Missing Authorization header"}
 
 
-@pytest.mark.asyncio
 async def should_err_if_authorization_header_is_empty(app: FastAPI):
     # WHEN
     async with AsyncClient(app=app, base_url="http://test", follow_redirects=True) as client:
@@ -25,7 +22,6 @@ async def should_err_if_authorization_header_is_empty(app: FastAPI):
     assert response.json() == {"detail": "Missing Authorization header"}
 
 
-@pytest.mark.asyncio
 async def should_err_if_authorization_header_is_not_bearer(app: FastAPI):
     # WHEN
     async with AsyncClient(app=app, base_url="http://test", follow_redirects=True) as client:
@@ -36,7 +32,6 @@ async def should_err_if_authorization_header_is_not_bearer(app: FastAPI):
     assert response.json() == {"detail": "Authorization header must start with 'Bearer ' followed by the token"}
 
 
-@pytest.mark.asyncio
 async def should_err_if_authorization_header_is_empty_bearer(app: FastAPI):
     # WHEN
     async with AsyncClient(app=app, base_url="http://test", follow_redirects=True) as client:
@@ -47,7 +42,6 @@ async def should_err_if_authorization_header_is_empty_bearer(app: FastAPI):
     assert response.json() == {"detail": "Authorization header must start with 'Bearer ' followed by the token"}
 
 
-@pytest.mark.asyncio
 async def should_err_if_authorization_header_is_missing_bearer_token(app: FastAPI):
     # WHEN
     async with AsyncClient(app=app, base_url="http://test", follow_redirects=True) as client:
@@ -58,7 +52,6 @@ async def should_err_if_authorization_header_is_missing_bearer_token(app: FastAP
     assert response.json() == {"detail": "Authorization header must start with 'Bearer ' followed by the token"}
 
 
-@pytest.mark.asyncio
 async def should_err_if_token_is_wrong(app: FastAPI):
     # WHEN
     async with AsyncClient(app=app, base_url="http://test", follow_redirects=True) as client:
@@ -69,7 +62,6 @@ async def should_err_if_token_is_wrong(app: FastAPI):
     assert response.json() == {"detail": "Token is invalid"}
 
 
-@pytest.mark.asyncio
 async def should_allow_access_if_token_is_correct(app: FastAPI, static_api_token: str):
     # WHEN
     async with AsyncClient(app=app, base_url="http://test", follow_redirects=True) as client:

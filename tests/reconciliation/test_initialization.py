@@ -15,7 +15,6 @@ from foxops.models import DesiredIncarnationState
 from foxops.reconciliation import initialize_incarnation
 
 
-@pytest.mark.asyncio
 async def should_err_if_incarnation_repository_does_not_exist(mocker: MockFixture, test_dis: DesiredIncarnationState):
     # GIVEN
     hoster = mocker.MagicMock(spec=Hoster)
@@ -28,7 +27,6 @@ async def should_err_if_incarnation_repository_does_not_exist(mocker: MockFixtur
         await initialize_incarnation(hoster, test_dis)
 
 
-@pytest.mark.asyncio
 async def should_err_if_incarnation_is_already_initialized(mocker: MockFixture, test_dis: DesiredIncarnationState):
     # GIVEN
     hoster = mocker.MagicMock(spec=Hoster)
@@ -49,7 +47,6 @@ async def should_err_if_incarnation_is_already_initialized(mocker: MockFixture, 
         await initialize_incarnation(hoster, test_dis)
 
 
-@pytest.mark.asyncio
 async def should_err_if_incarnation_is_already_initialized_reporting_a_config_mismatch(
     mocker: MockFixture, test_dis: DesiredIncarnationState
 ):
@@ -74,7 +71,6 @@ async def should_err_if_incarnation_is_already_initialized_reporting_a_config_mi
     assert exc.value.has_mismatch is True
 
 
-@pytest.mark.asyncio
 async def should_err_if_incarnation_is_already_initialized_reporting_no_config_mismatch(
     mocker: MockFixture, test_dis: DesiredIncarnationState
 ):
@@ -99,7 +95,6 @@ async def should_err_if_incarnation_is_already_initialized_reporting_no_config_m
     assert exc.value.has_mismatch is False
 
 
-@pytest.mark.asyncio
 async def should_initialize_incarnation_without_merge_request(
     mocker: MockFixture,
     test_dis: DesiredIncarnationState,
@@ -126,7 +121,6 @@ async def should_initialize_incarnation_without_merge_request(
     assert (test_empty_incarnation_repository.directory / test_dis.target_directory / "README.md").exists()
 
 
-@pytest.mark.asyncio
 async def should_initialize_incarnation_with_merge_request(
     mocker: MockFixture,
     test_dis: DesiredIncarnationState,
@@ -163,7 +157,6 @@ async def should_initialize_incarnation_with_merge_request(
     assert merge_request_called.get()
 
 
-@pytest.mark.asyncio
 async def should_not_initialize_with_merge_request_if_branch_is_pending(
     mocker: MockFixture,
     test_dis: DesiredIncarnationState,
@@ -199,7 +192,6 @@ async def should_not_initialize_with_merge_request_if_branch_is_pending(
     hoster.merge_request.assert_not_called()
 
 
-@pytest.mark.asyncio
 async def should_err_if_fengine_initialization_fails(
     mocker: MockFixture,
     test_dis: DesiredIncarnationState,

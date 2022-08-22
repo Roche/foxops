@@ -26,7 +26,6 @@ def supports_symlink_permissions():
             return True
 
 
-@pytest.mark.asyncio
 async def test_rendering_a_template_file_renders_data_in_file_content(tmp_path: Path):
     # GIVEN
     template_file = tmp_path / "template.txt"
@@ -49,7 +48,6 @@ async def test_rendering_a_template_file_renders_data_in_file_content(tmp_path: 
     assert (incarnation_dir / "template.txt").read_text() == "Hello World"
 
 
-@pytest.mark.asyncio
 async def test_rendering_a_template_file_with_invalid_templating_syntax_raises_exception(
     tmp_path: Path,
 ):
@@ -73,7 +71,6 @@ async def test_rendering_a_template_file_with_invalid_templating_syntax_raises_e
         )
 
 
-@pytest.mark.asyncio
 async def test_rendering_a_template_file_renders_data_in_filename(tmp_path: Path):
     # GIVEN
     template_file = tmp_path / "template-{{ idx }}.txt"
@@ -96,7 +93,6 @@ async def test_rendering_a_template_file_renders_data_in_filename(tmp_path: Path
     assert (incarnation_dir / "template-42.txt").exists()
 
 
-@pytest.mark.asyncio
 async def test_rendering_a_template_file_renders_data_in_entire_filepath(
     tmp_path: Path,
 ):
@@ -122,7 +118,6 @@ async def test_rendering_a_template_file_renders_data_in_entire_filepath(
     assert (incarnation_dir / "project-jon" / "tests" / "template-42.txt").exists()
 
 
-@pytest.mark.asyncio
 async def test_rendering_a_template_symlink_renders_data_in_filename(tmp_path: Path):
     # GIVEN
     template_symlink = tmp_path / "template-symlink-{{ idx }}"
@@ -140,7 +135,6 @@ async def test_rendering_a_template_symlink_renders_data_in_filename(tmp_path: P
     assert (incarnation_dir / "template-symlink-42").readlink() == Path("template.txt")
 
 
-@pytest.mark.asyncio
 async def test_rendering_a_template_symlink_renders_data_in_target_filename(
     tmp_path: Path,
 ):
@@ -160,7 +154,6 @@ async def test_rendering_a_template_symlink_renders_data_in_target_filename(
     assert (incarnation_dir / "template-symlink").readlink() == Path("symlink-target-42.txt")
 
 
-@pytest.mark.asyncio
 async def test_rendering_an_entire_template_directory_with_excluded_file(
     tmp_path: Path,
 ):
@@ -190,7 +183,6 @@ async def test_rendering_an_entire_template_directory_with_excluded_file(
     assert (incarnation_dir / "code.c").read_text() == "Hello World"
 
 
-@pytest.mark.asyncio
 async def test_rendering_an_entire_template_directory_with_excluded_file_in_rendered_subdir(
     tmp_path: Path,
 ):
@@ -222,7 +214,6 @@ async def test_rendering_an_entire_template_directory_with_excluded_file_in_rend
     assert (incarnation_dir / "code.c").read_text() == "Hello World"
 
 
-@pytest.mark.asyncio
 async def test_rendering_an_entire_template_directory(tmp_path: Path):
     # GIVEN
     template_dir = tmp_path / "template"
@@ -259,7 +250,6 @@ async def test_rendering_an_entire_template_directory(tmp_path: Path):
     assert (incarnation_dir / "test_code-symlink").readlink() == Path("tests/jon/test_code.c")
 
 
-@pytest.mark.asyncio
 async def test_rendering_a_template_file_inherits_file_permissions(tmp_path: Path):
     # GIVEN
     template_file = tmp_path / "template.txt"
@@ -286,7 +276,6 @@ async def test_rendering_a_template_file_inherits_file_permissions(tmp_path: Pat
     not supports_symlink_permissions(),
     reason="Platform doesn't support setting symlink permissions",
 )
-@pytest.mark.asyncio
 async def test_rendering_a_template_symlink_inherits_file_permissions(tmp_path: Path):
     # GIVEN
     template_file = tmp_path / "template.txt"
@@ -330,7 +319,6 @@ async def test_rendering_a_template_symlink_inherits_file_permissions(tmp_path: 
     )
 
 
-@pytest.mark.asyncio
 async def test_rendering_a_template_directory_inherits_file_permissions(tmp_path: Path):
     # GIVEN
     template_dir = tmp_path / "template"
