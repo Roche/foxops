@@ -21,7 +21,8 @@ export const THEMES: Record<ThemeMode, Theme> = {
       iconButtonCurtain: '#d2d2d2',
       iconButtonBorder: '#d2d2d2',
       iconButtonColor: '#363636',
-      grey: '#d2d2d2'
+      grey: '#d2d2d2',
+      darkGrey: '#929292'
     },
     effects: {
       orangeGradient: 'linear-gradient(130deg, #EA6E00, #FFAC63)',
@@ -43,7 +44,8 @@ export const THEMES: Record<ThemeMode, Theme> = {
       iconButtonCurtain: '#4e4e4e',
       iconButtonBorder: '#cfcfcf',
       iconButtonColor: '#fff',
-      grey: '#d2d2d2'
+      grey: '#d2d2d2',
+      darkGrey: '#929292'
     },
     effects: {
       orangeGradient: 'linear-gradient(130deg, #EA6E00, #ae5718)',

@@ -1,18 +1,28 @@
 import styled from '@emotion/styled'
 
-export const ButtonBox = styled.button(({ theme }) => ({
+interface ButtonBoxProps {
+  size?: 'small'
+}
+
+const ButtonBox = styled('button')<ButtonBoxProps>(({ theme, size, disabled }) => ({
+  textDecoration: 'none',
   color: '#fff',
   border: 'none',
-  display: 'block',
-  height: '40px',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  height: size === 'small' ? '30px' : '40px',
+  fontSize: size === 'small' ? '12px' : '16px',
   borderRadius: 4,
-  background: theme.effects.orangeGradient,
+  background: disabled ? theme.colors.darkGrey : theme.effects.orangeGradient,
   position: 'relative',
   overflow: 'hidden',
-  paddingLeft: 20,
-  paddingRight: 20,
-  '::after': {
-    content: '""',
+  paddingLeft: size === 'small' ? 8 : 16,
+  paddingRight: size === 'small' ? 8 : 16,
+  cursor: disabled ? 'not-allowed' : 'pointer',
+  opacity: disabled ? 0.7 : 1,
+  ':not(:disabled)::after': {
+    content: disabled ? undefined : '""',
     position: 'absolute',
     top: 0,
     left: 0,
@@ -36,15 +46,35 @@ export const ButtonBox = styled.button(({ theme }) => ({
   ':focus': {
     outline: 'none',
     boxShadow: `0 0 0 2px ${theme.colors.paleOrange}`
+  },
+  ':disabled': {
+    background: theme.colors.darkGrey,
+    opacity: 0.7,
+    cursor: 'not-allowed'
   }
 }))
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  children: React.ReactNode
+  children: React.ReactNode,
+  size?: 'small'
 }
 
 export const Button = ({ children, ...props }: ButtonProps) => (
   <ButtonBox {...props}>
     <span>{children}</span>
   </ButtonBox>
+)
+
+interface ButtonLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
+  children: React.ReactNode,
+  size?: 'small',
+  disabled?: boolean
+}
+
+const ButtonLinkBox = ButtonBox.withComponent('a')
+
+export const ButtonLink = ({ children, ...props }: ButtonLinkProps) => (
+  <ButtonLinkBox {...props} {...props}>
+    <span>{children}</span>
+  </ButtonLinkBox>
 )

@@ -8,7 +8,7 @@ interface IncarnationApiView {
   merge_request_url: null | string
 }
 
-interface Incarnation {
+export interface Incarnation {
   id: number,
   incarnationRepository: string,
   targetDirectory: string,

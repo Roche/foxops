@@ -15,7 +15,6 @@ export const useAuthStore = create<AuthStore>()(
     }),
     {
       name: STORAGE_KEYS.AUTH,
-      getStorage: () => sessionStorage,
       partialize: state => ({ token: state.token })
     }
   )

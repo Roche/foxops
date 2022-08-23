@@ -14,7 +14,8 @@ declare module '@emotion/react' {
       iconButtonCurtain: string,
       iconButtonBorder: string,
       iconButtonColor: string,
-      grey: string
+      grey: string,
+      darkGrey: string
     },
     effects: {
       orangeGradient: string
