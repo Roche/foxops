@@ -27,7 +27,7 @@ interface TextFieldProps {
   value?: string,
   onChange?: React.ChangeEventHandler<HTMLTextAreaElement | HTMLInputElement>,
   autoFocus?: boolean,
-  type?: 'text' | 'textarea',
+  type?: 'text' | 'textarea' | 'search',
   rows?: number,
   defaultValue?: string,
 }
@@ -38,17 +38,18 @@ export const TextField = ({
   value,
   onChange,
   autoFocus,
-  type = 'text',
+  type: _type = 'text',
   rows = 3,
   ...rest
 }: TextFieldProps) => {
-  const Component = type === 'textarea' ? TextareaComponent : InputComponent
+  const Component = _type === 'textarea' ? TextareaComponent : InputComponent
+  const type = _type === 'textarea' ? undefined : _type
   return (
     <Component
       data-testid="TextField"
       rows={rows}
       className="TextField"
-      type="text"
+      type={type}
       defaultValue={defaultValue}
       value={value}
       onChange={onChange}

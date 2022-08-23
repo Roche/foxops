@@ -13,6 +13,9 @@ export const IconButton = styled('button')<IconButtonProps>(({ theme, active }) 
   position: 'relative',
   overflow: 'hidden',
   cursor: 'pointer',
+  width: 38,
+  minWidth: 38,
+  maxWidth: 38,
   svg: {
     verticalAlign: 'middle',
     position: 'relative',
