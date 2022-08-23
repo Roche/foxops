@@ -20,6 +20,7 @@ const ButtonBox = styled('button')<ButtonBoxProps>(({ theme, size, disabled }) =
   paddingLeft: size === 'small' ? 8 : 16,
   paddingRight: size === 'small' ? 8 : 16,
   cursor: disabled ? 'not-allowed' : 'pointer',
+  opacity: disabled ? 0.7 : 1,
   ':not(:disabled)::after': {
     content: disabled ? undefined : '""',
     position: 'absolute',
