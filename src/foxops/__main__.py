@@ -72,6 +72,7 @@ def create_app():
     for frontend_dir in FRONTEND_SUBDIRS:
         path = settings.frontend_dist_dir / frontend_dir
         if not path.exists():
+            logger.warning(f"The static asset path at {path} does not exist, skipping ...")
             continue
 
         app.mount(
