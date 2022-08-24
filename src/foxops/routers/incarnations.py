@@ -285,11 +285,22 @@ async def get_incarnation_with_details(incarnation: Incarnation, hoster: Hoster)
         incarnation.merge_request_id,
         pipeline_timeout=timedelta(minutes=1),
     )
-
-    return IncarnationWithDetails(
+    response = IncarnationWithDetails(
         **(await get_incarnation_basic(incarnation, hoster)).dict(),
         status=reconciliation_status,
     )
+
+    incarnation_state = await hoster.get_incarnation_state(
+        incarnation.incarnation_repository, incarnation.target_directory
+    )
+    if incarnation_state is not None:
+        state = incarnation_state[1]
+        response.template_repository = state.template_repository
+        response.template_repository_version = state.template_repository_version
+        response.template_repository_version_hash = state.template_repository_version_hash
+        response.template_data = state.template_data
+
+    return response
 
 
 async def get_incarnation_basic(incarnation: Incarnation, hoster: Hoster) -> IncarnationBasic:
