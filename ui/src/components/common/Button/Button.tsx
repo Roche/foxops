@@ -1,7 +1,8 @@
 import styled from '@emotion/styled'
 
+type Size = 'small' | 'large'
 interface ButtonBoxProps {
-  size?: 'small'
+  size?: Size
 }
 
 const ButtonBox = styled('button')<ButtonBoxProps>(({ theme, size, disabled }) => ({
@@ -11,7 +12,7 @@ const ButtonBox = styled('button')<ButtonBoxProps>(({ theme, size, disabled }) =
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  height: size === 'small' ? '30px' : '40px',
+  height: size === 'small' ? '30px' : '38px',
   fontSize: size === 'small' ? '12px' : '16px',
   borderRadius: 4,
   background: disabled ? theme.colors.darkGrey : theme.effects.orangeGradient,
@@ -56,7 +57,7 @@ const ButtonBox = styled('button')<ButtonBoxProps>(({ theme, size, disabled }) =
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode,
-  size?: 'small'
+  size?: Size
 }
 
 export const Button = ({ children, ...props }: ButtonProps) => (
@@ -67,14 +68,14 @@ export const Button = ({ children, ...props }: ButtonProps) => (
 
 interface ButtonLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
   children: React.ReactNode,
-  size?: 'small',
+  size?: Size
   disabled?: boolean
 }
 
 const ButtonLinkBox = ButtonBox.withComponent('a')
 
 export const ButtonLink = ({ children, ...props }: ButtonLinkProps) => (
-  <ButtonLinkBox {...props} {...props}>
+  <ButtonLinkBox {...props}>
     <span>{children}</span>
   </ButtonLinkBox>
 )

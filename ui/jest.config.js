@@ -10,5 +10,8 @@ module.exports = {
   coverageDirectory: '<rootDir>/../coverage',
   moduleNameMapper: {
     '\\.(css|less|scss)$': '<rootDir>/support/style-mock.ts'
+  },
+  transform: {
+    '^.+\\.js$': 'babel-jest'
   }
 }

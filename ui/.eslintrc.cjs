@@ -183,6 +183,7 @@ module.exports = {
     ],
     'quote-props': ['error', 'as-needed'],
     'object-shorthand': 'error',
-    'react/react-in-jsx-scope': 'off'
+    'react/react-in-jsx-scope': 'off',
+    'react/prop-types': 'off'
   }
 }

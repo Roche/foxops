@@ -7,6 +7,7 @@ import { Login } from './routes/login/Login'
 import { createGlobalStyles } from './global-styles'
 import { useThemeModeStore } from './stores/theme-mode'
 import { THEMES } from './styling/themes'
+import { IncarnationsCreateForm } from './routes/incarnations/CreateForm'
 
 const queryClient = new QueryClient()
 
@@ -22,6 +23,7 @@ function App() {
           <Routes>
             <Route path="*" element={<EnterScreen />}>
               <Route path="incarnations" element={<IncarnationsList />} />
+              <Route path="incarnations/create" element={<IncarnationsCreateForm />} />
             </Route>
             <Route path="/login" element={<Login />} />
           </Routes>

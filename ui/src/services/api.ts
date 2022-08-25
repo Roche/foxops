@@ -7,7 +7,7 @@ interface MakeRequestOptions<Req, Res> {
 }
 
 type MakeRequestFunc = <Req, Res>(options: MakeRequestOptions<Req, Res>) => Promise<Res>
-type RequestFunc = <Req, Res>(options: Omit<MakeRequestOptions<Req, Res>, 'method'>) => Promise<Res>
+type RequestFunc = <Req, Res>(url: string, options?: Omit<MakeRequestOptions<Req, Res>, 'method' | 'url'>) => Promise<Res>
 
 interface API {
   token: string | null,
@@ -55,13 +55,18 @@ export const api: API = {
 
     // handle response
     const result = await response.json()
+    if (!response.ok) {
+      throw result
+    }
     return result as Res
   },
-  get: <Req, Res>(options: Omit<MakeRequestOptions<Req, Res>, 'method'>): Promise<Res> => api.makeRequest({
+  get: <Req, Res>(url: string, options: Omit<MakeRequestOptions<Req, Res>, 'method' | 'url'> = {}): Promise<Res> => api.makeRequest({
+    url,
     ...options,
     method: 'GET'
   }),
-  post: <Req, Res>(options: Omit<MakeRequestOptions<Req, Res>, 'method'>): Promise<Res> => api.makeRequest({
+  post: <Req, Res>(url: string, options: Omit<MakeRequestOptions<Req, Res>, 'method' | 'url'> = {}): Promise<Res> => api.makeRequest({
+    url,
     ...options,
     method: 'POST'
   })

@@ -84,7 +84,7 @@ export const Aside = () => {
   return (
     <Box className="Aside-Box">
       <Container expanded={expanded} onMouseEnter={() => setExpanded(true)} onMouseLeave={() => setExpanded(false)}> {/* the expand/collapse thing with border that works like a drawer */}
-        <div>
+        <Hug> {/* the thing that holds buttons */}
           <Hug mb={8}>
             <AsideButton to="/incarnations">
               <Hug as="span" ml={4}>
@@ -95,15 +95,7 @@ export const Aside = () => {
               </Hug>
             </AsideButton>
           </Hug>
-          {/* <AsideButton active={active === 1} onClick={() => setActive(1)}>
-            <Hug as="span" ml={4}>
-              <DNA />
-            </Hug>
-            <Hug as="span" ml={16}>
-              Something else
-            </Hug>
-          </AsideButton> */}
-        </div> {/* the thing that holds buttons  */}
+        </Hug>
       </Container>
     </Box>
   )
