@@ -7,7 +7,7 @@ from foxops.engine import initialize_incarnation
 from foxops.errors import ReconciliationUserError
 
 
-async def init_repository(repository_dir: Path) -> None:
+async def init_repository(repository_dir: Path) -> str:
     await utils.check_call("git", "init", cwd=repository_dir)
     await utils.check_call("git", "config", "user.name", "test", cwd=repository_dir)
     await utils.check_call("git", "config", "user.email", "test@test.com", cwd=repository_dir)
