@@ -564,3 +564,28 @@ async def should_automerge_merge_request_when_flag_is_true(
         "README.md",
         "Hello Jon, age: 18",
     )
+
+
+async def should_err_initialize_incarnation_if_template_repository_version_does_not_exist(
+    api_client: AsyncClient,
+    template_repository: str,
+    empty_incarnation_gitlab_repository: str,
+):
+    # GIVEN
+    template_repository_version = "vNon-existing"
+    template_data = {"name": "Jon", "age": "18"}
+
+    # WHEN
+    response = await api_client.post(
+        "/incarnations",
+        json={
+            "incarnation_repository": empty_incarnation_gitlab_repository,
+            "template_repository": template_repository,
+            "template_repository_version": template_repository_version,
+            "template_data": template_data,
+        },
+    )
+
+    # THEN
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert "Revision 'vNon-existing' not found" in response.json()["message"]

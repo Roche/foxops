@@ -1,27 +1,51 @@
 import asyncio
+import re
 from pathlib import Path
 from urllib.parse import quote, urlparse, urlunparse
 
-from foxops.errors import FoxopsError, RetryableError
+from foxops.errors import FoxopsError, FoxopsUserError, RetryableError
 from foxops.utils import CalledProcessError, check_call
-
-GIT_REBASE_REQUIRED_ERROR_MESSAGE = (
-    b"hint: Updates were rejected because the remote contains work that you do\n" b"hint: not have locally."
-)
 
 
 class GitError(FoxopsError):
     """Error raised when a call to git fails."""
 
     def __init__(self, message=None):
-        super().__init__(message if message else "Git failed with an unexpected non-zero exit code.")
+        super().__init__(f"Git failed with an unexpected non-zero exit code: '{message}'")
+
+
+class RebaseRequiredError(GitError, RetryableError):
+    """Error raised when a git fails due to a rebase being required."""
+
+    def __init__(self):
+        super().__init__("Rebase is required. Retrying may resolve the issue.")
+
+
+class RevisionNotFoundError(GitError, FoxopsUserError):
+    """Error raised when a git fails due to a revision not being found."""
+
+    def __init__(self, ref: bytes):
+        super().__init__(f"Revision '{ref.decode('utf-8')}' not found.")
+
+
+GIT_ERROR_ORACLE = {
+    re.compile(
+        rb"hint: Updates were rejected because the remote contains work that you do\n" rb"hint: not have locally."
+    ): RebaseRequiredError,
+    re.compile(rb"fatal: couldn't find remote ref (?P<ref>.*?)\n"): RevisionNotFoundError,
+}
 
 
 async def git_exec(*args, **kwargs) -> asyncio.subprocess.Process:
     try:
         return await check_call("git", *args, **kwargs)
     except CalledProcessError as exc:
-        raise GitError() from exc
+        if oracle_hit_exc := next(
+            (e(**m.groupdict()) for p, e in GIT_ERROR_ORACLE.items() if (m := p.search(exc.stderr))), None
+        ):
+            raise oracle_hit_exc from exc
+
+        raise GitError(message=exc.stderr) from exc
 
 
 def add_authentication_to_git_clone_url(source: str, username: str, password: str):
@@ -115,15 +139,6 @@ class GitRepository:
             raise GitError()
 
         return await self.head()
-
-    async def push_with_potential_retry(self) -> str:
-        try:
-            return await self.push()
-        except GitError as exc:
-            if isinstance(exc.__cause__, CalledProcessError):
-                if GIT_REBASE_REQUIRED_ERROR_MESSAGE in exc.__cause__.stderr:
-                    raise RetryableError("new commits on the target branch, need to retry") from exc
-            raise exc
 
     async def head(self) -> str:
         proc = await self._run("rev-parse", "HEAD")

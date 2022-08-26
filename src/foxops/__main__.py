@@ -10,6 +10,7 @@ from foxops.dependencies import (
     get_settings,
     static_token_auth_scheme,
 )
+from foxops.error_handlers import __error_handlers__
 from foxops.logger import get_logger, setup_logging
 from foxops.middlewares import request_id_middleware, request_time_middleware
 from foxops.openapi import custom_openapi
@@ -54,6 +55,10 @@ def create_app():
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Add exception handlers
+    for exc_type, handler in __error_handlers__.items():
+        app.add_exception_handler(exc_type, handler)  # type: ignore
 
     # Add routes to the publicly available router (no authentication)
     public_router = APIRouter()
