@@ -72,17 +72,19 @@ export const IncarnationsList = () => {
             </td>
             <td>{x.targetDirectory}</td>
             <td>
-              <ButtonLink size="small" target="_blank" disabled={!x.commitUrl} href={x.commitUrl} title={x.commitUrl}>
-                <Hug as="span" mr={4}>Commit</Hug>
-                <Commit />
-              </ButtonLink>
-              <Hug as="span" ml={4}>
-                <ButtonLink size="small" target="_blank" disabled={!x.mergeRequestUrl} href={x.mergeRequestUrl ?? undefined} title={x.mergeRequestUrl ?? undefined}>
-                  <Hug as="span" flex={['aic', 'jcsb']}>
-                    <Hug as="span" mr={4}>Merge request</Hug>
-                    <MergeRequest />
-                  </Hug>
+              <Hug flex>
+                <ButtonLink size="small" target="_blank" disabled={!x.commitUrl} href={x.commitUrl} title={x.commitUrl}>
+                  <Hug as="span" mr={4}>Commit</Hug>
+                  <Commit />
                 </ButtonLink>
+                <Hug ml={4}>
+                  <ButtonLink size="small" target="_blank" disabled={!x.mergeRequestUrl} href={x.mergeRequestUrl ?? undefined} title={x.mergeRequestUrl ?? undefined}>
+                    <Hug as="span" flex={['aic', 'jcsb']}>
+                      <Hug as="span" mr={4}>Merge request</Hug>
+                      <MergeRequest />
+                    </Hug>
+                  </ButtonLink>
+                </Hug>
               </Hug>
             </td>
           </tr>
