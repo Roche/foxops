@@ -25,7 +25,7 @@ const Table = styled.table(({ theme }) => ({
     textAlign: 'left',
     position: 'sticky',
     background: theme.colors.baseBg,
-    zIndex: 1,
+    zIndex: 3,
     top: -16 // padding of Content component
   },
   'tr:last-child td': {

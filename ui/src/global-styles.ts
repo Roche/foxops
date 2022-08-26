@@ -33,8 +33,12 @@ export const createGlobalStyles = ({
     vertical-align: middle;
   }
   a {
-    color: ${colors.orange}
+    color: ${colors.text}
   }
+  a:hover {
+    text-decoration: none;
+  }
+  
   @keyframes toolbar-progress {
     0% {
       transform: scaleX(0);

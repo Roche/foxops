@@ -61,6 +61,12 @@ test('Hug:createOffsetProp: creates a margin or padding prop', () => {
     right: 1
   })
   expect(result).toEqual({ paddingTop: '2px', paddingBottom: '2px', paddingRight: '1px' })
+  result = createOffsetProp({
+    name: 'margin' as OffsetPropName,
+    vertical: 0,
+    horizontal: 'auto'
+  })
+  expect(result).toEqual({ margin: '0px auto' })
 })
 
 test('Hug:createFlexOptions should create appropriate CSS flex value', () => {
@@ -89,4 +95,5 @@ test('Hug:createWidthOptions should create CSS width related props', () => {
   expect(createWidthOptions({ allw: '50%' })).toEqual({ width: '50%', minWidth: '50%', maxWidth: '50%' })
   expect(createWidthOptions({ w: '50%' })).toEqual({ width: '50%' })
   expect(createWidthOptions({ miw: 50, maw: '50%' })).toEqual({ minWidth: '50px', maxWidth: '50%' })
+  expect(createWidthOptions({ maw: '50vh', miw: 'unset', w: 'inherit' })).toEqual({ minWidth: 'unset', maxWidth: '50vh', width: 'inherit' })
 })

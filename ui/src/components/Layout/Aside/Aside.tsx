@@ -22,7 +22,9 @@ const Container = styled.div<ContainerProps>(({ theme, expanded }) => ({
   height: '100%',
   width: expanded ? 200 : 57,
   transition: 'width 0.1s',
-  transitionTimingFunction: expanded ? 'var(--ease-in)' : 'var(--ease-out)'
+  transitionTimingFunction: expanded ? 'var(--ease-in)' : 'var(--ease-out)',
+  display: 'flex',
+  flexDirection: 'column'
 }))
 
 const AsideButton = styled(NavLink)(({ theme }) => ({
@@ -95,6 +97,9 @@ export const Aside = () => {
               </Hug>
             </AsideButton>
           </Hug>
+        </Hug>
+        <Hug mt="auto" mb={16}>
+          <a href="https://foxops.readthedocs.io/" target="_blank" rel="noreferrer">Docs</a>
         </Hug>
       </Container>
     </Box>

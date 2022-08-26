@@ -23,6 +23,8 @@ interface CreateOffsetPropOptions {
 
 export const addPoints = (x?: string | number) => typeof x === 'string' && parseFloat(x) !== +x ? x : `${x || 0}px`
 
+export const reservedValueOrPoints = (x?: string | number) => typeof x === 'string' && ['auto', 'inherit', 'unset'].includes(x) ? x : addPoints(x)
+
 export const checkPropValue = (x?: string | number) => typeof x === 'string' || typeof x === 'number'
 
 type CreateOffsetPropResult = Partial<{
@@ -39,13 +41,13 @@ export const createOffsetProp = ({
   left,
   right
 }: CreateOffsetPropOptions): CreateOffsetPropResult => {
-  const fullProp = checkPropValue(full) ? addPoints(full) : undefined
-  const verticalProp = checkPropValue(vertical) ? addPoints(vertical) : fullProp
-  const horizontalProp = checkPropValue(horizontal) ? addPoints(horizontal) : fullProp
-  const topProp = checkPropValue(top) ? addPoints(top) : verticalProp
-  const bottomProp = checkPropValue(bottom) ? addPoints(bottom) : verticalProp
-  const leftProp = checkPropValue(left) ? addPoints(left) : horizontalProp
-  const rightProp = checkPropValue(right) ? addPoints(right) : horizontalProp
+  const fullProp = checkPropValue(full) ? reservedValueOrPoints(full) : undefined
+  const verticalProp = checkPropValue(vertical) ? reservedValueOrPoints(vertical) : fullProp
+  const horizontalProp = checkPropValue(horizontal) ? reservedValueOrPoints(horizontal) : fullProp
+  const topProp = checkPropValue(top) ? reservedValueOrPoints(top) : verticalProp
+  const bottomProp = checkPropValue(bottom) ? reservedValueOrPoints(bottom) : verticalProp
+  const leftProp = checkPropValue(left) ? reservedValueOrPoints(left) : horizontalProp
+  const rightProp = checkPropValue(right) ? reservedValueOrPoints(right) : horizontalProp
   const props = [topProp, bottomProp, leftProp, rightProp]
   if (props.every(checkPropValue)) {
     if (props.every(x => x === topProp)) {
@@ -124,10 +126,10 @@ interface WidthOptions {
 
 export const createWidthOptions = (options: WidthOptions) => {
   const { miw, maw, w, allw } = options
-  const allWidth = checkPropValue(allw) ? addPoints(allw) : undefined
-  const width = checkPropValue(w) ? addPoints(w) : allWidth
-  const minWidth = checkPropValue(miw) ? addPoints(miw) : allWidth
-  const maxWidth = checkPropValue(maw) ? addPoints(maw) : allWidth
+  const allWidth = checkPropValue(allw) ? reservedValueOrPoints(allw) : undefined
+  const width = checkPropValue(w) ? reservedValueOrPoints(w) : allWidth
+  const minWidth = checkPropValue(miw) ? reservedValueOrPoints(miw) : allWidth
+  const maxWidth = checkPropValue(maw) ? reservedValueOrPoints(maw) : allWidth
   return { width, minWidth, maxWidth }
 }
 
