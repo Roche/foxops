@@ -40,26 +40,21 @@ interface IncarnationApiInput {
   template_repository: string,
   template_repository_version: string,
   target_directory: string,
-  template_data?: Record<string, string>,
+  template_data: Record<string, string>,
   automerge: boolean
 }
 
-const convertToApiInput = (x: IncarnationInput): IncarnationApiInput => {
-  const templateData = x.templateData.length
-    ? x.templateData.reduce((acc, { key, value }) => {
-      acc[key] = value
-      return acc
-    }, {} as Record<string, string>)
-    : undefined
-  return {
-    incarnation_repository: x.repository,
-    template_repository: x.templateRepository,
-    template_repository_version: x.templateVersion,
-    target_directory: x.targetDirectory,
-    template_data: templateData,
-    automerge: false
-  }
-}
+const convertToApiInput = (x: IncarnationInput): IncarnationApiInput => ({
+  incarnation_repository: x.repository,
+  template_repository: x.templateRepository,
+  template_repository_version: x.templateVersion,
+  target_directory: x.targetDirectory,
+  template_data: x.templateData.reduce((acc, { key, value }) => {
+    acc[key] = value
+    return acc
+  }, {} as Record<string, string>),
+  automerge: false
+})
 // const mockedIncarnations = new Array(10).fill(0).map((_, i) => {
 //   const x: number = i + 1
 //   return {

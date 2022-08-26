@@ -50,7 +50,7 @@ export const THEMES: Record<ThemeMode, Theme> = {
       iconButtonColor: '#fff',
       grey: '#d2d2d2',
       darkGrey: '#929292',
-      error: '#de4242'
+      error: '#b62525'
     },
     effects: {
       orangeGradient: 'linear-gradient(130deg, #EA6E00, #ae5718)',

@@ -48,11 +48,11 @@ export const IconButton = styled('button')<IconButtonProps>(({ theme, active, fl
     backgroundColor: theme.colors.iconButtonCurtain,
     opacity: 0
   },
-  '&:hover::after': {
+  '&:hover:not(:disabled)::after': {
     transitionTimingFunction: 'var(--ease-in)',
     opacity: active ? 0.1 : 0.3
   },
-  '&:hover': {
+  '&:hover:not(:disabled)': {
     transitionTimingFunction: 'var(--ease-in)'
   },
   '&:active::after': {
@@ -61,5 +61,10 @@ export const IconButton = styled('button')<IconButtonProps>(({ theme, active, fl
   ':focus': {
     outline: 'none',
     boxShadow: `0 0 0 2px ${theme.colors.paleOrange}`
+  },
+  ':disabled': {
+    borderStyle: 'dashed',
+    opacity: .8,
+    cursor: 'not-allowed'
   }
 }))

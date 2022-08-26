@@ -22,6 +22,10 @@ const sharedStyles = ({ theme, inputSize, hasError }: { theme: Theme } & InputCo
   ':focus': {
     outline: 'none',
     boxShadow: hasError ? `0 0 0 2px ${transparentize(theme.colors.error, .4)}` : `0 0 0 2px ${theme.colors.paleOrange}`
+  },
+  ':disabled': {
+    borderStyle: 'dashed',
+    color: transparentize(theme.colors.text, .8)
   }
 })
 
@@ -88,6 +92,7 @@ interface TextFieldProps {
   onBlur?: React.FocusEventHandler<HTMLInputElement>,
   error?: string,
   hasError?: boolean,
+  disabled?: boolean
 }
 
 export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(({

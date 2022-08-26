@@ -6,6 +6,7 @@ import { FloatingActionButton } from '../../components/common/FloatingActionButt
 import { Hug } from '../../components/common/Hug/Hug'
 import { Commit } from '../../components/common/Icons/Commit'
 import { MergeRequest } from '../../components/common/Icons/MergeRequest'
+import { Loader } from '../../components/common/Loader/Loader'
 import { incarnations } from '../../services/incarnations'
 import { useToolbarSearchStore } from '../../stores/toolbar-search'
 import { Section } from './parts'
@@ -21,7 +22,11 @@ const Table = styled.table(({ theme }) => ({
   },
   th: {
     fontWeight: 700,
-    textAlign: 'left'
+    textAlign: 'left',
+    position: 'sticky',
+    background: theme.colors.baseBg,
+    zIndex: 1,
+    top: -16 // padding of Content component
   },
   'tr:last-child td': {
     borderBottom: 'none'
@@ -88,7 +93,10 @@ export const IncarnationsList = () => {
   return (
     <Section>
       <h3>Incarnations</h3>
-      {pendingMessage}
+      <Hug flex>
+        <Hug mr={4}>{pendingMessage}</Hug>
+        {isLoading && <Loader />}
+      </Hug>
       {table}
       <FloatingActionButton onClick={() => navigate('create')} title="Create new incarnation" />
     </Section>

@@ -9,8 +9,14 @@ import { Trash } from '../../components/common/Icons/Trash'
 import { TextField } from '../../components/common/TextField/TextField'
 import { Section } from './parts'
 import { IncarnationInput, incarnations } from '../../services/incarnations'
-import { useMutation } from '@tanstack/react-query'
-// import { delay } from '../../utils'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { ApiErrorResponse } from '../../services/api'
+import { delay } from '../../utils'
+import { useState } from 'react'
+import styled from '@emotion/styled'
+import { Close } from '../../components/common/Icons/Close'
+import { useRequestProcessingStore } from '../../stores/request-processing-store'
+import { Loader } from '../../components/common/Loader/Loader'
 
 const defaultValues: IncarnationInput = {
   repository: '',
@@ -20,10 +26,27 @@ const defaultValues: IncarnationInput = {
   templateData: []
 }
 
+const ErrorMessage = styled.div(({ theme }) => ({
+  position: 'relative',
+  color: theme.colors.textContrast,
+  fontFamily: 'var(--monospace)',
+  background: theme.colors.error,
+  flex: 1,
+  padding: 16,
+  fontSize: 14,
+  borderRadius: 4,
+  lineHeight: 1.5,
+  '.IconButton--Error': {
+    color: theme.colors.textContrast,
+    float: 'right'
+  }
+}))
+
 export const IncarnationsCreateForm = () => {
   const { register, handleSubmit, formState: { errors }, control, getValues } = useForm<IncarnationInput>({
     defaultValues
   })
+  const [apiError, setApiError] = useState<ApiErrorResponse | null>()
   const { fields, append, remove } = useFieldArray({ name: 'templateData', control })
   const navigate = useNavigate()
   const onBackClick = () => {
@@ -38,19 +61,25 @@ export const IncarnationsCreateForm = () => {
     }
   }
 
-  // const queryClient = useQueryClient()
-  // const { mutateAsync, isLoading, isSuccess } = useMutation((incarnation: IncarnationInput) => new Promise(r => {
-  //   setTimeout(r, 2000)
-  // }))
-  const { mutateAsync, isLoading, isSuccess, isError, data } = useMutation((incarnation: IncarnationInput) => incarnations.create(incarnation))
+  const queryClient = useQueryClient()
+  const { mutateAsync, isLoading, isSuccess } = useMutation((incarnation: IncarnationInput) => incarnations.create(incarnation))
+  const { setPending } = useRequestProcessingStore()
   const onSubmit: SubmitHandler<IncarnationInput> = async incarnation => {
-    await mutateAsync(incarnation)
-    console.log(isError, data)
-    // await delay(1000)
-    // queryClient.invalidateQueries(['incarnations'])
-    // navigate('/incarnations')
+    setApiError(null)
+    setPending(true)
+    try {
+      await mutateAsync(incarnation)
+      await delay(1000)
+      queryClient.invalidateQueries(['incarnations'])
+      navigate('/incarnations')
+    } catch (err) {
+      const error = err as ApiErrorResponse
+      setApiError(error)
+    } finally {
+      setPending(false)
+    }
   }
-  const buttonTitle = isSuccess ? 'Created!' : isLoading ? 'Saving...' : 'Create'
+  const buttonTitle = isSuccess ? 'Created!' : isLoading ? 'Creating...' : 'Create'
   return (
     <Section>
       <Hug flex={['aic']} ml={-42}>
@@ -66,42 +95,62 @@ export const IncarnationsCreateForm = () => {
       <Hug as="form" mb={16} flex mx={-8} onSubmit={handleSubmit(onSubmit)}>
         <Hug w="60%" miw={600} px={8}>
           <Hug mb={16}>
-            <TextField autoFocus label="Repository" size="large" hasError={!!errors.repository} required {...register('repository', { required: true })} />
+            <TextField autoFocus label="Repository" disabled={isLoading} size="large" hasError={!!errors.repository} required {...register('repository', { required: true })} />
           </Hug>
           <Hug mb={16}>
-            <TextField label="Target directory" size="large" hasError={!!errors.targetDirectory} required {...register('targetDirectory', { required: true })} />
+            <TextField label="Target directory" size="large" disabled={isLoading} hasError={!!errors.targetDirectory} required {...register('targetDirectory', { required: true })} />
           </Hug>
           <Hug mb={16}>
-            <TextField label="Template repository" size="large" hasError={!!errors.templateRepository} required {...register('templateRepository', { required: true })} />
+            <TextField label="Template repository" disabled={isLoading} size="large" hasError={!!errors.templateRepository} required {...register('templateRepository', { required: true })} />
           </Hug>
           <Hug mb={16}>
-            <TextField label="Template version" size="large" hasError={!!errors.templateVersion} required {...register('templateVersion', { required: true })} />
+            <TextField label="Template version" disabled={isLoading} size="large" hasError={!!errors.templateVersion} required {...register('templateVersion', { required: true })} />
           </Hug>
           <h4>Template data</h4>
           <Hug mb={16}>
             {fields.map((field, index) => (
               <Hug flex mb={8} mx={-4} key={field.id}>
                 <Hug w="50%" px={4}>
-                  <TextField placeholder="Key" {...register(`templateData.${index}.key` as const)} />
+                  <TextField disabled={isLoading} placeholder="Key" {...register(`templateData.${index}.key` as const)} />
                 </Hug>
                 <Hug w="50%" pl={4} pr={8}>
-                  <TextField placeholder="Value" {...register(`templateData.${index}.value` as const)} />
+                  <TextField disabled={isLoading} placeholder="Value" {...register(`templateData.${index}.value` as const)} />
                 </Hug>
-                <IconButton type="button" onClick={() => remove(index)} title="Delete">
+                <IconButton disabled={isLoading} type="button" onClick={() => remove(index)} title="Delete">
                   <Trash />
                 </IconButton>
               </Hug>
             ))}
           </Hug>
           <Hug flex mb={8} mx={-8}>
-            <Hug w="50%" px={8}>
-              <TextField placeholder="Start typing to add new key value pair" value="" onChange={e => {
+            <Hug w="50%" pl={8} pr={24}>
+              <TextField disabled={isLoading} placeholder="Start typing to add new key value pair" value="" onChange={e => {
                 append({ key: e.target.value, value: '' })
               }} />
             </Hug>
           </Hug>
-          <Hug flex={['jcfe']}><Button style={{ width: 100 }} type="submit">{buttonTitle}</Button></Hug>
+          <Hug flex={['jcfe', 'aic']}>
+            <Hug>
+              <Button style={{ minWidth: 120 }} type="submit" disabled={isLoading || isSuccess}>{buttonTitle}</Button>
+            </Hug>
+            {isLoading && <Hug as={Loader} mr={-24} ml={8} />}
+          </Hug>
         </Hug>
+        {apiError
+          ? (
+            <Hug w="40%" px={8}>
+              <ErrorMessage>
+                <IconButton flying onClick={() => setApiError(null)} className="IconButton--Error" >
+                  <Close />
+                </IconButton>
+                {apiError.message}
+                <Hug>
+                  {apiError.documentation ? <a href={apiError.documentation} target="_blank" rel="noreferrer">Read more</a> : null}
+                </Hug>
+              </ErrorMessage>
+            </Hug>
+          )
+          : null}
       </Hug>
     </Section>
   )

@@ -1,5 +1,6 @@
 import styled from '@emotion/styled'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuthStore } from '../../../stores/auth'
 import { useThemeModeStore } from '../../../stores/theme-mode'
 import { useToolbarSearchStore } from '../../../stores/toolbar-search'
@@ -12,6 +13,7 @@ import { User } from '../../common/Icons/User'
 import { Logo } from '../../common/Logo/Logo'
 import { Popover } from '../../common/Popover/Popover'
 import { TextField } from '../../common/TextField/TextField'
+import { ToolbarProgress } from '../../common/ToolbarProgress/ToolbarProgress'
 
 const Box = styled.div`
   grid-row: 1;
@@ -20,6 +22,7 @@ const Box = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
+  position: relative;
   padding-left: 8px;
   padding-right: 8px;
   position: relative;
@@ -40,7 +43,8 @@ export const Toolbar = () => {
   const { search, setSearch } = useToolbarSearchStore()
   return (
     <Box className="Toolbar-Box" data-testid="Toolbar">
-      <Logo />
+      <ToolbarProgress />
+      <Link to="/incarnations" style={{ color: 'inherit', textDecoration: 'none' }}><Logo /></Link>
       <Hug flex className="Toolbar-Controls" data-testid="Toolbar-Controls">
         <Hug mr={8}>
           <TextField placeholder="Search..." type="search" value={search} onChange={e => setSearch(e.target.value)} />

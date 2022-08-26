@@ -40,10 +40,6 @@ const ButtonBox = styled('button')<ButtonBoxProps>(({ theme, size, disabled }) =
   ':active::after': {
     opacity: 0.1
   },
-  span: {
-    position: 'relative',
-    zIndex: 2
-  },
   ':focus': {
     outline: 'none',
     boxShadow: `0 0 0 2px ${theme.colors.paleOrange}`
@@ -55,14 +51,23 @@ const ButtonBox = styled('button')<ButtonBoxProps>(({ theme, size, disabled }) =
   }
 }))
 
+const ButtonInnerBox = styled.span`
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-content: center;
+  justify-content: center;
+`
+
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode,
-  size?: Size
+  size?: Size,
+  dataTestid?: string
 }
 
-export const Button = ({ children, ...props }: ButtonProps) => (
-  <ButtonBox {...props}>
-    <span>{children}</span>
+export const Button = ({ children, dataTestid, ...props }: ButtonProps) => (
+  <ButtonBox data-testid={dataTestid} {...props}>
+    <ButtonInnerBox>{children}</ButtonInnerBox>
   </ButtonBox>
 )
 
@@ -70,12 +75,13 @@ interface ButtonLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> 
   children: React.ReactNode,
   size?: Size
   disabled?: boolean
+  dataTestid?: string
 }
 
 const ButtonLinkBox = ButtonBox.withComponent('a')
 
-export const ButtonLink = ({ children, ...props }: ButtonLinkProps) => (
-  <ButtonLinkBox {...props}>
-    <span>{children}</span>
+export const ButtonLink = ({ children, dataTestid, ...props }: ButtonLinkProps) => (
+  <ButtonLinkBox data-testid={dataTestid} {...props}>
+    <ButtonInnerBox>{children}</ButtonInnerBox>
   </ButtonLinkBox>
 )

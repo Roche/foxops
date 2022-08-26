@@ -8,6 +8,7 @@ import { createGlobalStyles } from './global-styles'
 import { useThemeModeStore } from './stores/theme-mode'
 import { THEMES } from './styling/themes'
 import { IncarnationsCreateForm } from './routes/incarnations/CreateForm'
+// import './styling/prism.js' TODO: include it when JSON editor is ready
 
 const queryClient = new QueryClient()
 

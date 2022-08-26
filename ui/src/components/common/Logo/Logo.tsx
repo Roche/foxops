@@ -12,7 +12,8 @@ const Component = styled('div', { shouldForwardProp: prop => prop !== 'size' })(
 )
 
 export const Logo = ({
-  size
+  size,
+  ...props
 }: LogoProps) => (
-  <Component data-testid="Logo" size={size}>foxops 🦊</Component>
+  <Component data-testid="Logo" size={size} {...props}>foxops 🦊</Component>
 )

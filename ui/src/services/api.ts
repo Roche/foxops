@@ -19,6 +19,16 @@ interface API {
 }
 
 const API_PREFIX = '/api'
+
+interface ApiError {
+  status: number,
+  message: string
+}
+
+export interface ApiErrorResponse {
+  documentation: null | string,
+  message: string,
+}
 export const api: API = {
   token: null,
   setToken: (token: string | null) => {
@@ -33,7 +43,9 @@ export const api: API = {
     mockedData
   }: MakeRequestOptions<Req, Res>): Promise<Res> => {
     // handle headers stuff
-    const headers = new Headers()
+    const headers = new Headers([
+      ['Content-Type', 'application/json']
+    ])
     if (authorized) {
       if (!api.token) throw new Error('No token provided for authorized request')
       headers.append('Authorization', `Bearer ${api.token}`)
@@ -56,7 +68,10 @@ export const api: API = {
     // handle response
     const result = await response.json()
     if (!response.ok) {
-      throw result
+      throw {
+        status: response.status,
+        ...result as ApiErrorResponse
+      } as ApiError
     }
     return result as Res
   },
