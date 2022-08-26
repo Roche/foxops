@@ -5,6 +5,7 @@ from urllib.parse import quote, urlparse, urlunparse
 from foxops.errors import FoxopsError, RetryableError
 from foxops.utils import CalledProcessError, check_call
 
+
 GIT_REBASE_REQUIRED_ERROR_MESSAGE = (
     b"hint: Updates were rejected because the remote contains work that you do\n" b"hint: not have locally."
 )
@@ -17,10 +18,20 @@ class GitError(FoxopsError):
         super().__init__(message if message else "Git failed with an unexpected non-zero exit code.")
 
 
+class RebaseRequiredError(GitError, RetryableError):
+    """Error raised when a git fails due to a rebase being required."""
+
+    def __init__(self):
+        super().__init__("Git failed due to a rebase being required.")
+
+
 async def git_exec(*args, **kwargs) -> asyncio.subprocess.Process:
     try:
         return await check_call("git", *args, **kwargs)
     except CalledProcessError as exc:
+        if GIT_REBASE_REQUIRED_ERROR_MESSAGE in exc.stderr:
+            raise RebaseRequiredError("new commits on the target branch, need to retry") from exc
+
         raise GitError() from exc
 
 
@@ -115,15 +126,6 @@ class GitRepository:
             raise GitError()
 
         return await self.head()
-
-    async def push_with_potential_retry(self) -> str:
-        try:
-            return await self.push()
-        except GitError as exc:
-            if isinstance(exc.__cause__, CalledProcessError):
-                if GIT_REBASE_REQUIRED_ERROR_MESSAGE in exc.__cause__.stderr:
-                    raise RetryableError("new commits on the target branch, need to retry") from exc
-            raise exc
 
     async def head(self) -> str:
         proc = await self._run("rev-parse", "HEAD")
