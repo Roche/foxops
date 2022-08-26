@@ -28,9 +28,13 @@ structlog = "^21.2.0"
 aiopath = "^0.6.10"
 
 # Database
-SQLAlchemy = "^1.4.39"
+SQLAlchemy = {extras = ["asyncio"], version = "^1.4.39"}
 asyncpg = "^0.26.0"
 aiosqlite = "^0.17.0"
+
+# Remove once there are proper wheels available for 1.1.3+,
+# see https://github.com/python-greenlet/greenlet/issues/312
+greenlet = "1.1.2"
 
 # CLI
 typer = "^0.4.0"
