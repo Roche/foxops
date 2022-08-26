@@ -82,14 +82,14 @@ const AsideButton = styled(NavLink)(({ theme }) => ({
   }
 }))
 
-const LinkToDocs = styled.a(({ theme }) => ({
+const LinkToDocs = styled.a({
   whiteSpace: 'nowrap',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   display: 'inline-block',
   maxWidth: '100%',
   fontSize: 14
-}))
+})
 
 export const Aside = () => {
   const [expanded, setExpanded] = useState(false)
