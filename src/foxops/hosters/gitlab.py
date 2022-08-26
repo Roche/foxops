@@ -367,6 +367,12 @@ class GitLab:
                     )
                     merge_commit_sha = merge_request["merge_commit_sha"]
                     return await _get_commit_status(merge_commit_sha, pipeline_timeout=pipeline_timeout)
+                elif merge_request["sha"] is not None:
+                    logger.debug(
+                        f"Reconciliation status: merge request is merged without merge commit at {merge_request['sha']}, checking its commit status ..."
+                    )
+                    sha = merge_request["sha"]
+                    return await _get_commit_status(sha, pipeline_timeout=pipeline_timeout)
             elif merge_request["state"] == "closed":
                 logger.debug("Reconciliation status: merge request is closed, returning FAILED")
                 return ReconciliationStatus.FAILED
