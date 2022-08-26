@@ -24,7 +24,8 @@ const Container = styled.div<ContainerProps>(({ theme, expanded }) => ({
   transition: 'width 0.1s',
   transitionTimingFunction: expanded ? 'var(--ease-in)' : 'var(--ease-out)',
   display: 'flex',
-  flexDirection: 'column'
+  flexDirection: 'column',
+  overflow: 'hidden'
 }))
 
 const AsideButton = styled(NavLink)(({ theme }) => ({
@@ -81,6 +82,15 @@ const AsideButton = styled(NavLink)(({ theme }) => ({
   }
 }))
 
+const LinkToDocs = styled.a(({ theme }) => ({
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  display: 'inline-block',
+  maxWidth: '100%',
+  fontSize: 14
+}))
+
 export const Aside = () => {
   const [expanded, setExpanded] = useState(false)
   return (
@@ -99,7 +109,8 @@ export const Aside = () => {
           </Hug>
         </Hug>
         <Hug mt="auto" mb={16}>
-          <a href="https://foxops.readthedocs.io/" target="_blank" rel="noreferrer">Docs</a>
+          <Hug><LinkToDocs href="https://foxops.readthedocs.io/" target="_blank" rel="noreferrer">Docs</LinkToDocs></Hug>
+          <Hug mt={8}><LinkToDocs href="/docs" target="_blank" rel="noreferrer">API Docs</LinkToDocs></Hug>
         </Hug>
       </Container>
     </Box>
