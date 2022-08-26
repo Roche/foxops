@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+from foxops.engine.models import TemplateDataValue
 from foxops.hosters import ReconciliationStatus
 
 
@@ -29,6 +30,11 @@ class IncarnationBasic(BaseModel):
 
 class IncarnationWithDetails(IncarnationBasic):
     status: ReconciliationStatus
+
+    template_repository: str | None
+    template_repository_version: str | None
+    template_repository_version_hash: str | None
+    template_data: dict[str, TemplateDataValue] | None
 
     class Config:
         orm_mode = True

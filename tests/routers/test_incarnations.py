@@ -8,6 +8,7 @@ from sqlalchemy import text
 
 from foxops.database import DAL
 from foxops.dependencies import get_hoster
+from foxops.engine import IncarnationState
 from foxops.errors import IncarnationAlreadyInitializedError
 from foxops.routers.incarnations import get_reconciliation
 
@@ -59,6 +60,12 @@ async def test_api_create_incarnation_adds_new_incarnation_to_inventory(
     reconciliation_mock = mocker.AsyncMock()
     reconciliation_mock.initialize_incarnation.return_value = "commit_sha", "merge_request_id"
     hoster_mock = mocker.AsyncMock()
+    hoster_mock.get_incarnation_state.return_value = "commit_sha", IncarnationState(
+        template_repository="test",
+        template_repository_version="version",
+        template_repository_version_hash="hash",
+        template_data={"foo": "bar"},
+    )
     hoster_mock.get_reconciliation_status.return_value = "success"
     hoster_mock.get_commit_url.return_value = "some-commit-url"
     hoster_mock.get_merge_request_url.return_value = "some-merge-request-url"
@@ -87,6 +94,10 @@ async def test_api_create_incarnation_adds_new_incarnation_to_inventory(
         "commit_url": "some-commit-url",
         "merge_request_url": "some-merge-request-url",
         "status": "success",
+        "template_repository": "test",
+        "template_repository_version": "version",
+        "template_repository_version_hash": "hash",
+        "template_data": {"foo": "bar"},
     }
 
 
@@ -166,17 +177,17 @@ async def test_api_create_incarnation_already_exists_allowing_import_without_a_m
             "template_data": {"foo": "bar"},
         },
     )
+    incarnation = response.json()
 
     # THEN
     assert response.status_code == HTTPStatus.OK
-    assert response.json() == {
-        "id": 1,
-        "incarnation_repository": "test",
-        "target_directory": "test",
-        "commit_url": "some-commit-url",
-        "merge_request_url": "some-merge-request-url",
-        "status": "success",
-    }
+
+    assert incarnation["id"] == 1
+    assert incarnation["incarnation_repository"] == "test"
+    assert incarnation["target_directory"] == "test"
+    assert incarnation["status"] == "success"
+    assert incarnation["commit_url"] == "some-commit-url"
+    assert incarnation["merge_request_url"] == "some-merge-request-url"
 
 
 async def test_api_create_incarnation_already_exists_allowing_import_with_a_mismatch(
@@ -218,17 +229,17 @@ async def test_api_create_incarnation_already_exists_allowing_import_with_a_mism
             "template_data": {"foo": "bar"},
         },
     )
+    incarnation = response.json()
 
     # THEN
     assert response.status_code == HTTPStatus.CONFLICT
-    assert response.json() == {
-        "id": 1,
-        "incarnation_repository": "test",
-        "target_directory": "test",
-        "commit_url": "some-commit-url",
-        "merge_request_url": "some-merge-request-url",
-        "status": "success",
-    }
+
+    assert incarnation["id"] == 1
+    assert incarnation["incarnation_repository"] == "test"
+    assert incarnation["target_directory"] == "test"
+    assert incarnation["status"] == "success"
+    assert incarnation["commit_url"] == "some-commit-url"
+    assert incarnation["merge_request_url"] == "some-merge-request-url"
 
 
 async def test_api_delete_incarnation_removes_incarnation_from_inventory(
