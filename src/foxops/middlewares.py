@@ -1,3 +1,4 @@
+import time
 import uuid
 from typing import Awaitable, Callable
 
@@ -11,7 +12,7 @@ Middleware = Callable[[Request], Awaitable[Response]]
 logger = get_logger(__name__)
 
 
-async def request_middleware(request: Request, call_next: Middleware) -> Response:
+async def request_id_middleware(request: Request, call_next: Middleware) -> Response:
     """FastAPI Middleware to set a unique id to identify a request."""
     clear_contextvars()
 
@@ -20,4 +21,13 @@ async def request_middleware(request: Request, call_next: Middleware) -> Respons
 
     response = await call_next(request)
     response.headers["X-Request-Id"] = request_id
+    return response
+
+
+async def request_time_middleware(request: Request, call_next: Middleware) -> Response:
+    """FastAPI Middleware to set the request time."""
+    start = time.time()
+    response = await call_next(request)
+    duration = time.time() - start
+    response.headers["X-Request-Time"] = str(duration)
     return response

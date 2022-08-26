@@ -115,7 +115,7 @@ async def initialize_incarnation(
             f"foxops: initializing incarnation from template {desired_incarnation_state.template_repository} "
             f"@ {desired_incarnation_state.template_repository_version}"
         )
-        commit_sha = await local_incarnation_repository.push_with_potential_retry()
+        commit_sha = await local_incarnation_repository.push()
         logger.debug(
             "Local reconciliation finished and synced with remote",
             commit_sha=commit_sha,

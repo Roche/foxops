@@ -106,7 +106,7 @@ async def update_incarnation(
         await local_incarnation_repository.commit_all(
             f"foxops: updating incarnation from template {template_repository_version_update} "
         )
-        commit_sha = await local_incarnation_repository.push_with_potential_retry()
+        commit_sha = await local_incarnation_repository.push()
         logger.debug(
             "Local reconciliation finished and synced with remote",
             commit_sha=commit_sha,
