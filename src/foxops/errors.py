@@ -2,6 +2,10 @@ class FoxopsError(Exception):
     """Base class for all foxops errors."""
 
 
+class FoxopsUserError(FoxopsError):
+    """Base class for all foxops errors that are caused by user input."""
+
+
 class RetryableError(FoxopsError):
     """Exception raised when an error occurs for which a retry usually helps."""
 
@@ -10,7 +14,7 @@ class ReconciliationError(FoxopsError):
     """Exception raised when an error occurs during reconciliation."""
 
 
-class ReconciliationUserError(ReconciliationError):
+class ReconciliationUserError(ReconciliationError, FoxopsUserError):
     """Exception raised when a user error occurs during reconciliation."""
 
 

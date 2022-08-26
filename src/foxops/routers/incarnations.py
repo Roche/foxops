@@ -4,11 +4,7 @@ from fastapi import APIRouter, Depends, Response, status
 
 from foxops.database import DAL
 from foxops.dependencies import get_dal, get_hoster, get_reconciliation
-from foxops.errors import (
-    IncarnationAlreadyInitializedError,
-    IncarnationNotFoundError,
-    ReconciliationUserError,
-)
+from foxops.errors import IncarnationAlreadyInitializedError, IncarnationNotFoundError
 from foxops.hosters import Hoster
 from foxops.logger import bind, get_logger
 from foxops.models import (
@@ -127,14 +123,6 @@ async def create_incarnation(
             response.status_code = status.HTTP_409_CONFLICT
         else:
             response.status_code = status.HTTP_200_OK
-    except ReconciliationUserError as exc:
-        logger.warning(f"User error happened during initialization of incarnation: {exc}")
-        response.status_code = status.HTTP_400_BAD_REQUEST
-        return ApiError(message=str(exc))
-    except Exception as exc:
-        logger.exception(str(exc))
-        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        return ApiError(message=str(exc))
     else:
         response.status_code = status.HTTP_201_CREATED
 
@@ -222,16 +210,7 @@ async def update_incarnation(
         response.status_code = status.HTTP_404_NOT_FOUND
         return ApiError(message=str(exc))
 
-    try:
-        update = await reconciliation.update_incarnation(hoster, incarnation, desired_incarnation_state_patch)
-    except ReconciliationUserError as exc:
-        logger.warning(f"User error happened during initialization of incarnation: {exc}")
-        response.status_code = status.HTTP_400_BAD_REQUEST
-        return ApiError(message=str(exc))
-    except Exception as exc:
-        logger.exception(str(exc))
-        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        return ApiError(message=str(exc))
+    update = await reconciliation.update_incarnation(hoster, incarnation, desired_incarnation_state_patch)
 
     if update is not None:
         incarnation = await dal.update_incarnation(incarnation.id, commit_sha=update[0], merge_request_id=update[1])
