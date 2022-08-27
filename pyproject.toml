@@ -62,7 +62,7 @@ mypy = "^0.971"
 SQLAlchemy = {extras = ["mypy"], version = "^1.4.39"}
 
 # Docs
-Sphinx = "^4.4.0"
+Sphinx = "^5.1.1"
 sphinx-copybutton = "^0.5.0"
 sphinx-design = "^0.3.0"
 sphinx-autobuild = "^2021.3.14"
