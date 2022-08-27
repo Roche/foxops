@@ -69,7 +69,8 @@ async def list_incarnations(
     "",
     responses={
         status.HTTP_200_OK: {
-            "description": "The incarnation is already initialized and was imported to the inventory. Only applicable with `allow_import=True`.",
+            "description": "The incarnation is already initialized and was imported to the inventory. "
+            "Only applicable with `allow_import=True`.",
             "model": IncarnationWithDetails,
         },
         status.HTTP_201_CREATED: {
@@ -77,7 +78,8 @@ async def list_incarnations(
             "model": IncarnationWithDetails,
         },
         status.HTTP_400_BAD_REQUEST: {
-            "description": "The desired incarnation state was not valid or the incarnation already exists and import was not allowed.",
+            "description": "The desired incarnation state was not valid or the incarnation already exists "
+            "and import was not allowed.",
             "model": ApiError,
         },
         status.HTTP_409_CONFLICT: {

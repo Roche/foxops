@@ -27,7 +27,8 @@ def cmd_reconcile(
     parallelism: int = typer.Option(10, "--parallelism", "-p", help="number of parallel reconciliations"),  # noqa: B008
     config_paths: list[str] = typer.Argument(  # noqa: B008
         None,
-        help="Path to the configuration file(s) or folder(s) containing configuration file(s) to use. The configuration files define the desired incarnation states.",
+        help="Path to the configuration file(s) or folder(s) containing configuration file(s) to use. "
+        "The configuration files define the desired incarnation states.",
     ),
     foxops_api_url: str = typer.Option(  # noqa: B008
         default=None,
@@ -35,7 +36,8 @@ def cmd_reconcile(
     ),
 ):
     logger.warning(
-        "This CLI command only exists for backwards-compatibility reasons. Please use the imperative foxops REST API instead."
+        "This CLI command only exists for backwards-compatibility reasons. "
+        "Please use the imperative foxops REST API instead."
     )
 
     if not config_paths:
@@ -113,7 +115,8 @@ def cmd_reconcile(
                     continue
                 else:
                     logger.info(
-                        "successfully reconciled, but incarnation already existed and has config mismatches, thus needs an update ...",
+                        "successfully reconciled, but incarnation already existed and has config mismatches, "
+                        "thus needs an update ...",
                         incarnation=incarnation,
                     )
                     incarnation_before_update = incarnation

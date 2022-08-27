@@ -43,7 +43,8 @@ async def render_template(
     As of now a very simplistic approach is used to find and render the files
     and folders in a template.
 
-    :param rendering_filename_exclude_patterns: A list of glob patterns matching files which contents should not be rendered. Can be empty.
+    :param rendering_filename_exclude_patterns: A list of glob patterns matching files which contents should not be
+    rendered. Can be empty.
     """
     if not template_root_dir.is_absolute():
         raise ValueError(f"template_root_dir must be an absolute path, got {template_root_dir}")
