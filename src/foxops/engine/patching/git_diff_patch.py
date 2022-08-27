@@ -112,10 +112,12 @@ async def patch(
     # FIXME(TF): may check git status to check if something has been modified or not ...
     logger.debug(f"applying patch {patch_path} to {incarnation_git_dir} inside {incarnation_root_dir}")
     try:
+        # The `--reject` option makes it apply the parts of the patch that are applicable,
+        # and leave the rejected hunks in corresponding *.rej files.
         await check_call(
             "git",
             "apply",
-            "--reject",  # This option makes it apply the parts of the patch that are applicable, and leave the rejected hunks in corresponding *.rej files.
+            "--reject",
             "--verbose",
             "--directory",
             str(incarnation_git_dir),

@@ -186,10 +186,11 @@ class GitLab:
                         cwd=Path.home(),
                     )
             else:
-                # NOTE(TF): this only works for git hosters which have enabled `uploadpack.allowReachableSHA1InWant` on the server side.
-                #           It seems to be the case for GitHub and GitLab.
-                #           In addition it seems that if the refspec is a tag, it won't be created locally and we later on
-                #           cannot address it in e.g. a `switch`. So we need to fetch all tag refs, which should be fine.
+                # NOTE(TF): this only works for git hosters which have enabled `uploadpack.allowReachableSHA1InWant`
+                #           on the server side. It seems to be the case for GitHub and GitLab.
+                #           In addition, it seems that if the refspec is a tag, it won't be created locally
+                #           and we later on cannot address it in e.g. a `switch`.
+                #           So we need to fetch all tag refs, which should be fine.
                 await git_exec("init", local_clone_directory, cwd=Path.home())
                 await git_exec("remote", "add", "origin", clone_url, cwd=local_clone_directory)
                 await git_exec(
@@ -301,7 +302,8 @@ class GitLab:
                     if has_pipeline_config:
                         if pipeline_timeout.total_seconds() > 0:
                             logger.debug(
-                                f"Reconciliation status: no commit status and no pipeline, and pipeline_timeout is {pipeline_timeout.total_seconds()} seconds, sleeping 1 second and retry"
+                                f"Reconciliation status: no commit status and no pipeline, and pipeline_timeout "
+                                f"is {pipeline_timeout.total_seconds()} seconds, sleeping 1 second and retry"
                             )
                             await asyncio.sleep(1)
                             return await _get_commit_status(commit_sha, pipeline_timeout - timedelta(seconds=1))
@@ -325,7 +327,8 @@ class GitLab:
                     return ReconciliationStatus.FAILED
 
                 logger.error(
-                    f"Incarnation '{incarnation_repository}' / '{target_directory}' has an unknown commit status '{commit['status']}' for commit '{commit_sha}'"
+                    f"Incarnation '{incarnation_repository}' / '{target_directory}' has an unknown commit status "
+                    f"'{commit['status']}' for commit '{commit_sha}'"
                 )
 
             return ReconciliationStatus.UNKNOWN
@@ -345,7 +348,8 @@ class GitLab:
             if merge_request["state"] == "opened":
                 if merge_request["merge_status"] in {"cannot_be_merged", "cannot_be_merged_recheck"}:
                     logger.debug(
-                        f"Reconciliation status: merge request state is open and status is {merge_request['merge_status']}, returning FAILED"
+                        f"Reconciliation status: merge request state is open "
+                        f"and status is {merge_request['merge_status']}, returning FAILED"
                     )
                     return ReconciliationStatus.FAILED
 
@@ -354,7 +358,8 @@ class GitLab:
                     "canceled",
                 }:
                     logger.debug(
-                        f"Reconciliation status: merge request state is open and pipeline status is {merge_request['head_pipeline']['status']}, returning FAILED"
+                        f"Reconciliation status: merge request state is open and pipeline status is "
+                        f"{merge_request['head_pipeline']['status']}, returning FAILED"
                     )
                     return ReconciliationStatus.FAILED
 
@@ -363,13 +368,15 @@ class GitLab:
             elif merge_request["state"] == "merged":
                 if merge_request["merge_commit_sha"] is not None:
                     logger.debug(
-                        f"Reconciliation status: merge request is merged at {merge_request['merge_commit_sha']}, checking its commit status ..."
+                        f"Reconciliation status: merge request is merged at {merge_request['merge_commit_sha']}, "
+                        f"checking its commit status ..."
                     )
                     merge_commit_sha = merge_request["merge_commit_sha"]
                     return await _get_commit_status(merge_commit_sha, pipeline_timeout=pipeline_timeout)
                 elif merge_request["sha"] is not None:
                     logger.debug(
-                        f"Reconciliation status: merge request is merged without merge commit at {merge_request['sha']}, checking its commit status ..."
+                        f"Reconciliation status: merge request is merged without merge commit at {merge_request['sha']}, "
+                        f"checking its commit status ..."
                     )
                     sha = merge_request["sha"]
                     return await _get_commit_status(sha, pipeline_timeout=pipeline_timeout)
@@ -378,7 +385,8 @@ class GitLab:
                 return ReconciliationStatus.FAILED
 
             logger.error(
-                f"Incarnation '{incarnation_repository}' / '{target_directory}' has an unknown merge request status '{merge_request['state']}' for merge request '{merge_request_id}'"
+                f"Incarnation '{incarnation_repository}' / '{target_directory}' has an unknown merge request status "
+                f"'{merge_request['state']}' for merge request '{merge_request_id}'"
             )
             return ReconciliationStatus.UNKNOWN
 

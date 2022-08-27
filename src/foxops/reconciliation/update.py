@@ -75,7 +75,8 @@ async def update_incarnation(
     local_template_repository: GitRepository
     async with incarnation_repo_cm as local_incarnation_repository, template_repo_cm as local_template_repository:
         logger.debug(
-            f"Cloned Incarnation repository to '{local_incarnation_repository.directory}' and Template repository to '{local_template_repository.directory}'"
+            f"Cloned Incarnation repository to '{local_incarnation_repository.directory}' "
+            f"and Template repository to '{local_template_repository.directory}'"
         )
 
         logger.debug(f"Creating new update branch {update_branch} in incarnation repository")

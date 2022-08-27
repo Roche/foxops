@@ -174,7 +174,7 @@ async def should_return_success_reconciliation_status_for_merged_merge_request_w
     assert status == ReconciliationStatus.SUCCESS
 
 
-async def should_return_success_reconciliation_status_for_merged_merge_request_without_merge_commit_and_without_pipeline_in_target_branch(
+async def should_return_success_reconciliation_status_for_merged_merge_request_without_merge_commit_and_without_pipeline_in_target_branch(  # noqa: B950
     test_gitlab_hoster: Hoster, gitlab_test_client: AsyncClient, test_repository: RepositoryTestData
 ):
     # GIVEN
