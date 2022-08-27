@@ -45,7 +45,7 @@ Jinja2 = "^3.0.3"
 
 [tool.poetry.dev-dependencies]
 # Linting
-flake8 = "^4.0.1"
+flake8 = "^5.0.4"
 flake8-bugbear = "^22.0.0"
 isort = "^5.9.3"
 black = "^22.3.0"
