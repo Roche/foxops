@@ -1,7 +1,7 @@
 import styled from '@emotion/styled'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { ButtonLink } from '../../components/common/Button/Button'
+import { Button, ButtonLink } from '../../components/common/Button/Button'
 import { FloatingActionButton } from '../../components/common/FloatingActionButton/FloatingActionButton'
 import { Hug } from '../../components/common/Hug/Hug'
 import { Commit } from '../../components/common/Icons/Commit'
@@ -92,15 +92,19 @@ export const IncarnationsList = () => {
       </tbody>
     </Table>
   )
+  const onCreate = () => navigate('create')
   return (
     <Section>
-      <h3>Incarnations</h3>
+      <Hug flex={['aic', 'jcsb']}>
+        <h3>Incarnations</h3>
+        <Button onClick={onCreate}>Create</Button>
+      </Hug>
       <Hug flex>
         <Hug mr={4}>{pendingMessage}</Hug>
         {isLoading && <Loader />}
       </Hug>
       {table}
-      <FloatingActionButton onClick={() => navigate('create')} title="Create new incarnation" />
+      <FloatingActionButton onClick={onCreate} title="Create new incarnation" />
     </Section>
   )
 }
