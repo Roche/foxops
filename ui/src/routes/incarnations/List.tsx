@@ -7,8 +7,9 @@ import { Hug } from '../../components/common/Hug/Hug'
 import { Commit } from '../../components/common/Icons/Commit'
 import { MergeRequest } from '../../components/common/Icons/MergeRequest'
 import { Loader } from '../../components/common/Loader/Loader'
-import { incarnations } from '../../services/incarnations'
+import { Incarnation, incarnations } from '../../services/incarnations'
 import { useToolbarSearchStore } from '../../stores/toolbar-search'
+import { searchBy } from '../../utils'
 import { Section } from './parts'
 
 const Table = styled.table(({ theme }) => ({
@@ -43,6 +44,10 @@ const CellText = styled.div({
   maxWidth: '100%'
 })
 
+const NoResults = () => (
+  <tr><td colSpan={4}>No incarnations found</td></tr>
+)
+
 export const IncarnationsList = () => {
   const { search } = useToolbarSearchStore()
   const { isLoading, isError, data, isSuccess } = useQuery(['incarnations'], incarnations.get) // TODO: wrap it to useIncarnationsQuery
@@ -52,7 +57,7 @@ export const IncarnationsList = () => {
     : isError
       ? 'Error loading incarnations 😔'
       : null
-  const _data = Array.isArray(data) ? data.filter(({ incarnationRepository }) => incarnationRepository.toLowerCase().includes(search.toLowerCase())) : []
+  const _data = Array.isArray(data) ? data.filter(searchBy<Partial<Incarnation>>(search, ['incarnationRepository', 'targetDirectory'])) : []
   const table = isSuccess && (
     <Table>
       <thead>
@@ -64,7 +69,7 @@ export const IncarnationsList = () => {
         </tr>
       </thead>
       <tbody>
-        {_data.map(x => (
+        {_data.length ? _data.map(x => (
           <tr key={x.id}>
             <td>{x.id}</td>
             <td>
@@ -88,7 +93,7 @@ export const IncarnationsList = () => {
               </Hug>
             </td>
           </tr>
-        ))}
+        )) : <NoResults />}
       </tbody>
     </Table>
   )
