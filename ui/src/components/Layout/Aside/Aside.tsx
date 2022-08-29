@@ -75,7 +75,7 @@ const AsideButton = styled(NavLink)(({ theme }) => ({
     width: '100%',
     height: '100%',
     zIndex: 1,
-    backgroundImage: theme.effects.orangeGradient,
+    backgroundColor: theme.colors.orange,
     transition: 'opacity .2s',
     transitionTimingFunction: 'var(--ease-out)',
     opacity: 0

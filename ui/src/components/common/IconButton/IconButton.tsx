@@ -33,7 +33,7 @@ export const IconButton = styled('button')<IconButtonProps>(({ theme, active, fl
     left: 0,
     transition: 'transform .1s',
     transitionTimingFunction: active ? 'var(--ease-in)' : 'var(--ease-out)',
-    backgroundImage: theme.effects.orangeGradient,
+    backgroundColor: theme.colors.orange,
     transform: `scale(${Number(!!active)})`
   },
   '&::after': {

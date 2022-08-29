@@ -14,7 +14,7 @@ const Box = styled.button(({ theme }: { theme: Theme }) => ({
   width: 56,
   height: 56,
   borderRadius: '50%',
-  background: theme.effects.orangeGradient,
+  backgroundColor: theme.colors.orange,
   color: theme.colors.textContrast,
   cursor: 'pointer',
   boxShadow: theme.effects.actionButtonShadow,

@@ -15,7 +15,7 @@ const ButtonBox = styled('button')<ButtonBoxProps>(({ theme, size, disabled }) =
   height: size === 'small' ? '30px' : '38px',
   fontSize: size === 'small' ? '12px' : '16px',
   borderRadius: 4,
-  background: disabled ? theme.colors.darkGrey : theme.effects.orangeGradient,
+  background: disabled ? theme.colors.darkGrey : theme.colors.orange,
   position: 'relative',
   overflow: 'hidden',
   paddingLeft: size === 'small' ? 8 : 16,
