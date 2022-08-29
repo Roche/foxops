@@ -1,9 +1,13 @@
+type Formats = 'json' | 'text';
+
 interface MakeRequestOptions<Req, Res> {
   url: string,
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   body?: Req,
   authorized?: boolean,
-  mockedData?: Res
+  mockedData?: Res,
+  isApi?: boolean,
+  format?: Formats,
 }
 
 type MakeRequestFunc = <Req, Res>(options: MakeRequestOptions<Req, Res>) => Promise<Res>
@@ -15,7 +19,7 @@ interface API {
   makeRequest: MakeRequestFunc
   get: RequestFunc,
   post: RequestFunc,
-  makeUrl: (path: string) => string,
+  makeUrl: (path: string, isApi: boolean) => string,
 }
 
 const API_PREFIX = '/api'
@@ -34,13 +38,15 @@ export const api: API = {
   setToken: (token: string | null) => {
     api.token = token
   },
-  makeUrl: (path: string) => `${process.env.FOXOPS_API_URL ?? ''}${API_PREFIX}${path}`,
+  makeUrl: (path: string, isApi: boolean) => `${process.env.FOXOPS_API_URL ?? ''}${isApi ? API_PREFIX : ''}${path}`,
   makeRequest: async <Req, Res>({
     url,
     method,
     body,
     authorized = true,
-    mockedData
+    isApi = true,
+    mockedData,
+    format = 'json'
   }: MakeRequestOptions<Req, Res>): Promise<Res> => {
     // handle headers stuff
     const headers = new Headers([
@@ -59,14 +65,14 @@ export const api: API = {
       return Promise.resolve(mockedData)
     }
     // make request
-    const response = await fetch(api.makeUrl(url), {
+    const response = await fetch(api.makeUrl(url, isApi), {
       method,
       body: requestBody,
       headers
     })
 
     // handle response
-    const result = await response.json()
+    const result = await (format === 'json' ? response.json() : response.text())
     if (!response.ok) {
       throw {
         status: response.status,

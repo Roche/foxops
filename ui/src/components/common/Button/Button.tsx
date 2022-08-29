@@ -1,4 +1,5 @@
 import styled from '@emotion/styled'
+import { transparentize } from '../../../styling/colors'
 
 type Size = 'small' | 'large'
 interface ButtonBoxProps {
@@ -59,15 +60,28 @@ const ButtonInnerBox = styled.span`
   justify-content: center;
 `
 
+const Loader = styled.span`
+  width: 16px;
+  height: 16px;
+  border: 2px solid ${p => transparentize(p.theme.colors.textContrast, 0.4)};
+  border-bottom-color: ${p => p.theme.colors.textContrast};
+  border-radius: 50%;
+  display: inline-block;
+  box-sizing: border-box;
+  animation: rotation 1s linear infinite;
+  margin-left: 8px;
+`
+
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode,
   size?: Size,
-  dataTestid?: string
+  dataTestid?: string,
+  loading?: boolean
 }
 
-export const Button = ({ children, dataTestid, ...props }: ButtonProps) => (
+export const Button = ({ children, dataTestid, loading, ...props }: ButtonProps) => (
   <ButtonBox data-testid={dataTestid} {...props}>
-    <ButtonInnerBox>{children}</ButtonInnerBox>
+    <ButtonInnerBox>{children}{loading && <Loader />}</ButtonInnerBox>
   </ButtonBox>
 )
 
