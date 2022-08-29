@@ -1,10 +1,6 @@
-import { Hug } from '../../common/Hug/Hug'
+import styled from '@emotion/styled'
 
-interface ContentProps {
-  children: React.ReactNode
-}
-export const Content = ({ children, ...rest }: ContentProps) => (
-  <Hug p={16} className="Content-Hug" {...rest}>
-    {children}
-  </Hug>
-)
+export const Content = styled.div({
+  padding: 16,
+  overflow: 'auto'
+})

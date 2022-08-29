@@ -15,17 +15,21 @@ declare module '@emotion/react' {
       iconButtonBorder: string,
       iconButtonColor: string,
       grey: string,
-      darkGrey: string
+      darkGrey: string,
+      error: string
     },
     effects: {
       orangeGradient: string
       toolbarDropShadow: string,
-      popoverShadow: string
+      popoverShadow: string,
+      actionButtonShadow: string,
+      actionButtonHoverShadow: string
     },
     zIndex: {
       popover: number,
       toolbar: number,
       aside: number,
+      floatingActionButton: number
     }
   }
 }

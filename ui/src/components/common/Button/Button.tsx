@@ -1,7 +1,8 @@
 import styled from '@emotion/styled'
 
+type Size = 'small' | 'large'
 interface ButtonBoxProps {
-  size?: 'small'
+  size?: Size
 }
 
 const ButtonBox = styled('button')<ButtonBoxProps>(({ theme, size, disabled }) => ({
@@ -11,10 +12,10 @@ const ButtonBox = styled('button')<ButtonBoxProps>(({ theme, size, disabled }) =
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  height: size === 'small' ? '30px' : '40px',
+  height: size === 'small' ? '30px' : '38px',
   fontSize: size === 'small' ? '12px' : '16px',
   borderRadius: 4,
-  background: disabled ? theme.colors.darkGrey : theme.effects.orangeGradient,
+  background: disabled ? theme.colors.darkGrey : theme.colors.orange,
   position: 'relative',
   overflow: 'hidden',
   paddingLeft: size === 'small' ? 8 : 16,
@@ -39,10 +40,6 @@ const ButtonBox = styled('button')<ButtonBoxProps>(({ theme, size, disabled }) =
   ':active::after': {
     opacity: 0.1
   },
-  span: {
-    position: 'relative',
-    zIndex: 2
-  },
   ':focus': {
     outline: 'none',
     boxShadow: `0 0 0 2px ${theme.colors.paleOrange}`
@@ -54,27 +51,37 @@ const ButtonBox = styled('button')<ButtonBoxProps>(({ theme, size, disabled }) =
   }
 }))
 
+const ButtonInnerBox = styled.span`
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-content: center;
+  justify-content: center;
+`
+
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode,
-  size?: 'small'
+  size?: Size,
+  dataTestid?: string
 }
 
-export const Button = ({ children, ...props }: ButtonProps) => (
-  <ButtonBox {...props}>
-    <span>{children}</span>
+export const Button = ({ children, dataTestid, ...props }: ButtonProps) => (
+  <ButtonBox data-testid={dataTestid} {...props}>
+    <ButtonInnerBox>{children}</ButtonInnerBox>
   </ButtonBox>
 )
 
 interface ButtonLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
   children: React.ReactNode,
-  size?: 'small',
+  size?: Size
   disabled?: boolean
+  dataTestid?: string
 }
 
 const ButtonLinkBox = ButtonBox.withComponent('a')
 
-export const ButtonLink = ({ children, ...props }: ButtonLinkProps) => (
-  <ButtonLinkBox {...props} {...props}>
-    <span>{children}</span>
+export const ButtonLink = ({ children, dataTestid, ...props }: ButtonLinkProps) => (
+  <ButtonLinkBox data-testid={dataTestid} {...props}>
+    <ButtonInnerBox>{children}</ButtonInnerBox>
   </ButtonLinkBox>
 )

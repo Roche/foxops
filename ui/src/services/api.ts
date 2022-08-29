@@ -7,7 +7,7 @@ interface MakeRequestOptions<Req, Res> {
 }
 
 type MakeRequestFunc = <Req, Res>(options: MakeRequestOptions<Req, Res>) => Promise<Res>
-type RequestFunc = <Req, Res>(options: Omit<MakeRequestOptions<Req, Res>, 'method'>) => Promise<Res>
+type RequestFunc = <Req, Res>(url: string, options?: Omit<MakeRequestOptions<Req, Res>, 'method' | 'url'>) => Promise<Res>
 
 interface API {
   token: string | null,
@@ -19,6 +19,16 @@ interface API {
 }
 
 const API_PREFIX = '/api'
+
+interface ApiError {
+  status: number,
+  message: string
+}
+
+export interface ApiErrorResponse {
+  documentation: null | string,
+  message: string,
+}
 export const api: API = {
   token: null,
   setToken: (token: string | null) => {
@@ -33,7 +43,9 @@ export const api: API = {
     mockedData
   }: MakeRequestOptions<Req, Res>): Promise<Res> => {
     // handle headers stuff
-    const headers = new Headers()
+    const headers = new Headers([
+      ['Content-Type', 'application/json']
+    ])
     if (authorized) {
       if (!api.token) throw new Error('No token provided for authorized request')
       headers.append('Authorization', `Bearer ${api.token}`)
@@ -55,13 +67,21 @@ export const api: API = {
 
     // handle response
     const result = await response.json()
+    if (!response.ok) {
+      throw {
+        status: response.status,
+        ...result as ApiErrorResponse
+      } as ApiError
+    }
     return result as Res
   },
-  get: <Req, Res>(options: Omit<MakeRequestOptions<Req, Res>, 'method'>): Promise<Res> => api.makeRequest({
+  get: <Req, Res>(url: string, options: Omit<MakeRequestOptions<Req, Res>, 'method' | 'url'> = {}): Promise<Res> => api.makeRequest({
+    url,
     ...options,
     method: 'GET'
   }),
-  post: <Req, Res>(options: Omit<MakeRequestOptions<Req, Res>, 'method'>): Promise<Res> => api.makeRequest({
+  post: <Req, Res>(url: string, options: Omit<MakeRequestOptions<Req, Res>, 'method' | 'url'> = {}): Promise<Res> => api.makeRequest({
+    url,
     ...options,
     method: 'POST'
   })

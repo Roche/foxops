@@ -14,4 +14,3 @@ test('transparentize should convert hex to rgba value with appropriate alpha', (
   expect(transparentize('#fff', .1)).toBe('rgba(255 255 255 / 10%)')
   expect(transparentize('#f5f5f5', .7)).toBe('rgba(245 245 245 / 70%)')
 })
-

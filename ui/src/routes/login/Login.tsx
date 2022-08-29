@@ -64,7 +64,7 @@ export const Login = () => {
         {stage === STAGES.TOKEN_INPUT_SHOWN && (
           <>
             <Hug mb={16}>
-              <TextField rows={3} type="text" autoFocus value={_token} placeholder="Enter your token" onChange={onChangeToken} data-testid="Login-TextField" />
+              <TextField type="text" autoFocus value={_token} placeholder="Enter your token" onChange={onChangeToken} data-testid="Login-TextField" />
             </Hug>
             <Button type="submit" data-testid="Login-Button" style={{ borderRadius: 20, width: '100%' }}>
               Submit

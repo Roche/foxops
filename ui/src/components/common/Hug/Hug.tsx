@@ -23,6 +23,8 @@ interface CreateOffsetPropOptions {
 
 export const addPoints = (x?: string | number) => typeof x === 'string' && parseFloat(x) !== +x ? x : `${x || 0}px`
 
+export const reservedValueOrPoints = (x?: string | number) => typeof x === 'string' && ['auto', 'inherit', 'unset'].includes(x) ? x : addPoints(x)
+
 export const checkPropValue = (x?: string | number) => typeof x === 'string' || typeof x === 'number'
 
 type CreateOffsetPropResult = Partial<{
@@ -39,13 +41,13 @@ export const createOffsetProp = ({
   left,
   right
 }: CreateOffsetPropOptions): CreateOffsetPropResult => {
-  const fullProp = checkPropValue(full) ? addPoints(full) : undefined
-  const verticalProp = checkPropValue(vertical) ? addPoints(vertical) : fullProp
-  const horizontalProp = checkPropValue(horizontal) ? addPoints(horizontal) : fullProp
-  const topProp = checkPropValue(top) ? addPoints(top) : verticalProp
-  const bottomProp = checkPropValue(bottom) ? addPoints(bottom) : verticalProp
-  const leftProp = checkPropValue(left) ? addPoints(left) : horizontalProp
-  const rightProp = checkPropValue(right) ? addPoints(right) : horizontalProp
+  const fullProp = checkPropValue(full) ? reservedValueOrPoints(full) : undefined
+  const verticalProp = checkPropValue(vertical) ? reservedValueOrPoints(vertical) : fullProp
+  const horizontalProp = checkPropValue(horizontal) ? reservedValueOrPoints(horizontal) : fullProp
+  const topProp = checkPropValue(top) ? reservedValueOrPoints(top) : verticalProp
+  const bottomProp = checkPropValue(bottom) ? reservedValueOrPoints(bottom) : verticalProp
+  const leftProp = checkPropValue(left) ? reservedValueOrPoints(left) : horizontalProp
+  const rightProp = checkPropValue(right) ? reservedValueOrPoints(right) : horizontalProp
   const props = [topProp, bottomProp, leftProp, rightProp]
   if (props.every(checkPropValue)) {
     if (props.every(x => x === topProp)) {
@@ -115,7 +117,23 @@ export const createFlexOptions = (options?: boolean | FlexOptions[]): FlexCSSPro
   }, { display: 'flex' } as FlexCSSProps)
 }
 
-interface BoxProps extends Partial<Record<OffsetPropsKeys, string | number>> {
+interface WidthOptions {
+  miw?: string | number,
+  maw?: string | number,
+  w?: string | number,
+  allw?: string | number,
+}
+
+export const createWidthOptions = (options: WidthOptions) => {
+  const { miw, maw, w, allw } = options
+  const allWidth = checkPropValue(allw) ? reservedValueOrPoints(allw) : undefined
+  const width = checkPropValue(w) ? reservedValueOrPoints(w) : allWidth
+  const minWidth = checkPropValue(miw) ? reservedValueOrPoints(miw) : allWidth
+  const maxWidth = checkPropValue(maw) ? reservedValueOrPoints(maw) : allWidth
+  return { width, minWidth, maxWidth }
+}
+
+interface BoxProps extends Partial<Record<OffsetPropsKeys, string | number>>, WidthOptions {
   flex?: boolean | FlexOptions[]
 }
 
@@ -124,15 +142,26 @@ const Box = styled(
 )((props: BoxProps) => ({
   ...createOffsetProp({ name: 'margin', full: props.m, vertical: props.my, horizontal: props.mx, top: props.mt, bottom: props.mb, left: props.ml, right: props.mr }),
   ...createOffsetProp({ name: 'padding', full: props.p, vertical: props.py, horizontal: props.px, top: props.pt, bottom: props.pb, left: props.pl, right: props.pr }),
-  ...createFlexOptions(props.flex)
+  ...createFlexOptions(props.flex),
+  ...createWidthOptions({ w: props.w, miw: props.miw, maw: props.maw, allw: props.allw })
 }))
 
-interface HugProps extends Partial<Record<OffsetPropsKeys, string | number>>, React.HTMLAttributes<HTMLDivElement> {
+interface HugProps extends Partial<Record<OffsetPropsKeys, string | number>>, React.HTMLAttributes<HTMLDivElement>, WidthOptions {
   children?: React.ReactNode,
   as?: React.ElementType,
-  flex?: boolean | FlexOptions[]
+  flex?: boolean | FlexOptions[],
 }
 
-export const Hug = ({ children, as = 'div', flex, ...rest }: HugProps) => (
-  <Box as={as} className="Hug" flex={flex} {...rest}>{children}</Box>
+export const Hug = ({ children, as = 'div', flex, miw, maw, w, allw, ...rest }: HugProps) => (
+  <Box
+    as={as}
+    className="Hug"
+    flex={flex}
+    miw={miw}
+    maw={maw}
+    w={w}
+    allw={allw}
+    {...rest}>
+    {children}
+  </Box>
 )

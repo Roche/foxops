@@ -1,12 +1,13 @@
 import styled from '@emotion/styled'
 
 interface IconButtonProps {
-  active?: boolean
+  active?: boolean,
+  flying?: boolean
 }
 
-export const IconButton = styled('button')<IconButtonProps>(({ theme, active }) => ({
+export const IconButton = styled('button')<IconButtonProps>(({ theme, active, flying }) => ({
   background: 'none',
-  border: `1px solid ${active ? 'transparent' : theme.colors.iconButtonBorder}`,
+  border: flying ? 'none' : `1px solid ${active ? 'transparent' : theme.colors.iconButtonBorder}`,
   padding: 6,
   borderRadius: '8px',
   color: active ? theme.colors.textContrast : theme.colors.iconButtonColor,
@@ -16,6 +17,7 @@ export const IconButton = styled('button')<IconButtonProps>(({ theme, active }) 
   width: 38,
   minWidth: 38,
   maxWidth: 38,
+  transition: 'box-shadow .2s var(--base-easing)',
   svg: {
     verticalAlign: 'middle',
     position: 'relative',
@@ -31,7 +33,7 @@ export const IconButton = styled('button')<IconButtonProps>(({ theme, active }) 
     left: 0,
     transition: 'transform .1s',
     transitionTimingFunction: active ? 'var(--ease-in)' : 'var(--ease-out)',
-    backgroundImage: theme.effects.orangeGradient,
+    backgroundColor: theme.colors.orange,
     transform: `scale(${Number(!!active)})`
   },
   '&::after': {
@@ -46,14 +48,23 @@ export const IconButton = styled('button')<IconButtonProps>(({ theme, active }) 
     backgroundColor: theme.colors.iconButtonCurtain,
     opacity: 0
   },
-  '&:hover::after': {
+  '&:hover:not(:disabled)::after': {
     transitionTimingFunction: 'var(--ease-in)',
     opacity: active ? 0.1 : 0.3
   },
-  '&:hover': {
+  '&:hover:not(:disabled)': {
     transitionTimingFunction: 'var(--ease-in)'
   },
   '&:active::after': {
     opacity: 0.6
+  },
+  ':focus': {
+    outline: 'none',
+    boxShadow: `0 0 0 2px ${theme.colors.paleOrange}`
+  },
+  ':disabled': {
+    borderStyle: 'dashed',
+    opacity: .8,
+    cursor: 'not-allowed'
   }
 }))

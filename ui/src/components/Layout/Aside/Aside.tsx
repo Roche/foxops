@@ -22,7 +22,10 @@ const Container = styled.div<ContainerProps>(({ theme, expanded }) => ({
   height: '100%',
   width: expanded ? 200 : 57,
   transition: 'width 0.1s',
-  transitionTimingFunction: expanded ? 'var(--ease-in)' : 'var(--ease-out)'
+  transitionTimingFunction: expanded ? 'var(--ease-in)' : 'var(--ease-out)',
+  display: 'flex',
+  flexDirection: 'column',
+  overflow: 'hidden'
 }))
 
 const AsideButton = styled(NavLink)(({ theme }) => ({
@@ -72,19 +75,28 @@ const AsideButton = styled(NavLink)(({ theme }) => ({
     width: '100%',
     height: '100%',
     zIndex: 1,
-    backgroundImage: theme.effects.orangeGradient,
+    backgroundColor: theme.colors.orange,
     transition: 'opacity .2s',
     transitionTimingFunction: 'var(--ease-out)',
     opacity: 0
   }
 }))
 
+const LinkToDocs = styled.a({
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  display: 'inline-block',
+  maxWidth: '100%',
+  fontSize: 14
+})
+
 export const Aside = () => {
   const [expanded, setExpanded] = useState(false)
   return (
     <Box className="Aside-Box">
       <Container expanded={expanded} onMouseEnter={() => setExpanded(true)} onMouseLeave={() => setExpanded(false)}> {/* the expand/collapse thing with border that works like a drawer */}
-        <div>
+        <Hug> {/* the thing that holds buttons */}
           <Hug mb={8}>
             <AsideButton to="/incarnations">
               <Hug as="span" ml={4}>
@@ -95,15 +107,11 @@ export const Aside = () => {
               </Hug>
             </AsideButton>
           </Hug>
-          {/* <AsideButton active={active === 1} onClick={() => setActive(1)}>
-            <Hug as="span" ml={4}>
-              <DNA />
-            </Hug>
-            <Hug as="span" ml={16}>
-              Something else
-            </Hug>
-          </AsideButton> */}
-        </div> {/* the thing that holds buttons  */}
+        </Hug>
+        <Hug mt="auto" mb={16} flex>
+          <Hug mr={8}><LinkToDocs href="https://foxops.readthedocs.io/" target="_blank" rel="noreferrer">Docs</LinkToDocs></Hug>
+          <Hug ml={8}><LinkToDocs href="/docs" target="_blank" rel="noreferrer">API Docs</LinkToDocs></Hug>
+        </Hug>
       </Container>
     </Box>
   )

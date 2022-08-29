@@ -1,0 +1,7 @@
+import { SvgIcon, SvgIconProps } from './SvgIcon'
+
+export const ExpandLeft = (props: Partial<SvgIconProps>) => (
+  <SvgIcon {...props}>
+    <path d="M8 12L7.29289 11.2929L6.58579 12L7.29289 12.7071L8 12ZM15.2929 3.29289L7.29289 11.2929L8.70711 12.7071L16.7071 4.70711L15.2929 3.29289ZM7.29289 12.7071L15.2929 20.7071L16.7071 19.2929L8.70711 11.2929L7.29289 12.7071Z" />
+  </SvgIcon>
+)

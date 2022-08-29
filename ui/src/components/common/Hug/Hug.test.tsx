@@ -1,4 +1,4 @@
-import { addPoints, checkPropValue, createFlexOptions, createOffsetProp, Hug, OffsetPropName } from './Hug'
+import { addPoints, checkPropValue, createFlexOptions, createOffsetProp, createWidthOptions, Hug, OffsetPropName } from './Hug'
 import { render, screen } from '../../../support/setup-tests'
 
 test('Hug:addPoints: adds points to the number or string', () => {
@@ -61,6 +61,12 @@ test('Hug:createOffsetProp: creates a margin or padding prop', () => {
     right: 1
   })
   expect(result).toEqual({ paddingTop: '2px', paddingBottom: '2px', paddingRight: '1px' })
+  result = createOffsetProp({
+    name: 'margin' as OffsetPropName,
+    vertical: 0,
+    horizontal: 'auto'
+  })
+  expect(result).toEqual({ margin: '0px auto' })
 })
 
 test('Hug:createFlexOptions should create appropriate CSS flex value', () => {
@@ -83,4 +89,11 @@ test('Hug should render as section tag with 5px padding and 10vh margin-top', ()
     justifyContent: 'space-between'
   })
   expect(hug.tagName).toBe('SECTION')
+})
+
+test('Hug:createWidthOptions should create CSS width related props', () => {
+  expect(createWidthOptions({ allw: '50%' })).toEqual({ width: '50%', minWidth: '50%', maxWidth: '50%' })
+  expect(createWidthOptions({ w: '50%' })).toEqual({ width: '50%' })
+  expect(createWidthOptions({ miw: 50, maw: '50%' })).toEqual({ minWidth: '50px', maxWidth: '50%' })
+  expect(createWidthOptions({ maw: '50vh', miw: 'unset', w: 'inherit' })).toEqual({ minWidth: 'unset', maxWidth: '50vh', width: 'inherit' })
 })
