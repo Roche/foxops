@@ -108,9 +108,9 @@ export const Aside = () => {
             </AsideButton>
           </Hug>
         </Hug>
-        <Hug mt="auto" mb={16}>
-          <Hug><LinkToDocs href="https://foxops.readthedocs.io/" target="_blank" rel="noreferrer">Docs</LinkToDocs></Hug>
-          <Hug mt={8}><LinkToDocs href="/docs" target="_blank" rel="noreferrer">API Docs</LinkToDocs></Hug>
+        <Hug mt="auto" mb={16} flex>
+          <Hug mr={8}><LinkToDocs href="https://foxops.readthedocs.io/" target="_blank" rel="noreferrer">Docs</LinkToDocs></Hug>
+          <Hug ml={8}><LinkToDocs href="/docs" target="_blank" rel="noreferrer">API Docs</LinkToDocs></Hug>
         </Hug>
       </Container>
     </Box>
