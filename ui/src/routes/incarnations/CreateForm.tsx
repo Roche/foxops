@@ -105,7 +105,7 @@ export const IncarnationsCreateForm = () => {
       <Hug as="form" mb={16} flex mx={-8} onSubmit={handleSubmit(onSubmit)}>
         <Hug w="60%" miw={600} px={8}>
           <Hug mb={16}>
-            <TextField autoFocus label="Repository" disabled={isLoading} size="large" hasError={!!errors.repository} required {...register('repository', { required: true })} />
+            <TextField autoFocus label="Incarnation repository" disabled={isLoading} size="large" hasError={!!errors.repository} required {...register('repository', { required: true })} />
           </Hug>
           <Hug mb={16}>
             <TextField label="Target directory" size="large" disabled={isLoading} hasError={!!errors.targetDirectory} {...register('targetDirectory')} />
