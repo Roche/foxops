@@ -30,8 +30,8 @@ async def initialize_incarnation(
     except IncarnationRepositoryNotFound as exc:
         logger.warning(f"Reconciliation failed, because: {exc}")
         raise ReconciliationUserError(
-            f"Failed to reconcile incarnation because the remote Incarnation repository at '{exc.incarnation_repository}' doesn't exist. "
-            "Create it first, then try again."
+            f"Failed to reconcile incarnation because the remote Incarnation repository "
+            f"at '{exc.incarnation_repository}' doesn't exist. Create it first, then try again."
         )
 
     if incarnation_state is not None:
@@ -58,7 +58,8 @@ async def initialize_incarnation(
     local_template_repository: GitRepository
     async with incarnation_repo_cm as local_incarnation_repository, template_repo_cm as local_template_repository:
         logger.debug(
-            f"Cloned Incarnation repository to '{local_incarnation_repository.directory}' and Template repository to '{local_template_repository.directory}'"
+            f"Cloned Incarnation repository to '{local_incarnation_repository.directory}' "
+            f"and Template repository to '{local_template_repository.directory}'"
         )
 
         with_merge_request = await _should_initialize_with_merge_request(
@@ -135,7 +136,8 @@ async def initialize_incarnation(
 
 
 async def _should_initialize_with_merge_request(local_repository: GitRepository, target_directory: str) -> bool:
-    """Checks if the given local incarnation repository should be initialize with a Merge Request or directly pushed to the default branch."""
+    """Checks if the given local incarnation repository should be initialized
+    with a Merge Request or directly pushed to the default branch."""
     incarnation_dir = local_repository.directory / target_directory
     repo_has_commits = await local_repository.has_any_commits()
     incarnated_files = set(glob("*", root_dir=incarnation_dir) + glob(".*", root_dir=incarnation_dir)) - {

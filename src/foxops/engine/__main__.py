@@ -243,7 +243,8 @@ def cmd_update(
 
         if files_with_conflicts:
             logger.error(
-                f"update failed, there were conflicts while updating the following files: {', '.join([str(f) for f in files_with_conflicts])}"
+                f"update failed, there were conflicts while updating the "
+                f"following files: {', '.join([str(f) for f in files_with_conflicts])}"
             )
         else:
             logger.info("successfully updated incarnation")

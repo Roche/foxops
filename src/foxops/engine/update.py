@@ -25,7 +25,8 @@ async def update_incarnation_from_git_template_repository(
 
     with TemporaryDirectory() as template_root_dir, TemporaryDirectory() as updated_template_root_dir:
         logger.debug(
-            f"creating git worktree from current template repository (version: {current_incarnation_state.template_repository_version_hash}) at {template_root_dir}"
+            f"creating git worktree from current template repository "
+            f"(version: {current_incarnation_state.template_repository_version_hash}) at {template_root_dir}"
         )
         await utils.check_call(
             "git",
@@ -36,7 +37,8 @@ async def update_incarnation_from_git_template_repository(
             cwd=template_git_root_dir,
         )
         logger.debug(
-            f"creating git worktree from updated template repository (version: {update_template_repository_version}) at {updated_template_root_dir}"
+            f"creating git worktree from updated template repository "
+            f"(version: {update_template_repository_version}) at {updated_template_root_dir}"
         )
         await utils.check_call(
             "git",
