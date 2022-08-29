@@ -9,7 +9,7 @@ export const searchBy = <T extends Record<string, unknown>>(query: string, field
       return typeof value === 'string' ? value.toLowerCase() : ''
     })
     const string = values.join(' ')
-    return string.toLowerCase().includes(query.toLowerCase())
+    return string.includes(query.toLowerCase())
   }
   return search
 }
