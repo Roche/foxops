@@ -43,11 +43,21 @@ const ErrorMessage = styled.div(({ theme }) => ({
 }))
 
 export const IncarnationsCreateForm = () => {
-  const { register, handleSubmit, formState: { errors }, control, getValues } = useForm<IncarnationInput>({
+  const { register, handleSubmit, formState: { errors }, control, getValues, setFocus } = useForm<IncarnationInput>({
     defaultValues
   })
   const [apiError, setApiError] = useState<ApiErrorResponse | null>()
   const { fields, append, remove } = useFieldArray({ name: 'templateData', control })
+  const appendAndFocus = (key: string, value: string) => {
+    append({ key, value })
+    requestAnimationFrame(() => {
+      if (key) {
+        setFocus(`templateData.${fields.length}.key`)
+      } else {
+        setFocus(`templateData.${fields.length}.value`)
+      }
+    })
+  }
   const navigate = useNavigate()
   const onBackClick = () => {
     const values = getValues()
@@ -98,7 +108,7 @@ export const IncarnationsCreateForm = () => {
             <TextField autoFocus label="Repository" disabled={isLoading} size="large" hasError={!!errors.repository} required {...register('repository', { required: true })} />
           </Hug>
           <Hug mb={16}>
-            <TextField label="Target directory" size="large" disabled={isLoading} hasError={!!errors.targetDirectory} required {...register('targetDirectory', { required: true })} />
+            <TextField label="Target directory" size="large" disabled={isLoading} hasError={!!errors.targetDirectory} {...register('targetDirectory')} />
           </Hug>
           <Hug mb={16}>
             <TextField label="Template repository" disabled={isLoading} size="large" hasError={!!errors.templateRepository} required {...register('templateRepository', { required: true })} />
@@ -116,16 +126,23 @@ export const IncarnationsCreateForm = () => {
                 <Hug w="50%" pl={4} pr={8}>
                   <TextField disabled={isLoading} placeholder="Value" {...register(`templateData.${index}.value` as const)} />
                 </Hug>
-                <IconButton disabled={isLoading} type="button" onClick={() => remove(index)} title="Delete">
-                  <Trash />
-                </IconButton>
+                <Hug pr={4}>
+                  <IconButton disabled={isLoading} type="button" onClick={() => remove(index)} title="Delete">
+                    <Trash />
+                  </IconButton>
+                </Hug>
               </Hug>
             ))}
           </Hug>
-          <Hug flex mb={8} mx={-8}>
-            <Hug w="50%" pl={8} pr={24}>
-              <TextField disabled={isLoading} placeholder="Start typing to add new key value pair" value="" onChange={e => {
-                append({ key: e.target.value, value: '' })
+          <Hug flex mb={8} ml={-8}>
+            <Hug w="calc(50% - 18px)" pl={8} pr={4}>
+              <TextField disabled={isLoading} placeholder="Start typing to add new key..." value="" onChange={e => {
+                appendAndFocus(e.target.value, '')
+              }} />
+            </Hug>
+            <Hug w="calc(50% + 18px)" pl={4}>
+              <TextField disabled={isLoading} placeholder="...value pair" value="" onChange={e => {
+                appendAndFocus('', e.target.value)
               }} />
             </Hug>
           </Hug>
