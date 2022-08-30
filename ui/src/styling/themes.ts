@@ -24,7 +24,8 @@ export const THEMES: Record<ThemeMode, Theme> = {
       iconButtonColor: '#363636',
       grey: '#d2d2d2',
       darkGrey: '#929292',
-      error: '#de4242'
+      error: '#de4242',
+      tooltipBg: '#333'
     },
     effects: {
       orangeGradient: 'linear-gradient(130deg, #EA6E00, #FFAC63)',
@@ -50,7 +51,8 @@ export const THEMES: Record<ThemeMode, Theme> = {
       iconButtonColor: '#fff',
       grey: '#d2d2d2',
       darkGrey: '#929292',
-      error: '#b62525'
+      error: '#b62525',
+      tooltipBg: '#555'
     },
     effects: {
       orangeGradient: 'linear-gradient(130deg, #EA6E00, #ae5718)',
