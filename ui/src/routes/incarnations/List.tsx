@@ -131,7 +131,9 @@ export const IncarnationsList = () => {
               </Tooltip>
             </td>
             <td>
-              <CellText>{x.targetDirectory}</CellText>
+              <Tooltip title={x.targetDirectory}>
+                <CellText>{x.targetDirectory}</CellText>
+              </Tooltip>
             </td>
             <td>
               <Hug flex>
