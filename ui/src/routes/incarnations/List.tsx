@@ -7,7 +7,6 @@ import { FloatingActionButton } from '../../components/common/FloatingActionButt
 import { Hug } from '../../components/common/Hug/Hug'
 import { IconButton } from '../../components/common/IconButton/IconButton'
 import { Commit } from '../../components/common/Icons/Commit'
-import { DarkMode } from '../../components/common/Icons/DarkMode'
 import { MergeRequest } from '../../components/common/Icons/MergeRequest'
 import { Loader } from '../../components/common/Loader/Loader'
 import { Incarnation, incarnations } from '../../services/incarnations'
@@ -16,11 +15,13 @@ import { searchBy } from '../../utils'
 import { Section } from './parts'
 import { SortDown } from '../../components/common/Icons/SortDown'
 import { SortUp } from '../../components/common/Icons/SortUp'
+import { Sort } from '../../components/common/Icons/Sort'
 
+type SortBy = 'incarnationRepository' | 'targetDirectory'
 interface SortStore {
-  sort: 'incarnationRepository' | 'targetDirectory',
+  sort: SortBy,
   asc: boolean,
-  setSort: (sort: 'incarnationRepository' | 'targetDirectory', asc: boolean) => void,
+  setSort: (sort: SortBy, asc: boolean) => void,
 }
 
 const useSort = create<SortStore>()(set => ({
@@ -87,6 +88,13 @@ export const IncarnationsList = () => {
         return b[sort].localeCompare(a[sort])
       })
     : []
+  const onSort = (_sort: SortBy) => () => {
+    if (sort === _sort) {
+      setSort(_sort, !asc)
+    } else {
+      setSort(_sort, true)
+    }
+  }
   const table = isSuccess && (
     <Table>
       <thead>
@@ -94,11 +102,15 @@ export const IncarnationsList = () => {
           <th style={{ width: 40 }}>Id</th>
           <th style={{ width: 'calc(50% - 40px - 218px)' }} className={sort === 'incarnationRepository' ? 'sorted' : ''}>
             Repository{' '}
-            <IconButton onClick={() => setSort('incarnationRepository', !asc)} className="sort-icon" size="small" flying>{asc ? <SortDown /> : <SortUp />}</IconButton>
+            <IconButton onClick={onSort('incarnationRepository')} className="sort-icon" size="small" flying>
+              {sort === 'incarnationRepository' ? asc ? <SortDown /> : <SortUp /> : <Sort />}
+            </IconButton>
           </th>
           <th style={{ width: 'calc(50% - 40px - 218px)' }} className={sort === 'targetDirectory' ? 'sorted' : ''}>
             Target directory{' '}
-            <IconButton onClick={() => setSort('targetDirectory', !asc)} className="sort-icon" size="small" flying>{asc ? <SortDown /> : <SortUp />}</IconButton>
+            <IconButton onClick={onSort('targetDirectory')} className="sort-icon" size="small" flying>
+              {sort === 'targetDirectory' ? asc ? <SortDown /> : <SortUp /> : <Sort />}
+            </IconButton>
           </th>
           <th style={{ width: 218 }} />
         </tr>
