@@ -16,7 +16,8 @@ declare module '@emotion/react' {
       iconButtonColor: string,
       grey: string,
       darkGrey: string,
-      error: string
+      error: string,
+      tooltipBg: string
     },
     effects: {
       orangeGradient: string

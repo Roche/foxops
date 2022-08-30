@@ -16,6 +16,7 @@ import { Section } from './parts'
 import { SortDown } from '../../components/common/Icons/SortDown'
 import { SortUp } from '../../components/common/Icons/SortUp'
 import { Sort } from '../../components/common/Icons/Sort'
+import { Tooltip } from '../../components/common/Tooltip/Tooltip'
 
 type SortBy = 'incarnationRepository' | 'targetDirectory'
 interface SortStore {
@@ -34,10 +35,14 @@ const Table = styled.table(({ theme }) => ({
   width: '100%',
   borderCollapse: 'collapse',
   tableLayout: 'fixed',
+  fontSize: 14,
   'td, th': {
     padding: 8,
     borderBottom: `1px solid ${theme.colors.grey}`,
     whiteSpace: 'nowrap'
+  },
+  td: {
+    padding: '4px 8px'
   },
   th: {
     fontWeight: 700,
@@ -45,6 +50,7 @@ const Table = styled.table(({ theme }) => ({
     position: 'sticky',
     background: theme.colors.baseBg,
     zIndex: 3,
+    fontSize: 16,
     top: -16 // padding of Content component
   },
   'tr:last-child td': {
@@ -120,9 +126,15 @@ export const IncarnationsList = () => {
           <tr key={x.id}>
             <td>{x.id}</td>
             <td>
-              <CellText>{x.incarnationRepository}</CellText>
+              <Tooltip title={x.incarnationRepository}>
+                <CellText>{x.incarnationRepository}</CellText>
+              </Tooltip>
             </td>
-            <td>{x.targetDirectory}</td>
+            <td>
+              <Tooltip title={x.targetDirectory}>
+                <CellText>{x.targetDirectory}</CellText>
+              </Tooltip>
+            </td>
             <td>
               <Hug flex>
                 <ButtonLink size="small" target="_blank" disabled={!x.commitUrl} href={x.commitUrl} title={x.commitUrl}>
