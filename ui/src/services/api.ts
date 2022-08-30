@@ -6,7 +6,7 @@ interface MakeRequestOptions<Req, Res> {
   body?: Req,
   authorized?: boolean,
   mockedData?: Res,
-  isApi?: boolean,
+  apiPrefix?: string,
   format?: Formats,
 }
 
@@ -19,7 +19,7 @@ interface API {
   makeRequest: MakeRequestFunc
   get: RequestFunc,
   post: RequestFunc,
-  makeUrl: (path: string, isApi: boolean) => string,
+  makeUrl: (path: string, apiPrefix: string) => string,
 }
 
 const API_PREFIX = '/api'
@@ -38,13 +38,13 @@ export const api: API = {
   setToken: (token: string | null) => {
     api.token = token
   },
-  makeUrl: (path: string, isApi: boolean) => `${process.env.FOXOPS_API_URL ?? ''}${isApi ? API_PREFIX : ''}${path}`,
+  makeUrl: (path, apiPrefix) => `${process.env.FOXOPS_API_URL ?? ''}${apiPrefix}${path}`,
   makeRequest: async <Req, Res>({
     url,
     method,
     body,
     authorized = true,
-    isApi = true,
+    apiPrefix = API_PREFIX,
     mockedData,
     format = 'json'
   }: MakeRequestOptions<Req, Res>): Promise<Res> => {
@@ -65,7 +65,7 @@ export const api: API = {
       return Promise.resolve(mockedData)
     }
     // make request
-    const response = await fetch(api.makeUrl(url, isApi), {
+    const response = await fetch(api.makeUrl(url, apiPrefix), {
       method,
       body: requestBody,
       headers
@@ -74,9 +74,18 @@ export const api: API = {
     // handle response
     const result = await (format === 'json' ? response.json() : response.text())
     if (!response.ok) {
+      // FIXME: this is mess, should be removed as soon as auth/test will start to respond with JSON
+      let errorResult = result
+      try {
+        errorResult = typeof errorResult === 'string' ? JSON.parse(errorResult) : errorResult
+      } catch (error) {
+        errorResult = {
+          message: errorResult
+        }
+      }
       throw {
         status: response.status,
-        ...result as ApiErrorResponse
+        ...errorResult as ApiErrorResponse
       } as ApiError
     }
     return result as Res
