@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState, Children, cloneElement } from 'react'
 import { useFloating, offset, flip, shift, useInteractions, useHover } from '@floating-ui/react-dom-interactions'
 import styled from '@emotion/styled'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -15,10 +15,11 @@ const TooltipBody = styled(motion.div)(({ theme }) => ({
 
 interface TooltipProps {
   children: React.ReactElement,
-  title: React.ReactNode
+  title: React.ReactNode,
+  dataTestid?: string,
 }
 
-export const Tooltip = ({ children, title }: TooltipProps) => {
+export const Tooltip = ({ children, title, dataTestid }: TooltipProps) => {
   const [open, setOpen] = useState(false)
   const { x, y, reference, floating, strategy, context } = useFloating({
     middleware: [offset(8), flip(), shift()],
@@ -27,12 +28,12 @@ export const Tooltip = ({ children, title }: TooltipProps) => {
   })
   const { getReferenceProps, getFloatingProps } = useInteractions([useHover(context, { restMs: 400 })])
   try {
-    React.Children.only(children)
+    Children.only(children)
   } catch (error) {
     console.error(error)
     return children
   }
-  const element = React.cloneElement(children, {
+  const element = cloneElement(children, {
     ...children.props,
     ...getReferenceProps(),
     ref: reference
@@ -41,8 +42,9 @@ export const Tooltip = ({ children, title }: TooltipProps) => {
     <>
       {element}
       <AnimatePresence>
-        {!!title && open && (
+        {open && (
           <TooltipBody
+            data-testid={dataTestid}
             initial={{ opacity: 0, scale: 0.85 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
