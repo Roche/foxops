@@ -16,7 +16,6 @@ import { useState } from 'react'
 import styled from '@emotion/styled'
 import { Close } from '../../components/common/Icons/Close'
 import { useRequestProcessingStore } from '../../stores/request-processing-store'
-import { Loader } from '../../components/common/Loader/Loader'
 
 const defaultValues: IncarnationInput = {
   repository: '',
