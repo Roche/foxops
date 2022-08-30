@@ -16,7 +16,6 @@ import { useState } from 'react'
 import styled from '@emotion/styled'
 import { Close } from '../../components/common/Icons/Close'
 import { useRequestProcessingStore } from '../../stores/request-processing-store'
-import { Loader } from '../../components/common/Loader/Loader'
 
 const defaultValues: IncarnationInput = {
   repository: '',
@@ -89,7 +88,7 @@ export const IncarnationsCreateForm = () => {
       setPending(false)
     }
   }
-  const buttonTitle = isSuccess ? 'Created!' : isLoading ? 'Creating...' : 'Create'
+  const buttonTitle = isSuccess ? 'Created!' : isLoading ? 'Creating' : 'Create'
   return (
     <Section>
       <Hug flex={['aic']} ml={-42}>
@@ -148,9 +147,8 @@ export const IncarnationsCreateForm = () => {
           </Hug>
           <Hug flex={['jcfe', 'aic']}>
             <Hug>
-              <Button style={{ minWidth: 120 }} type="submit" disabled={isLoading || isSuccess}>{buttonTitle}</Button>
+              <Button loading={isLoading} style={{ minWidth: 120 }} type="submit" disabled={isLoading || isSuccess}>{buttonTitle}</Button>
             </Hug>
-            {isLoading && <Hug as={Loader} mr={-24} ml={8} />}
           </Hug>
         </Hug>
         {apiError

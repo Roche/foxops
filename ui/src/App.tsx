@@ -8,7 +8,7 @@ import { createGlobalStyles } from './global-styles'
 import { useThemeModeStore } from './stores/theme-mode'
 import { THEMES } from './styling/themes'
 import { IncarnationsCreateForm } from './routes/incarnations/CreateForm'
-// import './styling/prism.js' TODO: include it when JSON editor is ready
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 
 const queryClient = new QueryClient()
 
@@ -30,6 +30,7 @@ function App() {
           </Routes>
         </BrowserRouter>
       </ThemeProvider>
+      <ReactQueryDevtools position="bottom-right" />
     </QueryClientProvider>
   )
 }

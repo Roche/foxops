@@ -1,4 +1,5 @@
 import styled from '@emotion/styled'
+import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '../../../stores/auth'
@@ -41,6 +42,11 @@ export const Toolbar = () => {
     setProfileOpen(false)
   }
   const { search, setSearch } = useToolbarSearchStore()
+  const queryClient = useQueryClient()
+  const onLogout = () => {
+    setToken(null)
+    queryClient.removeQueries(['incarnations'])
+  }
   return (
     <Box className="Toolbar-Box" data-testid="Toolbar">
       <ToolbarProgress />
@@ -59,7 +65,7 @@ export const Toolbar = () => {
         </IconButton>
       </Hug>
       <Popover open={profileOpen} anchorEl={profileIconEl} onClickOutside={onClose}>
-        <Button onClick={() => setToken(null)}>Logout</Button>
+        <Button onClick={onLogout}>Logout</Button>
       </Popover>
     </Box>
   )
