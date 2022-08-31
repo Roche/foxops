@@ -1,6 +1,6 @@
 import { api } from '../services/api'
 
-interface IncarnationApiView {
+interface IncarnationBaseApiView {
   id: number,
   incarnation_repository: string,
   target_directory: string,
@@ -8,12 +8,22 @@ interface IncarnationApiView {
   merge_request_url: null | string
 }
 
-export interface Incarnation {
+export type IncarnationStatus = 'unknown' | 'pending' | 'success' | 'failed'
+
+interface IncarnationApiView extends IncarnationBaseApiView {
+  status: IncarnationStatus
+}
+
+export interface IncarnationBase {
   id: number,
   incarnationRepository: string,
   targetDirectory: string,
   commitUrl: string,
   mergeRequestUrl: null | string,
+}
+
+export interface Incarnation extends IncarnationBase {
+  status: IncarnationStatus
 }
 
 export interface IncarnationInput {
@@ -27,12 +37,17 @@ export interface IncarnationInput {
   }[]
 }
 
-const convertToUiIncarnation = (x: IncarnationApiView): Incarnation => ({
+const convertToUiBaseIncarnation = (x: IncarnationBaseApiView): IncarnationBase => ({
   id: x.id,
   incarnationRepository: x.incarnation_repository,
   targetDirectory: x.target_directory,
   commitUrl: x.commit_url,
   mergeRequestUrl: x.merge_request_url
+})
+
+const convertToUiIncarnation = (x: IncarnationApiView): Incarnation => ({
+  ...convertToUiBaseIncarnation(x),
+  status: x.status
 })
 
 interface IncarnationApiInput {
@@ -63,17 +78,21 @@ const convertToApiInput = (x: IncarnationInput): IncarnationApiInput => ({
 //     target_directory: `Target ${x}`,
 //     commit_url: `https://code.roche.com/navify-anywhere/limbo/demo-app/-/commit/${x}`,
 //     merge_request_url: null
-//   } as IncarnationApiView
+//   } as IncarnationBaseApiView
 // })
 
 export const incarnations = {
   get: async () => {
-    const apiIncarnations = await api.get<undefined, IncarnationApiView[]>('/incarnations')
-    return apiIncarnations.map(convertToUiIncarnation)
+    const apiIncarnations = await api.get<undefined, IncarnationBaseApiView[]>('/incarnations')
+    return apiIncarnations.map(convertToUiBaseIncarnation)
   },
   create: async (incarnation: IncarnationInput) => {
     const incarnationApiInput = convertToApiInput(incarnation)
-    return api.post<IncarnationApiInput, IncarnationApiView>('/incarnations', { body: incarnationApiInput })
-    // return convertToUiIncarnation(apiIncarnation)
+    return api.post<IncarnationApiInput, IncarnationBaseApiView>('/incarnations', { body: incarnationApiInput })
+    // return convertToUiBaseIncarnation(apiIncarnation)
+  },
+  getById: async (id: number) => {
+    const apiIncarnation = await api.get<undefined, IncarnationApiView>(`/incarnations/${id}`)
+    return convertToUiIncarnation(apiIncarnation)
   }
 }

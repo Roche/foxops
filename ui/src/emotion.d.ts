@@ -17,7 +17,11 @@ declare module '@emotion/react' {
       grey: string,
       darkGrey: string,
       error: string,
-      tooltipBg: string
+      tooltipBg: string,
+      statusSuccess: string,
+      statusFailure: string,
+      statusPending: string,
+      statusUnknown: string
     },
     effects: {
       orangeGradient: string
@@ -30,7 +34,12 @@ declare module '@emotion/react' {
       popover: number,
       toolbar: number,
       aside: number,
-      floatingActionButton: number
+      floatingActionButton: number,
+      tooltip: number
+    },
+    sizes: {
+      toolbar: number,
+      aside: number
     }
   }
 }

@@ -6,9 +6,11 @@ import { Hug } from '../../common/Hug/Hug'
 import { DNA } from '../../common/Icons/DNA'
 
 const Box = styled.div(({ theme }) => ({
-  gridColumn: '1',
-  gridRow: '2 / 3',
-  position: 'relative',
+  left: 0,
+  top: theme.sizes.toolbar,
+  width: theme.sizes.aside,
+  height: 'calc(100% - 60px)',
+  position: 'fixed',
   zIndex: theme.zIndex.aside
 }))
 
@@ -20,7 +22,7 @@ const Container = styled.div<ContainerProps>(({ theme, expanded }) => ({
   backgroundColor: theme.colors.asideBg,
   padding: 8,
   height: '100%',
-  width: expanded ? 200 : 57,
+  width: expanded ? 200 : theme.sizes.aside,
   transition: 'width 0.1s',
   transitionTimingFunction: expanded ? 'var(--ease-in)' : 'var(--ease-out)',
   display: 'flex',

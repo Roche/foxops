@@ -23,8 +23,7 @@ export const createGlobalStyles = ({
     height: 100%;
   }
   #root {
-    height: 100%;
-    overflow: hidden;
+    min-height: 100%;
   }
   * {
     box-sizing: border-box;

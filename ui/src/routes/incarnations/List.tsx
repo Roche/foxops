@@ -2,21 +2,19 @@ import styled from '@emotion/styled'
 import { useQuery } from '@tanstack/react-query'
 import create from 'zustand'
 import { useNavigate } from 'react-router-dom'
-import { Button, ButtonLink } from '../../components/common/Button/Button'
+import { Button } from '../../components/common/Button/Button'
 import { FloatingActionButton } from '../../components/common/FloatingActionButton/FloatingActionButton'
 import { Hug } from '../../components/common/Hug/Hug'
 import { IconButton } from '../../components/common/IconButton/IconButton'
-import { Commit } from '../../components/common/Icons/Commit'
-import { MergeRequest } from '../../components/common/Icons/MergeRequest'
 import { Loader } from '../../components/common/Loader/Loader'
-import { Incarnation, incarnations } from '../../services/incarnations'
+import { IncarnationBase, incarnations } from '../../services/incarnations'
 import { useToolbarSearchStore } from '../../stores/toolbar-search'
 import { searchBy } from '../../utils'
 import { Section } from './parts'
 import { SortDown } from '../../components/common/Icons/SortDown'
 import { SortUp } from '../../components/common/Icons/SortUp'
 import { Sort } from '../../components/common/Icons/Sort'
-import { Tooltip } from '../../components/common/Tooltip/Tooltip'
+import { IncarnationItem } from './Item'
 
 type SortBy = 'incarnationRepository' | 'targetDirectory'
 interface SortStore {
@@ -51,7 +49,7 @@ const Table = styled.table(({ theme }) => ({
     background: theme.colors.baseBg,
     zIndex: 3,
     fontSize: 16,
-    top: -16 // padding of Content component
+    top: theme.sizes.toolbar
   },
   'tr:last-child td': {
     borderBottom: 'none'
@@ -61,15 +59,11 @@ const Table = styled.table(({ theme }) => ({
   },
   'th.sorted .sort-icon': {
     opacity: 1
+  },
+  'td:last-child': {
+    paddingRight: 0
   }
 }))
-
-const CellText = styled.div({
-  whiteSpace: 'nowrap',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  maxWidth: '100%'
-})
 
 const NoResults = () => (
   <tr><td colSpan={4}>No incarnations found</td></tr>
@@ -86,7 +80,7 @@ export const IncarnationsList = () => {
       : null
   const { sort, asc, setSort } = useSort()
   const _data = Array.isArray(data)
-    ? data.filter(searchBy<Partial<Incarnation>>(search, ['incarnationRepository', 'targetDirectory']))
+    ? data.filter(searchBy<Partial<IncarnationBase>>(search, ['incarnationRepository', 'targetDirectory']))
       .sort((a, b) => {
         if (asc) {
           return a[sort].localeCompare(b[sort])
@@ -123,35 +117,7 @@ export const IncarnationsList = () => {
       </thead>
       <tbody>
         {_data.length ? _data.map(x => (
-          <tr key={x.id}>
-            <td>{x.id}</td>
-            <td>
-              <Tooltip title={x.incarnationRepository}>
-                <CellText>{x.incarnationRepository}</CellText>
-              </Tooltip>
-            </td>
-            <td>
-              <Tooltip title={x.targetDirectory}>
-                <CellText>{x.targetDirectory}</CellText>
-              </Tooltip>
-            </td>
-            <td>
-              <Hug flex>
-                <ButtonLink size="small" target="_blank" disabled={!x.commitUrl} href={x.commitUrl} title={x.commitUrl}>
-                  <Hug as="span" mr={4}>Commit</Hug>
-                  <Commit />
-                </ButtonLink>
-                <Hug ml={4}>
-                  <ButtonLink size="small" target="_blank" disabled={!x.mergeRequestUrl} href={x.mergeRequestUrl ?? undefined} title={x.mergeRequestUrl ?? undefined}>
-                    <Hug as="span" flex={['aic', 'jcsb']}>
-                      <Hug as="span" mr={4}>Merge request</Hug>
-                      <MergeRequest />
-                    </Hug>
-                  </ButtonLink>
-                </Hug>
-              </Hug>
-            </td>
-          </tr>
+          <IncarnationItem key={x.id} incarnation={x} />
         )) : <NoResults />}
       </tbody>
     </Table>
@@ -159,7 +125,7 @@ export const IncarnationsList = () => {
   const onCreate = () => navigate('create')
   return (
     <Section>
-      <Hug flex={['aic', 'jcsb']}>
+      <Hug flex={['aic', 'jcsb']} pl={8}>
         <h3>Incarnations</h3>
         <Button onClick={onCreate}>Create</Button>
       </Hug>

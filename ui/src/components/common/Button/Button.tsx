@@ -1,4 +1,5 @@
 import styled from '@emotion/styled'
+import { forwardRef } from 'react'
 import { transparentize } from '../../../styling/colors'
 
 type Size = 'small' | 'large'
@@ -69,7 +70,6 @@ const Loader = styled.span`
   display: inline-block;
   box-sizing: border-box;
   animation: rotation 1s linear infinite;
-  margin-left: 8px;
 `
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -79,11 +79,13 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   loading?: boolean
 }
 
-export const Button = ({ children, dataTestid, loading, ...props }: ButtonProps) => (
-  <ButtonBox data-testid={dataTestid} {...props}>
-    <ButtonInnerBox>{children}{loading && <Loader />}</ButtonInnerBox>
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({ children, dataTestid, loading, ...props }, ref) => (
+  <ButtonBox data-testid={dataTestid} ref={ref} {...props}>
+    <ButtonInnerBox>{children}{loading && <Loader style={{ marginLeft: children ? 8 : 0 }} />}</ButtonInnerBox>
   </ButtonBox>
-)
+))
+
+Button.displayName = 'Button'
 
 interface ButtonLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
   children: React.ReactNode,
@@ -94,8 +96,10 @@ interface ButtonLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> 
 
 const ButtonLinkBox = ButtonBox.withComponent('a')
 
-export const ButtonLink = ({ children, dataTestid, ...props }: ButtonLinkProps) => (
-  <ButtonLinkBox data-testid={dataTestid} {...props}>
+export const ButtonLink = forwardRef<HTMLAnchorElement, ButtonLinkProps>(({ children, dataTestid, ...props }, ref) => (
+  <ButtonLinkBox data-testid={dataTestid} ref={ref} {...props}>
     <ButtonInnerBox>{children}</ButtonInnerBox>
   </ButtonLinkBox>
-)
+))
+
+ButtonLink.displayName = 'ButtonLink'
