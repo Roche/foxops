@@ -5,3 +5,4 @@ dist/
 docs/build/
 .idea
 test.db
+.DS_Store
