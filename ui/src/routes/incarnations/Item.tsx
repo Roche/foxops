@@ -24,6 +24,15 @@ interface StatusProps {
   type: IncarnationStatus
 }
 
+const createTagStyle = (color: string) => ({
+  fontSize: 12,
+  padding: '4px 6px',
+  color,
+  borderRadius: 6,
+  background: transparentize(color, 0.05),
+  border: `1px solid ${color}`
+})
+
 const Status = styled.div<StatusProps>(({ theme, type }) => {
   let color = theme.colors.statusSuccess
   switch (type) {
@@ -39,19 +48,14 @@ const Status = styled.div<StatusProps>(({ theme, type }) => {
     default:
       break
   }
-  return {
-    fontSize: 12,
-    padding: '4px 6px',
-    color,
-    borderRadius: 6,
-    background: transparentize(color, 0.05),
-    border: `1px solid ${color}`
-  }
+  return createTagStyle(color)
 })
 
 const StatusTag = ({ status }: { status: IncarnationStatus }) => (
   <Status type={status}>{status}</Status>
 )
+
+const ErrorTag = styled.div(({ theme }) => createTagStyle(theme.colors.statusFailure))
 
 export const IncarnationItem = ({ incarnation }: IncarnationItemProps) => {
   const { id, commitUrl, mergeRequestUrl, incarnationRepository, targetDirectory } = incarnation
@@ -73,7 +77,7 @@ export const IncarnationItem = ({ incarnation }: IncarnationItemProps) => {
       <td>
         <Hug flex={['jcfe', 'aic']}>
           <Hug mr={4}>
-            {isError ? 'Error' : ''}
+            {isError ? <ErrorTag>error</ErrorTag> : ''}
             {data && !isFetching ? <StatusTag status={data.status} /> : ''}
           </Hug>
           <Hug mr={4}>
