@@ -1,3 +1,4 @@
+import { useTheme } from '@emotion/react'
 import styled from '@emotion/styled'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -15,19 +16,22 @@ import { Logo } from '../../common/Logo/Logo'
 import { Popover } from '../../common/Popover/Popover'
 import { TextField } from '../../common/TextField/TextField'
 import { ToolbarProgress } from '../../common/ToolbarProgress/ToolbarProgress'
+import { Tooltip } from '../../common/Tooltip/Tooltip'
 
 const Box = styled.div`
-  grid-row: 1;
-  grid-column: 1 / 3;
   box-shadow: ${p => p.theme.effects.toolbarDropShadow};
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  position: relative;
   padding-left: 8px;
   padding-right: 8px;
-  position: relative;
   z-index: ${p => p.theme.zIndex.toolbar};
+  background: ${p => p.theme.colors.baseBg};
 `
 
 export const Toolbar = () => {
@@ -43,6 +47,7 @@ export const Toolbar = () => {
   }
   const { search, setSearch } = useToolbarSearchStore()
   const queryClient = useQueryClient()
+  const theme = useTheme()
   const onLogout = () => {
     setToken(null)
     queryClient.removeQueries(['incarnations'])
@@ -56,9 +61,11 @@ export const Toolbar = () => {
           <TextField placeholder="Search..." type="search" value={search} onChange={e => setSearch(e.target.value)} />
         </Hug>
         <Hug mr={8}>
-          <IconButton className="Toolbar-IconButton" onMouseDown={e => e.preventDefault()} onClick={toggleMode}>
-            {mode === 'dark' ? <LightMode /> : <DarkMode />}
-          </IconButton>
+          <Tooltip title={`Toggle ${mode} mode`} style={{ zIndex: theme.zIndex.toolbar + 1 }}>
+            <IconButton className="Toolbar-IconButton" onMouseDown={e => e.preventDefault()} onClick={toggleMode}>
+              {mode === 'dark' ? <LightMode /> : <DarkMode />}
+            </IconButton>
+          </Tooltip>
         </Hug>
         <IconButton className="Toolbar-IconButton Toolbar-IconButton--Profile" ref={setProfileIconEl} active={profileOpen} onClick={onProfileClick}>
           <User />

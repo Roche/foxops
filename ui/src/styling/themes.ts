@@ -2,10 +2,16 @@ import { Theme } from '@emotion/react'
 import { ThemeMode } from '../shared/types'
 
 const zIndex = {
-  popover: 10,
-  toolbar: 7,
+  popover: 12,
+  toolbar: 11,
   aside: 4, // should be less than toolbar
-  floatingActionButton: 5
+  floatingActionButton: 5,
+  tooltip: 10
+}
+
+const sizes = {
+  toolbar: 60,
+  aside: 57
 }
 
 export const THEMES: Record<ThemeMode, Theme> = {
@@ -25,7 +31,11 @@ export const THEMES: Record<ThemeMode, Theme> = {
       grey: '#d2d2d2',
       darkGrey: '#929292',
       error: '#de4242',
-      tooltipBg: '#333'
+      tooltipBg: '#333',
+      statusSuccess: '#EA6E00',
+      statusFailure: '#de4242',
+      statusPending: '#6f5811',
+      statusUnknown: '#333'
     },
     effects: {
       orangeGradient: 'linear-gradient(130deg, #EA6E00, #FFAC63)',
@@ -34,7 +44,8 @@ export const THEMES: Record<ThemeMode, Theme> = {
       actionButtonShadow: '0px 3px 5px -1px rgb(0 0 0 / 20%), 0px 6px 10px 0px rgb(0 0 0 / 14%), 0px 1px 18px 0px rgb(0 0 0 / 12%)',
       actionButtonHoverShadow: '0px 7px 8px -4px rgb(0 0 0 / 20%), 0px 12px 17px 2px rgb(0 0 0 / 14%), 0px 5px 22px 4px rgb(0 0 0 / 12%)'
     },
-    zIndex
+    zIndex,
+    sizes
   },
   dark: {
     colors: {
@@ -52,7 +63,11 @@ export const THEMES: Record<ThemeMode, Theme> = {
       grey: '#d2d2d2',
       darkGrey: '#929292',
       error: '#b62525',
-      tooltipBg: '#555'
+      tooltipBg: '#555',
+      statusSuccess: '#EA6E00',
+      statusFailure: '#de4242',
+      statusPending: '#c6980b',
+      statusUnknown: '#fff'
     },
     effects: {
       orangeGradient: 'linear-gradient(130deg, #EA6E00, #ae5718)',
@@ -61,6 +76,7 @@ export const THEMES: Record<ThemeMode, Theme> = {
       actionButtonShadow: '0px 3px 5px -1px rgb(0 0 0 / 20%), 0px 6px 10px 0px rgb(0 0 0 / 14%), 0px 1px 18px 0px rgb(0 0 0 / 12%)',
       actionButtonHoverShadow: '0px 7px 8px -4px rgb(0 0 0 / 20%), 0px 12px 17px 2px rgb(0 0 0 / 14%), 0px 5px 22px 4px rgb(0 0 0 / 12%)'
     },
-    zIndex
+    zIndex,
+    sizes
   }
 }
