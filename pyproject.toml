@@ -31,6 +31,7 @@ aiopath = "^0.6.10"
 SQLAlchemy = {extras = ["asyncio"], version = "^1.4.39"}
 asyncpg = "^0.26.0"
 aiosqlite = "^0.17.0"
+alembic = {extras = ["tz"], version = "^1.8.1"}
 
 # Remove once there are proper wheels available for 1.1.3+,
 # see https://github.com/python-greenlet/greenlet/issues/312
@@ -69,6 +70,7 @@ sphinx-autobuild = "^2021.3.14"
 sphinxcontrib-mermaid = "^0.7.1"
 myst-parser = "^0.18.0"
 furo = "^2022.9.15"
+pytest-alembic = "^0.8.4"
 
 [tool.black]
 line-length = 120

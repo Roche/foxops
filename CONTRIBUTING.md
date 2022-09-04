@@ -48,3 +48,13 @@ FOXOPS_STATIC_TOKEN=dummy FOXOPS_GITLAB_ADDRESS=http://localhost:5002/api/v4 FOX
 ### Documentation
 
 run `make live` in the `docs/` subfolder to start a web server that hosts a live-build of the documentation. It even auto-reloads in case of changes!
+
+## Changing the database schema
+
+This project uses [Alembic](https://alembic.sqlalchemy.org/en/latest/) for database migrations. If you change the database schema, you need to create a new migration script that contains steps to migrate existing databases to the new schema.
+
+To create a new migration script, run the following command (adjusting the message):
+
+```
+poetry run alembic revision --autogenerate -m "Add a new table"
+```
