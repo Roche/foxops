@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 import foxops.reconciliation as reconciliation
 from foxops.database import DAL
 from foxops.hosters import GitLab, Hoster
-from foxops.settings import Settings, DatabaseSettings
+from foxops.settings import DatabaseSettings, Settings
 
 # NOTE: Yes, you may absolutely use proper dependency injection at some point.
 
@@ -30,9 +30,7 @@ def get_dal(settings: DatabaseSettings = Depends(get_database_settings)) -> DAL:
     global async_engine
 
     if async_engine is None:
-        async_engine = create_async_engine(
-            settings.url.get_secret_value(), future=True, echo=False, pool_pre_ping=True
-        )
+        async_engine = create_async_engine(settings.url.get_secret_value(), future=True, echo=False, pool_pre_ping=True)
 
     return DAL(async_engine)
 
