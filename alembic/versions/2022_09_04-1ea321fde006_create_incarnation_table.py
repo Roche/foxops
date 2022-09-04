@@ -1,13 +1,13 @@
 """create incarnation table
 
 Revision ID: 1ea321fde006
-Revises: 
+Revises:
 Create Date: 2022-09-04 19:17:53.794855+00:00
 
 """
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "1ea321fde006"
