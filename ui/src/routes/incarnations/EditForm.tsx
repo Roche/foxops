@@ -28,6 +28,7 @@ export const EditIncarnationForm = () => {
       <IncarnationsForm
         mutation={(x => incarnations.update(id, x))}
         defaultValues={toIncarnationInput(data)}
+        incarnationStatus={data.status}
         isEdit />
     )
     : (

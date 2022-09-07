@@ -2,13 +2,13 @@ import { Commit } from '../../components/common/Icons/Commit'
 import { MergeRequest } from '../../components/common/Icons/MergeRequest'
 import { Tooltip } from '../../components/common/Tooltip/Tooltip'
 import { Download } from '../../components/common/Icons/Download'
-import { IncarnationBase, incarnations, IncarnationStatus } from '../../services/incarnations'
+import { IncarnationBase, incarnations } from '../../services/incarnations'
 import styled, { CSSObject } from '@emotion/styled'
 import { Hug } from '../../components/common/Hug/Hug'
 import { Button, ButtonLink } from '../../components/common/Button/Button'
 import { useQuery } from '@tanstack/react-query'
-import { transparentize } from '../../styling/colors'
 import { Link } from 'react-router-dom'
+import { ErrorTag, StatusTag } from './parts'
 
 const sharedStyles: CSSObject = {
   whiteSpace: 'nowrap',
@@ -31,43 +31,6 @@ const CellLink = styled(Link)({
 interface IncarnationItemProps {
   incarnation: IncarnationBase
 }
-
-interface StatusProps {
-  type: IncarnationStatus
-}
-
-const createTagStyle = (color: string) => ({
-  fontSize: 12,
-  padding: '4px 6px',
-  color,
-  borderRadius: 6,
-  background: transparentize(color, 0.05),
-  border: `1px solid ${color}`
-})
-
-const Status = styled.div<StatusProps>(({ theme, type }) => {
-  let color = theme.colors.statusSuccess
-  switch (type) {
-    case 'pending':
-      color = theme.colors.statusPending
-      break
-    case 'unknown':
-      color = theme.colors.statusUnknown
-      break
-    case 'failed':
-      color = theme.colors.statusFailure
-      break
-    default:
-      break
-  }
-  return createTagStyle(color)
-})
-
-const StatusTag = ({ status }: { status: IncarnationStatus }) => (
-  <Status type={status}>{status}</Status>
-)
-
-const ErrorTag = styled.div(({ theme }) => createTagStyle(theme.colors.statusFailure))
 
 export const IncarnationItem = ({ incarnation }: IncarnationItemProps) => {
   const { id, commitUrl, mergeRequestUrl, incarnationRepository, targetDirectory } = incarnation

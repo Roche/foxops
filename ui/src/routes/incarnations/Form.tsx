@@ -7,14 +7,15 @@ import { IconButton } from '../../components/common/IconButton/IconButton'
 import { ExpandLeft } from '../../components/common/Icons/ExpandLeft'
 import { Trash } from '../../components/common/Icons/Trash'
 import { TextField } from '../../components/common/TextField/TextField'
-import { Section } from './parts'
-import { IncarnationApiView, IncarnationInput } from '../../services/incarnations'
+import { Section, StatusTag } from './parts'
+import { IncarnationApiView, IncarnationInput, IncarnationStatus } from '../../services/incarnations'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ApiErrorResponse } from '../../services/api'
 import { delay } from '../../utils'
 import { useState } from 'react'
 import styled from '@emotion/styled'
 import { Close } from '../../components/common/Icons/Close'
+import { Tooltip } from '../../components/common/Tooltip/Tooltip'
 
 const ErrorMessage = styled.div(({ theme }) => ({
   position: 'relative',
@@ -40,13 +41,15 @@ const ErrorText = styled.div({
 type FormProps = {
   mutation: (data: IncarnationInput) => Promise<IncarnationApiView>,
   defaultValues: IncarnationInput,
-  isEdit?: boolean
+  isEdit?: boolean,
+  incarnationStatus?: IncarnationStatus
 }
 
 export const IncarnationsForm = ({
   mutation,
   defaultValues,
-  isEdit
+  isEdit,
+  incarnationStatus
 }: FormProps) => {
   const { register, handleSubmit, formState: { errors }, control, getValues, setFocus } = useForm({
     defaultValues
@@ -96,14 +99,15 @@ export const IncarnationsForm = ({
     : isSuccess ? 'Created!' : isLoading ? 'Creating' : 'Create'
   return (
     <Section>
-      <Hug flex={['aic']} ml={-42}>
+      <Hug flex={['aic']} ml={-42} w="calc(60% + 42px)">
         <Hug mr={8}>
           <IconButton flying title="Back to incarnations" onClick={onBackClick}>
             <ExpandLeft />
           </IconButton>
         </Hug>
-        <Hug>
+        <Hug flex={['aic', 'jcsb']} w="100%" pr={6}>
           {title}
+          {incarnationStatus && <Tooltip title="Incarnation status"><StatusTag status={incarnationStatus} /></Tooltip>}
         </Hug>
       </Hug>
       <Hug as="form" mb={16} flex mx={-8} onSubmit={handleSubmit(onSubmit)}>
