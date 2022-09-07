@@ -129,7 +129,7 @@ export const IncarnationsList = () => {
         <h3>Incarnations</h3>
         <Button onClick={onCreate}>Create</Button>
       </Hug>
-      <Hug flex>
+      <Hug flex pl={8}>
         <Hug mr={4}>{pendingMessage}</Hug>
         {isLoading && <Loader />}
       </Hug>

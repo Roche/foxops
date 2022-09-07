@@ -1,5 +1,5 @@
 import styled from '@emotion/styled'
-import { useRequestProcessingStore } from '../../../stores/request-processing-store'
+import { useIsFetching, useIsMutating } from '@tanstack/react-query'
 
 const Box = styled.div`
   position: absolute;
@@ -26,7 +26,9 @@ const Line = styled.div<LineProps>`
 `
 
 export const ToolbarProgress = () => {
-  const { pending } = useRequestProcessingStore()
+  const isFetching = useIsFetching()
+  const isMutating = useIsMutating()
+  const pending = isFetching || isMutating
   return (
     <Box>
       <Line done={!pending} />

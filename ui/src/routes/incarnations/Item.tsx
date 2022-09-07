@@ -3,17 +3,29 @@ import { MergeRequest } from '../../components/common/Icons/MergeRequest'
 import { Tooltip } from '../../components/common/Tooltip/Tooltip'
 import { Download } from '../../components/common/Icons/Download'
 import { IncarnationBase, incarnations, IncarnationStatus } from '../../services/incarnations'
-import styled from '@emotion/styled'
+import styled, { CSSObject } from '@emotion/styled'
 import { Hug } from '../../components/common/Hug/Hug'
 import { Button, ButtonLink } from '../../components/common/Button/Button'
 import { useQuery } from '@tanstack/react-query'
 import { transparentize } from '../../styling/colors'
+import { Link } from 'react-router-dom'
 
-const CellText = styled.div({
+const sharedStyles: CSSObject = {
   whiteSpace: 'nowrap',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   maxWidth: '100%'
+}
+
+const CellText = styled.div(sharedStyles)
+
+const CellLink = styled(Link)({
+  ...sharedStyles,
+  display: 'block',
+  textDecoration: 'none',
+  ':hover': {
+    textDecoration: 'underline'
+  }
 })
 
 interface IncarnationItemProps {
@@ -66,7 +78,7 @@ export const IncarnationItem = ({ incarnation }: IncarnationItemProps) => {
       <td>{id}</td>
       <td>
         <Tooltip title={incarnationRepository} placement="bottom-start">
-          <CellText>{incarnationRepository}</CellText>
+          <CellLink to={`${id}`}>{incarnationRepository}</CellLink>
         </Tooltip>
       </td>
       <td>

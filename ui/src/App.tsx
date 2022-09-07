@@ -7,8 +7,9 @@ import { Login } from './routes/login/Login'
 import { createGlobalStyles } from './global-styles'
 import { useThemeModeStore } from './stores/theme-mode'
 import { THEMES } from './styling/themes'
-import { IncarnationsCreateForm } from './routes/incarnations/CreateForm'
+import { CreateIncarnationForm } from './routes/incarnations/CreateForm'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { EditIncarnationForm } from './routes/incarnations/EditForm'
 
 const queryClient = new QueryClient()
 
@@ -24,7 +25,8 @@ function App() {
           <Routes>
             <Route path="*" element={<EnterScreen />}>
               <Route path="incarnations" element={<IncarnationsList />} />
-              <Route path="incarnations/create" element={<IncarnationsCreateForm />} />
+              <Route path="incarnations/create" element={<CreateIncarnationForm />} />
+              <Route path="incarnations/:id" element={<EditIncarnationForm />} />
               <Route path="*" element={<Navigate to="/incarnations" />} />
             </Route>
             <Route path="/login" element={<Login />} />
