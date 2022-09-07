@@ -1,6 +1,6 @@
 import { Theme } from '@emotion/react'
 import styled from '@emotion/styled'
-import React, { forwardRef, useId, useState } from 'react'
+import React, { forwardRef, useEffect, useId, useRef, useState } from 'react'
 import { transparentize } from '../../../styling/colors'
 import { buildTransform } from '../../../styling/transform'
 
@@ -113,6 +113,7 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(({
   error,
   ...rest
 }, ref) => {
+  const inputRef = useRef<HTMLInputElement | null>(null)
   const type = _type === 'textarea' ? undefined : _type
   const id = useId()
   const [focus, setFocus] = useState(false)
@@ -138,11 +139,26 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(({
       onChange(e)
     }
   }
+  useEffect(() => {
+    const input = inputRef.current
+    if (input && input.value) {
+      setHasValue(true)
+    }
+  }, [inputRef.current])
   return (
     <Box data-testid={testId} >
       {label ? <Label size={size} htmlFor={id} lifted={lifted}>{label} {required ? <Asterisk>*</Asterisk> : null}</Label> : null}
       <InputComponent
-        ref={ref}
+        ref={c => {
+          if (ref) {
+            if (typeof ref === 'function') {
+              ref(c)
+            } else {
+              ref.current = c
+            }
+          }
+          inputRef.current = c
+        }}
         data-testid={testId ? `${testId}-Input` : undefined}
         id={id}
         className="TextField-Input"

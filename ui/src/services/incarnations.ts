@@ -10,8 +10,12 @@ interface IncarnationBaseApiView {
 
 export type IncarnationStatus = 'unknown' | 'pending' | 'success' | 'failed'
 
-interface IncarnationApiView extends IncarnationBaseApiView {
-  status: IncarnationStatus
+export interface IncarnationApiView extends IncarnationBaseApiView {
+  status: IncarnationStatus,
+  template_repository: string,
+  template_repository_version: string,
+  template_repository_version_hash: string,
+  template_data: Record<string, string>
 }
 
 export interface IncarnationBase {
@@ -23,13 +27,25 @@ export interface IncarnationBase {
 }
 
 export interface Incarnation extends IncarnationBase {
-  status: IncarnationStatus
+  status: IncarnationStatus,
+  templateRepository: string,
+  templateRepositoryVersion: string,
+  templateRepositoryVersionHash: string,
+  templateData: Record<string, string>
 }
 
 export interface IncarnationInput {
   repository: string,
   targetDirectory: string,
   templateRepository: string,
+  templateVersion: string,
+  templateData: {
+    key: string,
+    value: string,
+  }[]
+}
+
+export interface IncarnationUpdateInput {
   templateVersion: string,
   templateData: {
     key: string,
@@ -47,7 +63,11 @@ const convertToUiBaseIncarnation = (x: IncarnationBaseApiView): IncarnationBase 
 
 const convertToUiIncarnation = (x: IncarnationApiView): Incarnation => ({
   ...convertToUiBaseIncarnation(x),
-  status: x.status
+  status: x.status,
+  templateRepository: x.template_repository,
+  templateRepositoryVersion: x.template_repository_version,
+  templateRepositoryVersionHash: x.template_repository_version_hash,
+  templateData: x.template_data
 })
 
 interface IncarnationApiInput {
@@ -70,16 +90,21 @@ const convertToApiInput = (x: IncarnationInput): IncarnationApiInput => ({
   }, {} as Record<string, string>),
   automerge: false
 })
-// const mockedIncarnations = new Array(10).fill(0).map((_, i) => {
-//   const x: number = i + 1
-//   return {
-//     id: x,
-//     incarnation_repository: `Repository ${x}`,
-//     target_directory: `Target ${x}`,
-//     commit_url: `https://code.roche.com/navify-anywhere/limbo/demo-app/-/commit/${x}`,
-//     merge_request_url: null
-//   } as IncarnationBaseApiView
-// })
+
+interface IncarnationUpdateApiInput {
+  template_repository_version: string,
+  template_data: Record<string, string>,
+  automerge: boolean
+}
+
+const convertToApiUpdateInput = (x: IncarnationInput): IncarnationUpdateApiInput => ({
+  template_repository_version: x.templateVersion,
+  template_data: x.templateData.reduce((acc, { key, value }) => {
+    acc[key] = value
+    return acc
+  }, {} as Record<string, string>),
+  automerge: true
+})
 
 export const incarnations = {
   get: async () => {
@@ -88,10 +113,14 @@ export const incarnations = {
   },
   create: async (incarnation: IncarnationInput) => {
     const incarnationApiInput = convertToApiInput(incarnation)
-    return api.post<IncarnationApiInput, IncarnationBaseApiView>('/incarnations', { body: incarnationApiInput })
-    // return convertToUiBaseIncarnation(apiIncarnation)
+    return api.post<IncarnationApiInput, IncarnationApiView>('/incarnations', { body: incarnationApiInput })
   },
-  getById: async (id: number) => {
+  update: async (id: string | number, incarnation: IncarnationInput) => {
+    const incarnationApiInput = convertToApiUpdateInput(incarnation)
+    return api.put<IncarnationUpdateApiInput, IncarnationApiView>(`/incarnations/${id}`, { body: incarnationApiInput })
+  },
+  getById: async (id?: number | string) => {
+    if (!id) throw new Error('No id provided')
     const apiIncarnation = await api.get<undefined, IncarnationApiView>(`/incarnations/${id}`)
     return convertToUiIncarnation(apiIncarnation)
   }
