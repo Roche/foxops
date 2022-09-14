@@ -40,6 +40,7 @@ const ErrorText = styled.div({
 
 type FormProps = {
   mutation: (data: IncarnationInput) => Promise<IncarnationApiView>,
+  deleteIncarnation?: () => Promise<void>,
   defaultValues: IncarnationInput,
   isEdit?: boolean,
   incarnationStatus?: IncarnationStatus
@@ -49,6 +50,7 @@ export const IncarnationsForm = ({
   mutation,
   defaultValues,
   isEdit,
+  deleteIncarnation = () => Promise.resolve(),
   incarnationStatus
 }: FormProps) => {
   const { register, handleSubmit, formState: { errors }, control, getValues, setFocus } = useForm({
@@ -81,6 +83,20 @@ export const IncarnationsForm = ({
 
   const queryClient = useQueryClient()
   const { mutateAsync, isLoading, isSuccess } = useMutation(mutation)
+  const deleteMutation = useMutation(deleteIncarnation)
+  const onDelete = async () => {
+    if (window.confirm('Are you sure you want to delete this incarnation?')) {
+      try {
+        await deleteMutation.mutateAsync()
+        await delay(1000)
+        queryClient.invalidateQueries(['incarnations'])
+        navigate('/incarnations')
+      } catch (error) {
+        setApiError(error as ApiErrorResponse)
+      }
+    }
+  }
+
   const onSubmit: SubmitHandler<IncarnationInput> = async incarnation => {
     setApiError(null)
     try {
@@ -97,6 +113,8 @@ export const IncarnationsForm = ({
   const buttonTitle = isEdit
     ? isSuccess ? 'Updated!' : isLoading ? 'Updating' : 'Update'
     : isSuccess ? 'Created!' : isLoading ? 'Creating' : 'Create'
+
+  const deleteButtonTitle = deleteMutation.isSuccess ? 'Deleted!' : deleteMutation.isLoading ? 'Deleting' : 'Delete'
   return (
     <Section>
       <Hug flex={['aic']} ml={-42} w="calc(60% + 42px)">
@@ -105,9 +123,20 @@ export const IncarnationsForm = ({
             <ExpandLeft />
           </IconButton>
         </Hug>
-        <Hug flex={['aic', 'jcsb']} w="100%" pr={6}>
+        <Hug flex={['aic']} w="100%" pr={6}>
           {title}
-          {incarnationStatus && <Tooltip title="Incarnation status"><StatusTag status={incarnationStatus} /></Tooltip>}
+          {incarnationStatus && <Hug ml={16}><Tooltip title="Incarnation status"><StatusTag status={incarnationStatus} /></Tooltip></Hug>}
+          {isEdit && (
+            <Hug ml="auto">
+              <Tooltip title="Delete incarnation">
+                <Button
+                  variant="danger"
+                  disabled={deleteMutation.isLoading || deleteMutation.isSuccess}
+                  loading={deleteMutation.isLoading}
+                  onClick={onDelete}>{deleteButtonTitle}</Button>
+              </Tooltip>
+            </Hug>
+          )}
         </Hug>
       </Hug>
       <Hug as="form" mb={16} flex mx={-8} onSubmit={handleSubmit(onSubmit)}>
