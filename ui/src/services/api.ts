@@ -20,6 +20,7 @@ interface API {
   get: RequestFunc,
   post: RequestFunc,
   put: RequestFunc,
+  delete: RequestFunc,
   makeUrl: (path: string, apiPrefix: string) => string,
 }
 
@@ -105,5 +106,10 @@ export const api: API = {
     url,
     ...options,
     method: 'PUT'
+  }),
+  delete: <Req, Res>(url: string, options: Omit<MakeRequestOptions<Req, Res>, 'method' | 'url'> = {}): Promise<Res> => api.makeRequest({
+    url,
+    ...options,
+    method: 'DELETE'
   })
 }

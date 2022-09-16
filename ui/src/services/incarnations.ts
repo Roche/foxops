@@ -123,5 +123,9 @@ export const incarnations = {
     if (!id) throw new Error('No id provided')
     const apiIncarnation = await api.get<undefined, IncarnationApiView>(`/incarnations/${id}`)
     return convertToUiIncarnation(apiIncarnation)
+  },
+  delete: async (id?: number | string) => {
+    if (!id) throw new Error('No id provided')
+    await api.delete<undefined, undefined>(`/incarnations/${id}`, { format: 'text' })
   }
 }

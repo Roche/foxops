@@ -1,57 +1,73 @@
+import { Theme } from '@emotion/react'
 import styled from '@emotion/styled'
 import { forwardRef } from 'react'
 import { transparentize } from '../../../styling/colors'
 
 type Size = 'small' | 'large'
+type Variant = 'primary' | 'danger'
 interface ButtonBoxProps {
-  size?: Size
+  size?: Size,
+  variant?: Variant
 }
 
-const ButtonBox = styled('button')<ButtonBoxProps>(({ theme, size, disabled }) => ({
-  textDecoration: 'none',
-  color: '#fff',
-  border: 'none',
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  height: size === 'small' ? '30px' : '38px',
-  fontSize: size === 'small' ? '12px' : '16px',
-  borderRadius: 4,
-  background: disabled ? theme.colors.darkGrey : theme.colors.orange,
-  position: 'relative',
-  overflow: 'hidden',
-  paddingLeft: size === 'small' ? 8 : 16,
-  paddingRight: size === 'small' ? 8 : 16,
-  cursor: disabled ? 'not-allowed' : 'pointer',
-  opacity: disabled ? 0.7 : 1,
-  ':not(:disabled)::after': {
-    content: disabled ? undefined : '""',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    zIndex: 1,
-    background: '#000',
-    opacity: 0,
-    transition: 'opacity 0.1s var(--base-easing)'
-  },
-  ':hover::after': {
-    opacity: 0.05
-  },
-  ':active::after': {
-    opacity: 0.1
-  },
-  ':focus': {
-    outline: 'none',
-    boxShadow: `0 0 0 2px ${theme.colors.paleOrange}`
-  },
-  ':disabled': {
-    background: theme.colors.darkGrey,
-    opacity: 0.7,
-    cursor: 'not-allowed'
+const getBgByState = ({ theme, variant, disabled }: { theme: Theme, disabled?: boolean, variant?: Variant }) => {
+  if (disabled) {
+    return theme.colors.darkGrey
   }
-}))
+  if (variant === 'danger') {
+    return theme.colors.error
+  }
+  return theme.colors.orange
+}
+
+const ButtonBox = styled('button')<ButtonBoxProps>(({ theme, size, disabled, variant }) => {
+  const backgroundColor = getBgByState({ theme, variant, disabled })
+  return {
+    textDecoration: 'none',
+    color: '#fff',
+    border: 'none',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: size === 'small' ? '30px' : '38px',
+    fontSize: size === 'small' ? '12px' : '16px',
+    borderRadius: 4,
+    background: backgroundColor,
+    position: 'relative',
+    overflow: 'hidden',
+    paddingLeft: size === 'small' ? 8 : 16,
+    paddingRight: size === 'small' ? 8 : 16,
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.7 : 1,
+    ':not(:disabled)::after': {
+      content: disabled ? undefined : '""',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      zIndex: 1,
+      background: '#000',
+      opacity: 0,
+      transition: 'opacity 0.1s var(--base-easing)'
+    },
+    ':hover::after': {
+      opacity: 0.05
+    },
+    ':active::after': {
+      opacity: 0.1
+    },
+    ':focus': {
+      outline: 'none',
+      boxShadow: `0 0 0 2px ${variant === 'danger' ? transparentize(theme.colors.error, .5) : theme.colors.paleOrange}`
+    },
+    ':disabled': {
+      background: theme.colors.darkGrey,
+      opacity: 0.7,
+      cursor: 'not-allowed'
+    }
+  }
+})
 
 const ButtonInnerBox = styled.span`
   position: relative;
@@ -74,6 +90,7 @@ const Loader = styled.span`
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode,
+  variant?: Variant,
   size?: Size,
   dataTestid?: string,
   loading?: boolean
