@@ -68,7 +68,7 @@ sphinx-design = "^0.3.0"
 sphinx-autobuild = "^2021.3.14"
 sphinxcontrib-mermaid = "^0.7.1"
 myst-parser = "^0.18.0"
-furo = "^2022.1.2"
+furo = "^2022.9.15"
 
 [tool.black]
 line-length = 120
