@@ -230,7 +230,7 @@ def cmd_update(
     )
 
     try:
-        files_with_conflicts = asyncio.run(
+        _, _, files_with_conflicts = asyncio.run(
             update_incarnation_from_git_template_repository(
                 template_git_repository=Path(incarnation_state.template_repository),
                 update_template_repository_version=update_repository_version,
