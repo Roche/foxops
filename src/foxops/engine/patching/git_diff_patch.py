@@ -104,7 +104,7 @@ async def patch(
     incarnation_subdir = (
         resolved_incarnation_root_dir.relative_to(incarnation_repository_dir)
         if resolved_incarnation_root_dir != incarnation_repository_dir
-        else ""
+        else None
     )
 
     # FIXME(TF): may check git status to check if something has been modified or not ...
@@ -112,13 +112,17 @@ async def patch(
     try:
         # The `--reject` option makes it apply the parts of the patch that are applicable,
         # and leave the rejected hunks in corresponding *.rej files.
+        git_apply_options = [
+            "--reject",
+            "--verbose",
+        ]
+        if incarnation_subdir is not None:
+            git_apply_options.extend(["--directory", str(incarnation_subdir)])
+
         await check_call(
             "git",
             "apply",
-            "--reject",
-            "--verbose",
-            "--directory",
-            str(incarnation_subdir),
+            *git_apply_options,
             str(patch_path),
             cwd=str(incarnation_repository_dir),
         )
@@ -143,10 +147,13 @@ async def patch(
 async def analyze_patch_rejections(
     apply_rejection_output: bytes,
     incarnation_repository_dir: Path,
-    incarnation_subdir: Path,
+    incarnation_subdir: Path | None,
     rendered_updated_template_directory: Path,
 ) -> list[Path]:
-    incarnation_dir = incarnation_repository_dir / incarnation_subdir
+    if incarnation_subdir is None:
+        incarnation_dir = incarnation_repository_dir
+    else:
+        incarnation_dir = incarnation_repository_dir / incarnation_subdir
 
     files_with_conflicts: list[Path] = []
     for file_with_rejection in parse_git_apply_rejection_output(apply_rejection_output):
