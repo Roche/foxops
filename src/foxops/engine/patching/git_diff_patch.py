@@ -24,7 +24,6 @@ async def diff_and_patch(
             return await patch(
                 patch_path,
                 patch_directory,
-                diff_a_directory,
                 diff_b_directory,
             )
         finally:
@@ -94,23 +93,22 @@ async def diff(old_directory: Path, new_directory: Path) -> Path | None:
 async def patch(
     patch_path: Path,
     incarnation_root_dir: Path,
-    diff_a_directory: Path,
-    diff_b_directory: Path,
+    rendered_updated_template_directory: Path,
 ) -> list[Path]:
     # NOTE(TF): it's crucial that the paths are fully resolved here,
     #           because we are going to fiddle around how they
     #           are relative to each other.
     resolved_incarnation_root_dir = incarnation_root_dir.resolve()
     proc = await check_call("git", "rev-parse", "--show-toplevel", cwd=str(resolved_incarnation_root_dir))
-    incarnation_git_root_dir = Path((await proc.stdout.read()).decode("utf-8").strip()).resolve()  # type: ignore
-    incarnation_git_dir = (
-        resolved_incarnation_root_dir.relative_to(incarnation_git_root_dir)
-        if resolved_incarnation_root_dir != incarnation_git_root_dir
+    incarnation_repository_dir = Path((await proc.stdout.read()).decode("utf-8").strip()).resolve()  # type: ignore
+    incarnation_subdir = (
+        resolved_incarnation_root_dir.relative_to(incarnation_repository_dir)
+        if resolved_incarnation_root_dir != incarnation_repository_dir
         else ""
     )
 
     # FIXME(TF): may check git status to check if something has been modified or not ...
-    logger.debug(f"applying patch {patch_path} to {incarnation_git_dir} inside {incarnation_root_dir}")
+    logger.debug(f"applying patch {patch_path} to {incarnation_subdir} inside {incarnation_root_dir}")
     try:
         # The `--reject` option makes it apply the parts of the patch that are applicable,
         # and leave the rejected hunks in corresponding *.rej files.
@@ -120,9 +118,9 @@ async def patch(
             "--reject",
             "--verbose",
             "--directory",
-            str(incarnation_git_dir),
+            str(incarnation_subdir),
             str(patch_path),
-            cwd=str(incarnation_git_root_dir),
+            cwd=str(incarnation_repository_dir),
         )
     except CalledProcessError as exc:
         logger.debug(
@@ -133,9 +131,9 @@ async def patch(
         apply_rejection_output = exc.stderr
         files_with_conflicts = await analyze_patch_rejections(
             apply_rejection_output,
-            resolved_incarnation_root_dir,
-            diff_a_directory,
-            diff_b_directory,
+            incarnation_repository_dir,
+            incarnation_subdir,
+            rendered_updated_template_directory,
         )
         return files_with_conflicts
     else:
@@ -144,28 +142,18 @@ async def patch(
 
 async def analyze_patch_rejections(
     apply_rejection_output: bytes,
-    patch_directory: Path,
-    diff_a_directory: Path,
-    diff_b_directory: Path,
+    incarnation_repository_dir: Path,
+    incarnation_subdir: Path,
+    rendered_updated_template_directory: Path,
 ) -> list[Path]:
-    reject_file_regex = re.compile(rb"Applying patch (.*?) with (\d+) reject...")
+    incarnation_dir = incarnation_repository_dir / incarnation_subdir
 
-    files_with_rejections = []
-    for line in apply_rejection_output.splitlines():
-        if match := reject_file_regex.match(line):
-            files_with_rejections.append(Path(match.group(1).decode()))
-
-    logger.debug(
-        f"detected {len(files_with_rejections)} files with rejections",
-        files_with_rejections=files_with_rejections,
-    )
     files_with_conflicts: list[Path] = []
-    for file_with_rejection in files_with_rejections:
+    for file_with_rejection in parse_git_apply_rejection_output(apply_rejection_output):
         conflict_fixed = await attempt_fixing_rejection(
-            file_with_rejection,
-            patch_directory,
-            diff_a_directory,
-            diff_b_directory,
+            (incarnation_repository_dir / file_with_rejection).relative_to(incarnation_dir),
+            incarnation_dir,
+            rendered_updated_template_directory,
         )
         if not conflict_fixed:
             logger.debug(f"file {file_with_rejection} still has conflicts")
@@ -176,10 +164,8 @@ async def analyze_patch_rejections(
 async def attempt_fixing_rejection(
     file_with_rejection: Path,
     patch_directory: Path,
-    diff_a_directory: Path,
     diff_b_directory: Path,
 ) -> bool:
-    # diff_a_file = diff_a_directory / file_with_rejection
     diff_b_file = diff_b_directory / file_with_rejection
     patch_file = patch_directory / file_with_rejection
 
@@ -195,3 +181,25 @@ async def attempt_fixing_rejection(
         return True
 
     return False
+
+
+def parse_git_apply_rejection_output(output: bytes) -> list[Path]:
+    """
+    Parse the output of `git apply --reject` to extract the list of files.
+
+    Returns:
+        list[Path]: the list of filenames with rejections. The returned paths are relative to the repository root.
+    """
+    reject_file_regex = re.compile(rb"Applying patch (.*?) with (\d+) reject...")
+
+    files_with_rejections = []
+    for line in output.splitlines():
+        if match := reject_file_regex.match(line):
+            files_with_rejections.append(Path(match.group(1).decode()))
+
+    logger.debug(
+        f"detected {len(files_with_rejections)} files with rejections",
+        files_with_rejections=files_with_rejections,
+    )
+
+    return files_with_rejections
