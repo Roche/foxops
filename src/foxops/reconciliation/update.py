@@ -87,8 +87,7 @@ async def update_incarnation(
             updated_incarnation_state,
             files_with_conflicts,
         ) = await fengine.update_incarnation_from_git_template_repository(
-            template_git_root_dir=local_template_repository.directory,
-            update_template_repository=incarnation_state_before_update.template_repository,
+            template_git_repository=local_template_repository.directory,
             update_template_repository_version=template_repository_version_update,
             update_template_data=template_data_update,
             incarnation_root_dir=(local_incarnation_repository.directory / incarnation.target_directory),

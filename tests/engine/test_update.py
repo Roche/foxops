@@ -146,11 +146,10 @@ r2 {...}
     await init_repository(incarnation_directory)
 
     await update_incarnation(
-        template_root_dir=template_directory,
-        update_template_root_dir=updated_template_directory,
-        update_template_repository=incarnation_state.template_repository,
-        update_template_repository_version=incarnation_state.template_repository_version,
-        update_template_data=incarnation_state.template_data,
+        original_template_root_dir=template_directory,
+        updated_template_root_dir=updated_template_directory,
+        updated_template_repository_version=incarnation_state.template_repository_version,
+        updated_template_data=incarnation_state.template_data,
         incarnation_root_dir=incarnation_directory,
         diff_patch_func=diff_patch_func,
     )
@@ -218,11 +217,10 @@ c
 
     # WHEN
     update_performed, _, files_with_conflicts = await update_incarnation(
-        template_root_dir=template_directory,
-        update_template_root_dir=updated_template_directory,
-        update_template_repository=incarnation_state.template_repository,
-        update_template_repository_version=incarnation_state.template_repository_version,
-        update_template_data=incarnation_state.template_data,
+        original_template_root_dir=template_directory,
+        updated_template_root_dir=updated_template_directory,
+        updated_template_repository_version=incarnation_state.template_repository_version,
+        updated_template_data=incarnation_state.template_data,
         incarnation_root_dir=incarnation_directory,
         diff_patch_func=diff_patch_func,
     )
@@ -297,11 +295,10 @@ mychange
     await init_repository(incarnation_directory)
 
     await update_incarnation(
-        template_root_dir=template_directory,
-        update_template_root_dir=updated_template_directory,
-        update_template_repository=incarnation_state.template_repository,
-        update_template_repository_version=incarnation_state.template_repository_version,
-        update_template_data=incarnation_state.template_data,
+        original_template_root_dir=template_directory,
+        updated_template_root_dir=updated_template_directory,
+        updated_template_repository_version=incarnation_state.template_repository_version,
+        updated_template_data=incarnation_state.template_data,
         incarnation_root_dir=incarnation_directory,
         diff_patch_func=diff_patch_func,
     )
@@ -371,11 +368,10 @@ variables:
     await init_repository(incarnation_directory)
 
     await update_incarnation(
-        template_root_dir=template_directory,
-        update_template_root_dir=template_directory,
-        update_template_repository=incarnation_state.template_repository,
-        update_template_repository_version=incarnation_state.template_repository_version,
-        update_template_data={},
+        original_template_root_dir=template_directory,
+        updated_template_root_dir=template_directory,
+        updated_template_repository_version=incarnation_state.template_repository_version,
+        updated_template_data={},
         incarnation_root_dir=incarnation_directory,
         diff_patch_func=diff_patch_func,
     )
@@ -424,11 +420,10 @@ async def test_diff_and_patch_success_when_deleting_file_in_template(
     await utils.check_call("git", "commit", "-am", "Initial commit", cwd=str(incarnation_directory))
 
     await update_incarnation(
-        template_root_dir=template_directory,
-        update_template_root_dir=updated_template_directory,
-        update_template_repository=incarnation_state.template_repository,
-        update_template_repository_version=incarnation_state.template_repository_version,
-        update_template_data=incarnation_state.template_data,
+        original_template_root_dir=template_directory,
+        updated_template_root_dir=updated_template_directory,
+        updated_template_repository_version=incarnation_state.template_repository_version,
+        updated_template_data=incarnation_state.template_data,
         incarnation_root_dir=incarnation_directory,
         diff_patch_func=diff_patch_func,
     )
