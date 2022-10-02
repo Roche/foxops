@@ -40,5 +40,16 @@ COPY --from=backend-builder /build/dist/*.whl /tmp
 RUN python -m pip install /tmp/*.whl
 RUN rm -f /tmp/*.whl
 
+# Add the application user
+RUN addgroup --system foxops --gid 2102 \
+    && adduser --system foxops --ingroup foxops --uid 2102 --home /home/foxops
+USER foxops
+WORKDIR /home/foxops
+
+# Copy database migrations into the image, so that they can be applied
+COPY ./alembic.ini alembic.ini
+COPY ./alembic/versions alembic/versions
+COPY ./alembic/env.py alembic/env.py
+
 EXPOSE 80
 CMD [ "uvicorn", "foxops.__main__:create_app", "--factory", "--proxy-headers", "--host", "0.0.0.0", "--port", "80" ]

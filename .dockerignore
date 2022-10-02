@@ -4,5 +4,7 @@
 !/.git/
 !/README.md
 !/ui
+!/alembic.ini
+!/alembic/
 ui/dist
 ui/node_modules
