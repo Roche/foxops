@@ -6,10 +6,10 @@ from starlette.responses import FileResponse
 from foxops import __version__
 from foxops.dependencies import (
     get_dal,
+    get_database_settings,
     get_hoster,
     get_settings,
     static_token_auth_scheme,
-    get_database_settings,
 )
 from foxops.error_handlers import __error_handlers__
 from foxops.logger import get_logger, setup_logging
