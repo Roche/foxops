@@ -8,7 +8,7 @@ from foxops.dependencies import (
     get_dal,
     get_hoster,
     get_settings,
-    static_token_auth_scheme,
+    static_token_auth_scheme, get_database_settings,
 )
 from foxops.error_handlers import __error_handlers__
 from foxops.logger import get_logger, setup_logging
@@ -38,7 +38,7 @@ def create_app():
         await hoster.validate()
 
         # initialize database
-        dal = get_dal(settings)
+        dal = get_dal(get_database_settings())
         await dal.initialize_db()
 
         setup_logging(level=settings.log_level)
