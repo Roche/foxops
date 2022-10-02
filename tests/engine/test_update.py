@@ -105,7 +105,9 @@ async def test_diff_and_patch_no_change_when_updating_to_template_version_with_i
     # GIVEN
     template_directory = tmp_path / "template"
     template_directory.mkdir()
-    (template_directory / "myfile.txt").write_text(
+
+    (template_directory / "template").mkdir()
+    (template_directory / "template" / "myfile.txt").write_text(
         """r1 {...}
 
 r2 {...}
@@ -127,7 +129,7 @@ r2 {...}
     # same change in template and incarnation
     updated_template_directory = tmp_path / "updated-template"
     shutil.copytree(template_directory, updated_template_directory)
-    (updated_template_directory / "myfile.txt").write_text(
+    (updated_template_directory / "template" / "myfile.txt").write_text(
         """r1 {...}
 
 rnew {...}
@@ -146,11 +148,91 @@ r2 {...}
     await init_repository(incarnation_directory)
 
     await update_incarnation(
+        original_template_root_dir=template_directory,
+        updated_template_root_dir=updated_template_directory,
+        updated_template_repository_version=incarnation_state.template_repository_version,
+        updated_template_data=incarnation_state.template_data,
+        incarnation_root_dir=incarnation_directory,
+        diff_patch_func=diff_patch_func,
+    )
+
+    # THEN
+    assert (incarnation_directory / "myfile.txt").read_text() == (
+        """r1 {...}
+
+rnew {...}
+
+r2 {...}
+"""
+    )
+
+
+@pytest.mark.parametrize("diff_patch_func", [diff_and_patch])
+async def test_diff_and_patch_no_change_when_updating_to_template_version_with_identical_change_in_subdirectory(
+    diff_patch_func,
+    tmp_path,
+):
+    """
+    Verify that no change is being made to the incarnation repository when updating to a template version
+    which contains the same changes as the incarnation.
+
+    This test verifies things are working correctly when the incarnation was initialized in a subdirectory
+    of a git repository.
+    """
+    # GIVEN
+    template_directory = tmp_path / "template"
+    template_directory.mkdir()
+
+    (template_directory / "template").mkdir()
+    (template_directory / "template" / "myfile.txt").write_text(
+        """r1 {...}
+
+r2 {...}
+"""
+    )
+    await init_repository(tmp_path)
+
+    incarnation_repository_directory = tmp_path / "incarnation"
+    incarnation_repository_directory.mkdir()
+
+    incarnation_directory = incarnation_repository_directory / "subdir"
+    incarnation_directory.mkdir()
+
+    incarnation_state = await initialize_incarnation(
         template_root_dir=template_directory,
-        update_template_root_dir=updated_template_directory,
-        update_template_repository=incarnation_state.template_repository,
-        update_template_repository_version=incarnation_state.template_repository_version,
-        update_template_data=incarnation_state.template_data,
+        template_repository="any-repository-url",
+        template_repository_version="any-version",
+        template_data={},
+        incarnation_root_dir=incarnation_directory,
+    )
+    await init_repository(incarnation_repository_directory)
+
+    # WHEN
+    # same change in template and incarnation
+    updated_template_directory = tmp_path / "updated-template"
+    shutil.copytree(template_directory, updated_template_directory)
+    (updated_template_directory / "template" / "myfile.txt").write_text(
+        """r1 {...}
+
+rnew {...}
+
+r2 {...}
+"""
+    )
+    (incarnation_directory / "myfile.txt").write_text(
+        """r1 {...}
+
+rnew {...}
+
+r2 {...}
+"""
+    )
+
+    await update_incarnation(
+        original_template_root_dir=template_directory,
+        updated_template_root_dir=updated_template_directory,
+        updated_template_repository_version=incarnation_state.template_repository_version,
+        updated_template_data=incarnation_state.template_data,
         incarnation_root_dir=incarnation_directory,
         diff_patch_func=diff_patch_func,
     )
@@ -218,11 +300,10 @@ c
 
     # WHEN
     update_performed, _, files_with_conflicts = await update_incarnation(
-        template_root_dir=template_directory,
-        update_template_root_dir=updated_template_directory,
-        update_template_repository=incarnation_state.template_repository,
-        update_template_repository_version=incarnation_state.template_repository_version,
-        update_template_data=incarnation_state.template_data,
+        original_template_root_dir=template_directory,
+        updated_template_root_dir=updated_template_directory,
+        updated_template_repository_version=incarnation_state.template_repository_version,
+        updated_template_data=incarnation_state.template_data,
         incarnation_root_dir=incarnation_directory,
         diff_patch_func=diff_patch_func,
     )
@@ -297,11 +378,10 @@ mychange
     await init_repository(incarnation_directory)
 
     await update_incarnation(
-        template_root_dir=template_directory,
-        update_template_root_dir=updated_template_directory,
-        update_template_repository=incarnation_state.template_repository,
-        update_template_repository_version=incarnation_state.template_repository_version,
-        update_template_data=incarnation_state.template_data,
+        original_template_root_dir=template_directory,
+        updated_template_root_dir=updated_template_directory,
+        updated_template_repository_version=incarnation_state.template_repository_version,
+        updated_template_data=incarnation_state.template_data,
         incarnation_root_dir=incarnation_directory,
         diff_patch_func=diff_patch_func,
     )
@@ -371,11 +451,10 @@ variables:
     await init_repository(incarnation_directory)
 
     await update_incarnation(
-        template_root_dir=template_directory,
-        update_template_root_dir=template_directory,
-        update_template_repository=incarnation_state.template_repository,
-        update_template_repository_version=incarnation_state.template_repository_version,
-        update_template_data={},
+        original_template_root_dir=template_directory,
+        updated_template_root_dir=template_directory,
+        updated_template_repository_version=incarnation_state.template_repository_version,
+        updated_template_data={},
         incarnation_root_dir=incarnation_directory,
         diff_patch_func=diff_patch_func,
     )
@@ -424,11 +503,10 @@ async def test_diff_and_patch_success_when_deleting_file_in_template(
     await utils.check_call("git", "commit", "-am", "Initial commit", cwd=str(incarnation_directory))
 
     await update_incarnation(
-        template_root_dir=template_directory,
-        update_template_root_dir=updated_template_directory,
-        update_template_repository=incarnation_state.template_repository,
-        update_template_repository_version=incarnation_state.template_repository_version,
-        update_template_data=incarnation_state.template_data,
+        original_template_root_dir=template_directory,
+        updated_template_root_dir=updated_template_directory,
+        updated_template_repository_version=incarnation_state.template_repository_version,
+        updated_template_data=incarnation_state.template_data,
         incarnation_root_dir=incarnation_directory,
         diff_patch_func=diff_patch_func,
     )
