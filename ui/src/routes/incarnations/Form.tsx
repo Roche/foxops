@@ -16,6 +16,7 @@ import { useState } from 'react'
 import styled from '@emotion/styled'
 import { Close } from '../../components/common/Icons/Close'
 import { Tooltip } from '../../components/common/Tooltip/Tooltip'
+import { IncarnationLinks } from './parts/IncarnationLinks'
 
 const ErrorMessage = styled.div(({ theme }) => ({
   position: 'relative',
@@ -43,7 +44,9 @@ type FormProps = {
   deleteIncarnation?: () => Promise<void>,
   defaultValues: IncarnationInput,
   isEdit?: boolean,
-  incarnationStatus?: IncarnationStatus
+  incarnationStatus?: IncarnationStatus,
+  mergeRequestUrl?: string | null,
+  commitUrl?: string
 }
 
 export const IncarnationsForm = ({
@@ -51,7 +54,9 @@ export const IncarnationsForm = ({
   defaultValues,
   isEdit,
   deleteIncarnation = () => Promise.resolve(),
-  incarnationStatus
+  incarnationStatus,
+  mergeRequestUrl,
+  commitUrl
 }: FormProps) => {
   const { register, handleSubmit, formState: { errors }, control, getValues, setFocus } = useForm({
     defaultValues
@@ -127,14 +132,17 @@ export const IncarnationsForm = ({
           {title}
           {incarnationStatus && <Hug ml={16}><Tooltip title="Incarnation status"><StatusTag status={incarnationStatus} /></Tooltip></Hug>}
           {isEdit && (
-            <Hug ml="auto">
-              <Tooltip title="Delete incarnation">
-                <Button
-                  variant="danger"
-                  disabled={deleteMutation.isLoading || deleteMutation.isSuccess}
-                  loading={deleteMutation.isLoading}
-                  onClick={onDelete}>{deleteButtonTitle}</Button>
-              </Tooltip>
+            <Hug ml="auto" flex={['aic']}>
+              <IncarnationLinks mergeRequestUrl={mergeRequestUrl} commitUrl={commitUrl} />
+              <Hug ml={4}>
+                <Tooltip title="Delete incarnation">
+                  <Button
+                    variant="danger"
+                    disabled={deleteMutation.isLoading || deleteMutation.isSuccess}
+                    loading={deleteMutation.isLoading}
+                    onClick={onDelete}>{deleteButtonTitle}</Button>
+                </Tooltip>
+              </Hug>
             </Hug>
           )}
         </Hug>

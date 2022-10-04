@@ -1,7 +1,7 @@
 import styled from '@emotion/styled'
 import { forwardRef } from 'react'
-import { IncarnationStatus } from '../../services/incarnations'
-import { transparentize } from '../../styling/colors'
+import { IncarnationStatus } from '../../../services/incarnations'
+import { transparentize } from '../../../styling/colors'
 
 export const Section = styled.div({
   maxWidth: 1200,
