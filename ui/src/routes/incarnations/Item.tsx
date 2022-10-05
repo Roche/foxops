@@ -1,14 +1,8 @@
-import { Commit } from '../../components/common/Icons/Commit'
-import { MergeRequest } from '../../components/common/Icons/MergeRequest'
 import { Tooltip } from '../../components/common/Tooltip/Tooltip'
-import { Download } from '../../components/common/Icons/Download'
-import { IncarnationBase, incarnations } from '../../services/incarnations'
+import { IncarnationBase } from '../../services/incarnations'
 import styled, { CSSObject } from '@emotion/styled'
-import { Hug } from '../../components/common/Hug/Hug'
-import { Button, ButtonLink } from '../../components/common/Button/Button'
-import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { ErrorTag, StatusTag } from './parts'
+import { IncarnationLinks } from './parts/IncarnationLinks'
 
 const sharedStyles: CSSObject = {
   whiteSpace: 'nowrap',
@@ -33,9 +27,7 @@ interface IncarnationItemProps {
 }
 
 export const IncarnationItem = ({ incarnation }: IncarnationItemProps) => {
-  const { id, commitUrl, mergeRequestUrl, incarnationRepository, targetDirectory } = incarnation
-  const { data, refetch, isError, isFetching } = useQuery(['incarnations', id], () => incarnations.getById(id), { enabled: false })
-  const onGetStatus = () => refetch()
+  const { id, incarnationRepository, targetDirectory } = incarnation
   return (
     <tr key={id}>
       <td>{id}</td>
@@ -50,31 +42,10 @@ export const IncarnationItem = ({ incarnation }: IncarnationItemProps) => {
         </Tooltip>
       </td>
       <td>
-        <Hug flex={['jcfe', 'aic']}>
-          <Hug mr={4}>
-            {isError ? <ErrorTag>error</ErrorTag> : ''}
-            {data && !isFetching ? <StatusTag status={data.status} /> : ''}
-          </Hug>
-          <Hug mr={4}>
-            <Tooltip title={isFetching ? 'Getting status...' : 'Get status'}>
-              <Button size="small" loading={isFetching} onClick={onGetStatus}>
-                {!isFetching && <Download />}
-              </Button>
-            </Tooltip>
-          </Hug>
-          <Tooltip title="Commit">
-            <ButtonLink size="small" target="_blank" disabled={!commitUrl} href={commitUrl}>
-              <Commit />
-            </ButtonLink>
-          </Tooltip>
-          <Hug ml={4}>
-            <Tooltip title="Merge request">
-              <ButtonLink size="small" target="_blank" disabled={!mergeRequestUrl} href={mergeRequestUrl ?? undefined}>
-                <MergeRequest />
-              </ButtonLink>
-            </Tooltip>
-          </Hug>
-        </Hug>
+        <IncarnationLinks
+          id={incarnation.id}
+          commitUrl={incarnation.commitUrl}
+          mergeRequestUrl={incarnation.mergeRequestUrl} />
       </td>
     </tr>
   )

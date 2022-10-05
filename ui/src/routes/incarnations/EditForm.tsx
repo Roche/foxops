@@ -26,6 +26,8 @@ export const EditIncarnationForm = () => {
   const body = isSuccess
     ? (
       <IncarnationsForm
+        mergeRequestUrl={data.mergeRequestUrl}
+        commitUrl={data.commitUrl}
         mutation={(x => incarnations.update(id, x))}
         defaultValues={toIncarnationInput(data)}
         incarnationStatus={data.status}
