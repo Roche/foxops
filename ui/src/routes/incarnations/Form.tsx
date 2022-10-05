@@ -133,7 +133,7 @@ export const IncarnationsForm = ({
           {incarnationStatus && <Hug ml={16}><Tooltip title="Incarnation status"><StatusTag status={incarnationStatus} /></Tooltip></Hug>}
           {isEdit && (
             <Hug ml="auto" flex={['aic']}>
-              <IncarnationLinks mergeRequestUrl={mergeRequestUrl} commitUrl={commitUrl} />
+              <IncarnationLinks mergeRequestUrl={mergeRequestUrl} commitUrl={commitUrl} size="large" />
               <Hug ml={4}>
                 <Tooltip title="Delete incarnation">
                   <Button

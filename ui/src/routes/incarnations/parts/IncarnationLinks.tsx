@@ -11,12 +11,14 @@ import { incarnations } from '../../../services/incarnations'
 interface IncarnationLinksProps {
   mergeRequestUrl?: string | null
   commitUrl?: string
-  id?: number
+  id?: number,
+  size?: 'small' | 'large'
 }
 
-export const IncarnationLinks = ({ id, commitUrl, mergeRequestUrl }: IncarnationLinksProps) => {
+export const IncarnationLinks = ({ id, commitUrl, mergeRequestUrl, size = 'small' }: IncarnationLinksProps) => {
   const { data, refetch, isError, isFetching } = useQuery(['incarnations', id], () => incarnations.getById(id), { enabled: false })
   const onGetStatus = () => refetch()
+  const svgProps = size === 'small' ? { width: 16, height: 16 } : { width: 20, height: 20 }
   return (
     <Hug flex={['jcfe', 'aic']}>
       {
@@ -28,8 +30,8 @@ export const IncarnationLinks = ({ id, commitUrl, mergeRequestUrl }: Incarnation
             </Hug>
             <Hug mr={4}>
               <Tooltip title={isFetching ? 'Getting status...' : 'Get status'}>
-                <Button size="small" loading={isFetching} onClick={onGetStatus}>
-                  {!isFetching && <Download />}
+                <Button size={size} loading={isFetching} onClick={onGetStatus}>
+                  {!isFetching && <Download {...svgProps} />}
                 </Button>
               </Tooltip>
             </Hug>
@@ -37,14 +39,14 @@ export const IncarnationLinks = ({ id, commitUrl, mergeRequestUrl }: Incarnation
         )
       }
       <Tooltip title="Commit">
-        <ButtonLink size="small" target="_blank" disabled={!commitUrl} href={commitUrl}>
-          <Commit />
+        <ButtonLink size={size} style={{ maxWidth: 38 }} target="_blank" disabled={!commitUrl} href={commitUrl}>
+          <Commit {...svgProps} />
         </ButtonLink>
       </Tooltip>
       <Hug ml={4}>
         <Tooltip title="Merge request">
-          <ButtonLink size="small" target="_blank" disabled={!mergeRequestUrl} href={mergeRequestUrl ?? undefined}>
-            <MergeRequest />
+          <ButtonLink size={size} style={{ maxWidth: 38 }} target="_blank" disabled={!mergeRequestUrl} href={mergeRequestUrl ?? undefined}>
+            <MergeRequest {...svgProps} />
           </ButtonLink>
         </Tooltip>
       </Hug>
