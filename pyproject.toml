@@ -35,7 +35,7 @@ alembic = {extras = ["tz"], version = "^1.8.1"}
 
 # Remove once there are proper wheels available for 1.1.3+,
 # see https://github.com/python-greenlet/greenlet/issues/312
-greenlet = "1.1.2"
+greenlet = "1.1.3.post0"
 
 # CLI
 typer = ">=0.4,<0.7"
