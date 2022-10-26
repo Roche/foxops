@@ -51,5 +51,5 @@ COPY ./alembic.ini alembic.ini
 COPY ./alembic/versions alembic/versions
 COPY ./alembic/env.py alembic/env.py
 
-EXPOSE 80
-CMD [ "uvicorn", "foxops.__main__:create_app", "--factory", "--proxy-headers", "--host", "0.0.0.0", "--port", "80" ]
+EXPOSE 8000
+CMD [ "uvicorn", "foxops.__main__:create_app", "--factory", "--proxy-headers", "--host", "0.0.0.0", "--port", "8000" ]
