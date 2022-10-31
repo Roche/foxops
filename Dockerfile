@@ -1,5 +1,5 @@
 # ================= BUILD BACKEND ==================
-FROM python:3.10-alpine AS backend-builder
+FROM python:3.11.0-alpine AS backend-builder
 
 # Install the build system
 RUN apk add --update git
@@ -26,7 +26,7 @@ RUN npm install
 RUN npm run build
 
 # =============== PRODUCTION ===============
-FROM python:3.10-alpine
+FROM python:3.11.0-alpine
 
 # Install the application
 RUN apk add --update git gcc musl-dev bash
