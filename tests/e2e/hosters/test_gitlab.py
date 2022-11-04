@@ -5,9 +5,15 @@ from datetime import timedelta
 
 import pytest
 from httpx import AsyncClient, HTTPStatusError
-from tenacity import retry, retry_if_exception_type, stop_after_delay, wait_fixed
+from pydantic import SecretStr
+from tenacity import retry
+from tenacity.retry import retry_if_exception_type
+from tenacity.stop import stop_after_delay
+from tenacity.wait import wait_fixed
 
-from foxops.hosters import GitLab, Hoster, ReconciliationStatus
+from foxops.hosters import Hoster, ReconciliationStatus
+from foxops.hosters.gitlab import GitLab
+from foxops.hosters.gitlab.settings import GitLabSettings
 
 # mark all tests in this module as e2e
 pytestmark = pytest.mark.e2e
@@ -72,7 +78,10 @@ build:
 
 @pytest.fixture(name="test_gitlab_hoster")
 async def create_test_gitlab_hoster(gitlab_test_address: str, gitlab_test_user_token: str) -> Hoster:
-    return GitLab(gitlab_test_address, gitlab_test_user_token)
+    settings: GitLabSettings = GitLabSettings(
+        address=gitlab_test_address, client_id="FIXME", client_secret=SecretStr("FIXME")
+    )
+    return GitLab(settings, SecretStr(gitlab_test_user_token))
 
 
 async def should_return_success_reconciliation_status_for_default_branch_commit_without_pipeline(

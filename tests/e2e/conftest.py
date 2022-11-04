@@ -5,10 +5,13 @@ from urllib.parse import quote_plus
 
 import pytest
 from httpx import AsyncClient, Client, Timeout
+from pydantic import SecretStr
 
 #: Holds settings for the GitLab test instance
 GITLAB_ADDRESS = "http://127.0.0.1:5002/api/v4"
 GITLAB_ADMIN_TOKEN = "ACCTEST1234567890123"
+GITLAB_CLIENT_ID = "1234567890abcdeffedcba0987654321"
+GITLAB_CLIENT_SECRET = "FOXOPS1234567890"
 
 
 @pytest.fixture(scope="session")
@@ -18,7 +21,9 @@ def gitlab_test_address() -> str:
 
 @pytest.fixture(scope="session", name="gitlab_test_user_token")
 def create_gitlab_test_user(test_run_id: str):
-    client = Client(base_url=GITLAB_ADDRESS, headers={"PRIVATE-TOKEN": GITLAB_ADMIN_TOKEN}, timeout=Timeout(120))
+    client = Client(
+        base_url=GITLAB_ADDRESS, headers={"Authorization": f"Bearer {GITLAB_ADMIN_TOKEN}"}, timeout=Timeout(120)
+    )
 
     test_user_name = f"foxops-test-{test_run_id}"
     response = client.post(
@@ -51,11 +56,19 @@ def create_gitlab_test_user(test_run_id: str):
         response.raise_for_status()
 
 
+# override static token in unit tests conftest
+# this is a trick as we use a personal access token rather than a temp access token
+# it is anyway relevant for the test as both type of token are functionally identical
+@pytest.fixture(name="static_hoster_token", scope="session")
+def get_static_hoster_token(gitlab_test_user_token) -> SecretStr:
+    return SecretStr(gitlab_test_user_token)
+
+
 @pytest.fixture(scope="session", autouse=True)
 def set_settings_env(gitlab_test_user_token: str, static_api_token: str):
     os.environ["FOXOPS_GITLAB_ADDRESS"] = GITLAB_ADDRESS
-    os.environ["FOXOPS_GITLAB_TOKEN"] = gitlab_test_user_token
-    os.environ["FOXOPS_STATIC_TOKEN"] = static_api_token
+    os.environ["FOXOPS_GITLAB_CLIENT_ID"] = GITLAB_CLIENT_ID
+    os.environ["FOXOPS_GITLAB_CLIENT_SECRET"] = GITLAB_CLIENT_SECRET
 
 
 @pytest.fixture(name="gitlab_test_client")

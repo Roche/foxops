@@ -31,6 +31,11 @@ interface ApiError {
   message: string
 }
 
+export interface AuthError {
+  status: number,
+  detail: string
+}
+
 export interface ApiErrorResponse {
   documentation: null | string,
   message: string,

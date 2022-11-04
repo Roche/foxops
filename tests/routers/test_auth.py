@@ -8,7 +8,7 @@ async def should_err_if_authorization_header_is_missing(app: FastAPI):
         response = await client.get("/auth/test")
 
     # THEN
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
     assert response.json() == {"detail": "Missing Authorization header"}
 
 
@@ -18,7 +18,7 @@ async def should_err_if_authorization_header_is_empty(app: FastAPI):
         response = await client.get("/auth/test", headers={"Authorization": ""})
 
     # THEN
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
     assert response.json() == {"detail": "Missing Authorization header"}
 
 
@@ -28,8 +28,8 @@ async def should_err_if_authorization_header_is_not_bearer(app: FastAPI):
         response = await client.get("/auth/test", headers={"Authorization": "foobar"})
 
     # THEN
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert response.json() == {"detail": "Authorization header must start with 'Bearer ' followed by the token"}
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert response.json() == {"detail": "Token scheme must be Bearer"}
 
 
 async def should_err_if_authorization_header_is_empty_bearer(app: FastAPI):
@@ -38,8 +38,8 @@ async def should_err_if_authorization_header_is_empty_bearer(app: FastAPI):
         response = await client.get("/auth/test", headers={"Authorization": "Bearer"})
 
     # THEN
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert response.json() == {"detail": "Authorization header must start with 'Bearer ' followed by the token"}
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert response.json() == {"detail": "Missing token"}
 
 
 async def should_err_if_authorization_header_is_missing_bearer_token(app: FastAPI):
@@ -48,8 +48,8 @@ async def should_err_if_authorization_header_is_missing_bearer_token(app: FastAP
         response = await client.get("/auth/test", headers={"Authorization": "Bearer "})
 
     # THEN
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert response.json() == {"detail": "Authorization header must start with 'Bearer ' followed by the token"}
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert response.json() == {"detail": "Missing token"}
 
 
 async def should_err_if_token_is_wrong(app: FastAPI):
@@ -59,13 +59,30 @@ async def should_err_if_token_is_wrong(app: FastAPI):
 
     # THEN
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    assert response.json() == {"detail": "Token is invalid"}
+    assert response.json() == {"detail": "Not enough segments"}
 
 
-async def should_allow_access_if_token_is_correct(app: FastAPI, static_api_token: str):
+async def should_fail_if_client_unauthenticated(unauthenticated_client: AsyncClient):
     # WHEN
-    async with AsyncClient(app=app, base_url="http://test", follow_redirects=True) as client:
-        response = await client.get("/auth/test", headers={"Authorization": f"Bearer {static_api_token}"})
+    response = await unauthenticated_client.get("/auth/test")
+
+    # THEN
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert response.json() == {"detail": "Missing Authorization header"}
+
+
+async def should_fail_if_client_misauthenticated(misauthenticated_client: AsyncClient):
+    # WHEN
+    response = await misauthenticated_client.get("/auth/test")
+
+    # THEN
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert response.json() == {"detail": "Invalid TEST token"}
+
+
+async def should_allow_access_if_token_is_correct(authenticated_client: AsyncClient):
+    # WHEN
+    response = await authenticated_client.get("/auth/test")
 
     # THEN
     assert response.status_code == status.HTTP_200_OK
