@@ -1,11 +1,25 @@
+# by default gitlab will run on localhost (i.e. same host where tests are run) listening on port 5002
+# this can be overriden with environment variables: GITLAB_HOST & GITLAB_PORT & GITLAB_ADDRESS
+# Eg: 
+# env GITLAB_HOST="myserver.example.com" GITLAB_PORT="8002" docker-compose up -d
+# env GITLAB_HOST="myserver.example.com" GITLAB_PORT="8002" ./script/await-healthy.sh
+# env GITLAB_ADDRESS="http://myserver.example.com:8002/api/v4" poetry run pytest -m 'e2e'
+
 version: '3'
 
 services:
+  init-rb:
+    image: alpine
+    volumes:
+      - config-ee:/etc/gitlab
+      - ${PWD}/scripts/gitlab.rb:/src.rb
+    command: sh -c 'cat /src.rb | sed -e "s/_GITLAB_HOST_/${GITLAB_HOST:-127.0.0.1}/" -e "s/_GITLAB_PORT_/${GITLAB_PORT:-5002}/" > /etc/gitlab/gitlab.rb'
+    
   gitlab-ee:
     image: gitlab/gitlab-ee:${GITLAB_EE_VERSION:-latest}
     restart: always
     ports:
-      - 5002:80
+      - ${GITLAB_PORT:-5002}:80
     environment:
       GITLAB_ROOT_PASSWORD: adminadmin
     labels:
@@ -15,11 +29,13 @@ services:
       - logs-ee:/var/log/gitlab
       - data-ee:/var/opt/gitlab
       - ${PWD}/scripts/healthcheck-and-setup.sh:/healthcheck-and-setup.sh:Z
-      - ${PWD}/scripts/gitlab.rb:/etc/gitlab/gitlab.rb:ro
     healthcheck:
       test: /healthcheck-and-setup.sh
       interval: 10s
       timeout: 2m
+    depends_on:
+      init-rb:
+        condition: service_completed_successfully
 
 volumes:
   config-ce:
