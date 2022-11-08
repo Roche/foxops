@@ -7,14 +7,18 @@ from pathlib import Path
 from typing import AsyncGenerator
 
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, Header
+from fastapi.security.utils import get_authorization_scheme_param
 from httpx import AsyncClient
+from pydantic import EmailStr, SecretStr
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from foxops.__main__ import FRONTEND_SUBDIRS, create_app
+from foxops.auth import AuthData, AuthHTTPException, get_auth_data
 from foxops.database import DAL
 from foxops.dependencies import get_dal
 from foxops.logger import setup_logging
+from foxops.models import User
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -62,10 +66,10 @@ def create_dummy_frontend(tmp_path_factory: pytest.TempPathFactory):
 
 
 @pytest.fixture(scope="module", autouse=True)
-def set_settings_env(static_api_token: str):
+def set_settings_env():
     os.environ["FOXOPS_GITLAB_ADDRESS"] = "https://nonsense.com/api/v4"
-    os.environ["FOXOPS_GITLAB_TOKEN"] = "nonsense"
-    os.environ["FOXOPS_STATIC_TOKEN"] = static_api_token
+    os.environ["FOXOPS_GITLAB_CLIENT_ID"] = "nonsense"
+    os.environ["FOXOPS_GITLAB_CLIENT_SECRET"] = "nonsense"
 
 
 @pytest.fixture(name="app")
@@ -84,11 +88,36 @@ async def create_dal(test_async_engine: AsyncEngine) -> AsyncGenerator[DAL, None
 
 @pytest.fixture(name="static_api_token", scope="session")
 def get_static_api_token() -> str:
-    return "test-token"
+    return "test-api-token"
+
+
+@pytest.fixture(name="static_hoster_token", scope="session")
+def get_static_hoster_token() -> SecretStr:
+    return SecretStr("test-hoster-token")
+
+
+@pytest.fixture(name="static_refresh_token", scope="session")
+def get_static_refresh_token() -> SecretStr:
+    return SecretStr("test-refresh-token")
+
+
+@pytest.fixture(name="static_user", scope="session")
+def get_static_user() -> User:
+    return User(email=EmailStr("test-user@nonsense.com"), scopes=["user"])
+
+
+@pytest.fixture(name="static_auth_data", scope="session")
+def get_static_auth_data(
+    static_user: User, static_hoster_token: SecretStr, static_refresh_token: SecretStr
+) -> AuthData:
+    return AuthData(user=static_user, hoster_token=static_hoster_token, refresh_token=static_refresh_token)
 
 
 @pytest.fixture(name="unauthenticated_client")
-async def create_unauthenticated_client(dal: DAL, app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
+async def create_unauthenticated_client(
+    dal: DAL,
+    app: FastAPI,
+) -> AsyncGenerator[AsyncClient, None]:
     def _test_get_dal() -> DAL:
         return dal
 
@@ -101,10 +130,31 @@ async def create_unauthenticated_client(dal: DAL, app: FastAPI) -> AsyncGenerato
         yield ac
 
 
-@pytest.fixture(name="authenticated_client")
-async def create_authenticated_client(unauthenticated_client: AsyncClient, static_api_token: str) -> AsyncClient:
-    unauthenticated_client.headers["Authorization"] = f"Bearer {static_api_token}"
+@pytest.fixture(name="misauthenticated_client")
+async def create_misauthenticated_client(
+    app: FastAPI,
+    static_auth_data: AuthData,
+    unauthenticated_client: AsyncClient,
+    static_api_token: str,
+) -> AsyncClient:
+    def _test_get_auth_data(authorization: str = Header(None, include_in_schema=False)) -> AuthData:
+        _, token = get_authorization_scheme_param(authorization)
+        if token != static_api_token:
+            raise AuthHTTPException(detail="Invalid TEST token")
+        return static_auth_data
+
+    app.dependency_overrides[get_auth_data] = _test_get_auth_data
+    unauthenticated_client.headers["Authorization"] = "Bearer wrong_token"
     return unauthenticated_client
+
+
+@pytest.fixture(name="authenticated_client")
+async def create_authenticated_client(
+    misauthenticated_client: AsyncClient,
+    static_api_token: str,
+) -> AsyncClient:
+    misauthenticated_client.headers["Authorization"] = f"Bearer {static_api_token}"
+    return misauthenticated_client
 
 
 @pytest.fixture(name="api_client")

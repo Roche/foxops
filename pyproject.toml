@@ -44,6 +44,15 @@ typer = ">=0.4,<0.7"
 "ruamel.yaml" = "^0.17.20"
 Jinja2 = "^3.0.3"
 
+# Auth
+authlib = "^1.1.0"
+itsdangerous = "^2.1.2"
+email-validator = "^1.3.0"
+python-jose = "^3.3.0"
+aiocache = {extras = ["memcached"], version = "^0.11.1"}
+ujson = "^5.5.0"
+msgpack = "^1.0.4"
+
 [tool.poetry.dev-dependencies]
 # Linting
 flake8 = "^5.0.4"

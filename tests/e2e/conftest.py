@@ -5,11 +5,14 @@ from urllib.parse import quote_plus
 
 import pytest
 from httpx import AsyncClient, Client, Timeout
+from pydantic import SecretStr
 
 #: Holds default settings for the GitLab test instance
 #: can be overriden by environment variable
 GITLAB_ADDRESS = "http://127.0.0.1:5002/api/v4"
 GITLAB_ADMIN_TOKEN = "ACCTEST1234567890123"
+GITLAB_CLIENT_ID = "1234567890abcdeffedcba0987654321"
+GITLAB_CLIENT_SECRET = "FOXOPS1234567890"
 
 
 @pytest.fixture(scope="session")
@@ -20,12 +23,22 @@ def gitlab_test_address() -> str:
 @pytest.fixture(scope="session")
 def gitlab_test_admin_token() -> str:
     return os.environ.get("GITLAB_ADMIN_TOKEN", GITLAB_ADMIN_TOKEN)
+    
+
+@pytest.fixture(scope="session")
+def gitlab_test_client_id() -> str:
+    return os.environ.get("GITLAB_CLIENT_ID", GITLAB_CLIENT_ID)
 
 
+@pytest.fixture(scope="session")
+def gitlab_test_client_secret() -> str:
+    return os.environ.get("GITLAB_CLIENT_SECRET", GITLAB_CLIENT_SECRET)
+    
+ 
 @pytest.fixture(scope="session", name="gitlab_test_user_token")
 def create_gitlab_test_user(test_run_id: str, gitlab_test_address: str, gitlab_test_admin_token: str):
     client = Client(
-        base_url=gitlab_test_address, headers={"PRIVATE-TOKEN": gitlab_test_admin_token}, timeout=Timeout(120)
+        base_url=gitlab_test_address, headers={"Authorization": f"Bearer {gitlab_test_admin_token}"}, timeout=Timeout(120)
     )
 
     test_user_name = f"foxops-test-{test_run_id}"
@@ -59,11 +72,19 @@ def create_gitlab_test_user(test_run_id: str, gitlab_test_address: str, gitlab_t
         response.raise_for_status()
 
 
+# override static token in unit tests conftest
+# this is a trick as we use a personal access token rather than a temp access token
+# it is anyway relevant for the test as both type of token are functionally identical
+@pytest.fixture(name="static_hoster_token", scope="session")
+def get_static_hoster_token(gitlab_test_user_token) -> SecretStr:
+    return SecretStr(gitlab_test_user_token)
+
+
 @pytest.fixture(scope="session", autouse=True)
-def set_settings_env(gitlab_test_address: str, gitlab_test_user_token: str, static_api_token: str):
+def set_settings_env(gitlab_test_address: str, gitlab_test_client_id: str, gitlab_test_client_secret: str):
     os.environ["FOXOPS_GITLAB_ADDRESS"] = gitlab_test_address
-    os.environ["FOXOPS_GITLAB_TOKEN"] = gitlab_test_user_token
-    os.environ["FOXOPS_STATIC_TOKEN"] = static_api_token
+    os.environ["FOXOPS_GITLAB_CLIENT_ID"] = gitlab_test_client_id
+    os.environ["FOXOPS_GITLAB_CLIENT_SECRET"] = gitlab_test_client_secret
 
 
 @pytest.fixture(name="gitlab_test_client")

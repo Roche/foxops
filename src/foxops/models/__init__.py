@@ -9,3 +9,4 @@ from foxops.models.incarnation import (  # noqa
     IncarnationBasic,
     IncarnationWithDetails,
 )
+from foxops.models.user import User  # noqa

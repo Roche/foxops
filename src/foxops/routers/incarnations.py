@@ -1,9 +1,14 @@
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Response, Security, status
 
 from foxops.database import DAL
-from foxops.dependencies import get_dal, get_hoster, get_reconciliation
+from foxops.dependencies import (
+    get_current_user,
+    get_dal,
+    get_hoster,
+    get_reconciliation,
+)
 from foxops.errors import IncarnationAlreadyInitializedError, IncarnationNotFoundError
 from foxops.hosters import Hoster
 from foxops.logger import bind, get_logger
@@ -13,8 +18,9 @@ from foxops.models import (
     Incarnation,
     IncarnationBasic,
     IncarnationWithDetails,
+    User,
 )
-from foxops.models.errors import ApiError
+from foxops.models.errors import ApiError, AuthError
 
 #: Holds the router for the incarnations API endpoints
 router = APIRouter(prefix="/api/incarnations", tags=["incarnations"])
@@ -34,6 +40,10 @@ logger = get_logger(__name__)
             "description": "The `incarnation_repository` and `target_directory` settings where inconsistent",
             "model": ApiError,
         },
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "Could not validate credentials",
+            "model": AuthError,
+        },
         status.HTTP_404_NOT_FOUND: {
             "description": "An incarnation with the `incarnation_repository` and `target_directory` does not exist",
             "model": ApiError,
@@ -46,6 +56,7 @@ async def list_incarnations(
     target_directory: str = ".",
     dal: DAL = Depends(get_dal),
     hoster: Hoster = Depends(get_hoster),
+    user: User = Security(get_current_user, scopes=["user"]),
 ) -> list[IncarnationBasic] | ApiError:
     """Returns a list of all known incarnations.
 
@@ -82,6 +93,10 @@ async def list_incarnations(
             "and import was not allowed.",
             "model": ApiError,
         },
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "Could not validate credentials",
+            "model": AuthError,
+        },
         status.HTTP_409_CONFLICT: {
             "description": "The incarnation is already initialized and has a template configuration mismatch.",
             "model": IncarnationBasic,
@@ -98,6 +113,7 @@ async def create_incarnation(
     allow_import: bool = False,
     dal: DAL = Depends(get_dal),
     hoster: Hoster = Depends(get_hoster),
+    user: User = Security(get_current_user, scopes=["user"]),
     reconciliation=Depends(get_reconciliation),
 ) -> IncarnationWithDetails | ApiError:
     """Initializes a new incarnation and adds it to the inventory.
@@ -141,6 +157,10 @@ async def create_incarnation(
             "description": "The actual state of the incarnation from the inventory",
             "model": IncarnationWithDetails,
         },
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "Could not validate credentials",
+            "model": AuthError,
+        },
         status.HTTP_404_NOT_FOUND: {
             "description": "The incarnation was not found in the inventory",
             "model": ApiError,
@@ -152,6 +172,7 @@ async def read_incarnation(
     incarnation_id: int,
     dal: DAL = Depends(get_dal),
     hoster: Hoster = Depends(get_hoster),
+    user: User = Security(get_current_user, scopes=["user"]),
 ) -> IncarnationWithDetails | ApiError:
     """Returns the details of the incarnation from the inventory."""
     try:
@@ -174,6 +195,10 @@ async def read_incarnation(
             "description": "The desired incarnation state was not valid",
             "model": ApiError,
         },
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "Could not validate credentials",
+            "model": AuthError,
+        },
         status.HTTP_404_NOT_FOUND: {
             "description": "The incarnation was not found in the inventory",
             "model": ApiError,
@@ -194,6 +219,7 @@ async def update_incarnation(
     desired_incarnation_state_patch: DesiredIncarnationStatePatch,
     dal: DAL = Depends(get_dal),
     hoster: Hoster = Depends(get_hoster),
+    user: User = Security(get_current_user, scopes=["user"]),
     reconciliation=Depends(get_reconciliation),
 ) -> IncarnationWithDetails | ApiError:
     """Reconciles the incarnation.
@@ -226,6 +252,10 @@ async def update_incarnation(
         status.HTTP_204_NO_CONTENT: {
             "description": "The incarnation was successfully deleted",
         },
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "Could not validate credentials",
+            "model": AuthError,
+        },
         status.HTTP_404_NOT_FOUND: {
             "description": "The incarnation was not found in the inventory",
             "model": ApiError,
@@ -240,6 +270,8 @@ async def delete_incarnation(
     response: Response,
     incarnation_id: int,
     dal: DAL = Depends(get_dal),
+    hoster: Hoster = Depends(get_hoster),  # not used, just for authorization check
+    user: User = Security(get_current_user, scopes=["user"]),
 ):
     """Deletes the incarnation from the inventory.
 

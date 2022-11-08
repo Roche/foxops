@@ -1,16 +1,22 @@
 import asyncio
 import base64
+import os
 import shutil
+import stat
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from http import HTTPStatus
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from tempfile import mkdtemp
 from typing import AsyncIterator, TypedDict
 from urllib.parse import quote_plus
 
 import httpx
-from tenacity import retry, retry_if_exception_type, stop_after_delay, wait_fixed
+from pydantic import SecretStr
+from tenacity import retry
+from tenacity.retry import retry_if_exception_type
+from tenacity.stop import stop_after_delay
+from tenacity.wait import wait_fixed
 
 from foxops.engine import IncarnationState
 from foxops.engine.models import load_incarnation_state_from_string
@@ -20,6 +26,7 @@ from foxops.external.git import (
     add_authentication_to_git_clone_url,
     git_exec,
 )
+from foxops.hosters.gitlab.settings import GitLabSettings
 from foxops.hosters.types import (
     GitSha,
     MergeRequestId,
@@ -53,6 +60,15 @@ class Commit(TypedDict):
     status: str
 
 
+# to overcome potential issue on Windows
+# defining a function that force removes read only documents
+# source: https://www.pythonpool.com/python-shutil-rmtree/
+def remove_read_only(func, path, excinfo):
+    # Using os.chmod with stat.S_IWRITE to allow write permissions
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
+
+
 def evaluate_gitlab_address(address: str) -> tuple[str, str]:
     """Evaluate the given GitLab address and return a tuple containing the GitLab Web UI URL and the GitLab API URL."""
     if address.endswith("/api/v4"):
@@ -64,12 +80,22 @@ def evaluate_gitlab_address(address: str) -> tuple[str, str]:
 class GitLab:
     """REST API client for GitLab"""
 
-    def __init__(self, address: str, token: str):
-        self.web_address, self.api_address = evaluate_gitlab_address(address)
-        self.token = token
-        self.client = httpx.AsyncClient(
-            base_url=self.api_address, headers={"PRIVATE-TOKEN": self.token}, timeout=httpx.Timeout(120)
+    def __init__(self, settings: GitLabSettings, token: SecretStr):
+        self.web_address, self.api_address = evaluate_gitlab_address(settings.address)
+        self.__token: SecretStr = token
+        self.__client: httpx.AsyncClient = httpx.AsyncClient(
+            base_url=self.api_address,
+            headers={"Authorization": f"Bearer {token.get_secret_value()}"},
+            timeout=httpx.Timeout(120),
         )
+
+    @property
+    def token(self) -> SecretStr:
+        return self.__token
+
+    @property
+    def client(self) -> httpx.AsyncClient:
+        return self.__client
 
     async def validate(self):
         (await self.client.get("/version")).raise_for_status()
@@ -84,7 +110,7 @@ class GitLab:
         if not await self.__project_exists(incarnation_repository):
             raise IncarnationRepositoryNotFound(incarnation_repository)
 
-        fengine_config_file = Path(target_directory, ".fengine.yaml")
+        fengine_config_file = PurePosixPath(target_directory, ".fengine.yaml")  # Gitlab url uses Posix syntax
         response = await self.client.get(
             f"/projects/{quote_plus(incarnation_repository)}/repository/files/{quote_plus(str(fengine_config_file))}",
             params={"ref": "main"},
@@ -162,7 +188,7 @@ class GitLab:
             metadata = await self.get_repository_metadata(repository)
             repository = metadata["http_url"]
 
-        clone_url = add_authentication_to_git_clone_url(repository, "__token__", self.token)
+        clone_url = add_authentication_to_git_clone_url(repository, "oauth2", self.token.get_secret_value())
 
         # we assume that `repository` is already a proper HTTP(S) URL
         local_clone_directory = Path(mkdtemp())
@@ -214,7 +240,7 @@ class GitLab:
 
             yield GitRepository(local_clone_directory)
         finally:
-            shutil.rmtree(local_clone_directory)
+            shutil.rmtree(local_clone_directory, onerror=remove_read_only)
 
     async def has_pending_incarnation_branch(self, project_identifier: str, branch: str) -> GitSha | None:
         response = await self.client.get(

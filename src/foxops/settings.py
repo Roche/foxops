@@ -14,9 +14,6 @@ class DatabaseSettings(BaseSettings):
 
 
 class Settings(BaseSettings):
-    gitlab_address: str
-    gitlab_token: SecretStr
-    static_token: SecretStr
     frontend_dist_dir: Path = Path("ui/dist")
     log_level: str = "INFO"
 
