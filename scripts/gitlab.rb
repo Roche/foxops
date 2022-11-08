@@ -1,3 +1,2 @@
-# This has to match the `docker-compose.yml` configuration.
-external_url "http://127.0.0.1:5002"
+external_url "http://_GITLAB_HOST_:_GITLAB_PORT_"
 nginx['listen_port'] = 80
