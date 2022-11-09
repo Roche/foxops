@@ -1,5 +1,5 @@
-import os
 import filecmp
+import os
 import re
 import shutil
 import typing
