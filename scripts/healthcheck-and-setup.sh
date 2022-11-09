@@ -6,6 +6,9 @@
 # This is a known workaround for docker-compose lacking lifecycle hooks.
 # See: https://github.com/docker/compose/issues/1809#issuecomment-657815188
 
+# log file for debugging purpose
+log=/tmp/gitlab-acctest.log
+
 set -e
 
 # if already running just exit - avoid conflict if two instances are running in parallel
@@ -23,12 +26,14 @@ curl --silent --show-error --fail --output /dev/null 127.0.0.1:80
 done=/var/gitlab-acctest-initialized
 
 test -f $done || {
-  echo 'Initializing GitLab for acceptance tests'
+  echo 'Initializing GitLab for acceptance tests' >> $log
 
   # running
   touch $running
 
-  echo 'Creating access token'
+  echo "$(date): $$ - setup starting" >> $log
+
+  echo "$(date): $$ - Creating access token" >> $log
   (
     printf 'terraform_token = PersonalAccessToken.create('
     printf 'user_id: 1, '
@@ -38,7 +43,9 @@ test -f $done || {
     printf 'terraform_token.save!;'
   ) | gitlab-rails runner -
 
-  echo 'Creating oauth application'
+  echo "$(date): $$ - token created" >> $log
+
+  echo "$(date): $$ - Creating oauth application" >> $log
   (
     printf 'foxops_app = Doorkeeper::Application.create('
     printf 'id: 1, '
@@ -54,7 +61,9 @@ test -f $done || {
     printf 'foxops_app.save!;'
   ) | gitlab-rails runner -
 
-  echo 'Creating test user'
+  echo "$(date): $$ - application created" >> $log
+
+  echo "$(date): $$ - Creating test user" >> $log
   (
     printf 'foxy = User.create('
     printf 'name: "Foxops Test user", '
@@ -73,7 +82,7 @@ test -f $done || {
   # directly in tests like TestAccGitlabProject_basic.
   # Works on CE too
 
-  echo 'Creating an instance level template group with a simple template based on rails'
+  echo "$(date): $$ - Creating an instance level template group with a simple template based on rails" >> $log
   (
     printf 'group_template = Group.new('
     printf 'name: :terraform, '
@@ -92,8 +101,12 @@ test -f $done || {
     printf 'project.saved?;'
   ) | gitlab-rails runner -
 
+  echo "$(date): $$ - template group created" >> $log
+
   rm -f $running
   touch $done
+  cp -a $log /var/log
+  rm -f $log
 }
 
 echo 'GitLab is ready for acceptance tests'
