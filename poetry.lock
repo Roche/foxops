@@ -1345,7 +1345,7 @@ standard = ["colorama (>=0.4)", "httptools (>=0.4.0)", "python-dotenv (>=0.13)",
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "174e9b563be15ac7f9c462a134475e032426211e817eb33a09e083de502a5e4b"
+content-hash = "19ccff8a64441ff92c341b0492dabda48d189c523f90fc4d6a75a204b5eea91f"
 
 [metadata.files]
 aiocache = [
