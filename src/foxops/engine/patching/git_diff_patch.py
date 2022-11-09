@@ -1,3 +1,4 @@
+import os
 import filecmp
 import re
 import shutil
@@ -84,7 +85,8 @@ async def diff(old_directory: Path, new_directory: Path) -> Path | None:
             return None
 
         logger.debug("create patch from git diff", diff_output=diff_output)
-        _, patch_path = mkstemp(prefix="fengine-update-", suffix=".patch")
+        fd, patch_path = mkstemp(prefix="fengine-update-", suffix=".patch")
+        os.close(fd)
 
         (p := Path(patch_path)).write_text(diff_output)
         return p
