@@ -43,6 +43,17 @@ test -f $done || {
     printf 'confidential: true);'
     printf 'foxops_app.save!;'
   ) | gitlab-rails runner -
+
+  echo 'Creating test user'
+  (
+    printf 'foxy = User.create('
+    printf 'name: "Foxops Test user", '
+    printf 'username: "foxy", '
+    printf 'password: "xxx123yyy", '
+    printf 'email: "foxy@foxops.io", '
+    printf 'skip_confirmation: true);'
+    printf 'foxy.save!;'
+  ) | gitlab-rails runner -
   
   # 2020-09-07: Currently Gitlab (version 13.3.6 ) doesn't allow in admin API
   # ability to set a group as instance level templates.

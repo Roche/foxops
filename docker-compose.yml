@@ -25,10 +25,12 @@ services:
       - logs-ee:/var/log/gitlab
       - data-ee:/var/opt/gitlab
       - ${PWD}/scripts/healthcheck-and-setup.sh:/healthcheck-and-setup.sh:Z
+      - ${PWD}/scripts/foxops-startup.sh:/assets/startup
     healthcheck:
       test: /healthcheck-and-setup.sh
       interval: 10s
       timeout: 2m
+    command: ["/assets/startup"]
 
 volumes:
   config-ce:

@@ -27,7 +27,7 @@ oauth = OAuth()
 def get_oauth_gitlab(settings: GitLabSettings = Depends(get_gitlab_settings)):
     """returns the Gitlab authlib client, configured from oidc well-known.
     The function depends on *Gitlab settings*
-    authlib is caching the object is a registry, object is created at first call
+    authlib is caching the object in a registry, object is created at first call
     """
     conf_url = f"{settings.address}/.well-known/openid-configuration"
     # object is cached in OAuth registry
