@@ -8,13 +8,6 @@
 version: '3'
 
 services:
-  init-rb:
-    image: alpine
-    volumes:
-      - config-ee:/etc/gitlab
-      - ${PWD}/scripts/gitlab.rb:/src.rb
-    command: sh -c 'cat /src.rb | sed -e "s/_GITLAB_HOST_/${GITLAB_HOST:-127.0.0.1}/" -e "s/_GITLAB_PORT_/${GITLAB_PORT:-5002}/" > /etc/gitlab/gitlab.rb'
-    
   gitlab-ee:
     image: gitlab/gitlab-ee:${GITLAB_EE_VERSION:-latest}
     restart: always
@@ -22,6 +15,9 @@ services:
       - ${GITLAB_PORT:-5002}:80
     environment:
       GITLAB_ROOT_PASSWORD: adminadmin
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url "http://${GITLAB_HOST:-127.0.0.1}:${GITLAB_PORT:-5002}"
+        nginx['listen_port'] = 80
     labels:
       foxops-gitlab/owned: ''
     volumes:
@@ -33,9 +29,6 @@ services:
       test: /healthcheck-and-setup.sh
       interval: 10s
       timeout: 2m
-    depends_on:
-      init-rb:
-        condition: service_completed_successfully
 
 volumes:
   config-ce:
