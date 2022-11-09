@@ -8,6 +8,13 @@
 
 set -e
 
+# if already running just exit - avoid conflict if two instances are running in parallel
+# in case of error with rails happening just once and because of set -e the running file
+# will not be cleaned up and this script will always exit 1 - the container will never
+# become healthy => timeout after 30min in github workflow
+running=/var/gitlab-acctest-running
+test -f $running && exit 1
+
 # Check for a successful HTTP status code from GitLab.
 curl --silent --show-error --fail --output /dev/null 127.0.0.1:80
 
@@ -17,6 +24,9 @@ done=/var/gitlab-acctest-initialized
 
 test -f $done || {
   echo 'Initializing GitLab for acceptance tests'
+
+  # running
+  touch $running
 
   echo 'Creating access token'
   (
@@ -82,6 +92,7 @@ test -f $done || {
     printf 'project.saved?;'
   ) | gitlab-rails runner -
 
+  rm -f $running
   touch $done
 }
 
