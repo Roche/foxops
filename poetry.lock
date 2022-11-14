@@ -14,7 +14,7 @@ develop = ["aiomisc", "pytest", "pytest-cov"]
 
 [[package]]
 name = "aiopath"
-version = "0.6.10"
+version = "0.6.11"
 description = "📁 Async pathlib for Python"
 category = "main"
 optional = false
@@ -1171,8 +1171,8 @@ aiofile = [
     {file = "aiofile-3.8.1.tar.gz", hash = "sha256:1623b98d88fbd16bbd2808d010de4e185a700e950ed3f17455dd851aa2455f40"},
 ]
 aiopath = [
-    {file = "aiopath-0.6.10-py2.py3-none-any.whl", hash = "sha256:44a5376de098b4875eefa4b4599f5ac99fd9451b88c314f237716571e16ccce2"},
-    {file = "aiopath-0.6.10.tar.gz", hash = "sha256:6ca97a864fe32478d53af6c40e1951de64ab01d6b402d88524ce72d80362eb7a"},
+    {file = "aiopath-0.6.11-py2.py3-none-any.whl", hash = "sha256:7b1f1aa3acb422050908ac3c4755b5e43f625111be003f1bfc7dc2193027c45d"},
+    {file = "aiopath-0.6.11.tar.gz", hash = "sha256:2f0d4d9195281612c6508cbfa12ac3184c31540d13b9e6215a325897da59decd"},
 ]
 aiosqlite = [
     {file = "aiosqlite-0.17.0-py3-none-any.whl", hash = "sha256:6c49dc6d3405929b1d08eeccc72306d3677503cc5e5e43771efc1e00232e8231"},
