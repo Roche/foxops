@@ -8,6 +8,7 @@ from foxops.dependencies import (
     get_dal,
     get_database_settings,
     get_hoster,
+    get_hoster_settings,
     get_settings,
     static_token_auth_scheme,
 )
@@ -35,7 +36,7 @@ def create_app():
     async def startup():
 
         # validate hoster
-        hoster = get_hoster(settings)
+        hoster = get_hoster(get_hoster_settings())
         await hoster.validate()
 
         # initialize database

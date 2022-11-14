@@ -1,6 +1,7 @@
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 
+from foxops.hosters.gitlab import GitLabSettings
 from foxops.settings import Settings
 
 
@@ -12,7 +13,10 @@ def test_settings_can_load_config_from_env(monkeypatch: MonkeyPatch):
     monkeypatch.setenv("FOXOPS_STATIC_TOKEN", "dummy")
 
     # WHEN
-    settings = Settings()
+    gsettings: GitLabSettings = GitLabSettings()  # type: ignore
+    settings = Settings()  # type: ignore
 
     # THEN
-    assert settings.gitlab_token.get_secret_value() == "dummy"
+    assert gsettings.address == "dummy"
+    assert gsettings.token.get_secret_value() == "dummy"
+    assert settings.static_token.get_secret_value() == "dummy"
