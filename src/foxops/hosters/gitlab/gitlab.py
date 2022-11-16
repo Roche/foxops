@@ -10,7 +10,10 @@ from typing import AsyncIterator, TypedDict
 from urllib.parse import quote_plus
 
 import httpx
-from tenacity import retry, retry_if_exception_type, stop_after_delay, wait_fixed
+from tenacity import retry
+from tenacity.retry import retry_if_exception_type
+from tenacity.stop import stop_after_delay
+from tenacity.wait import wait_fixed
 
 from foxops.engine import IncarnationState
 from foxops.engine.models import load_incarnation_state_from_string

@@ -7,7 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 import foxops.reconciliation as reconciliation
 from foxops.database import DAL
-from foxops.hosters import GitLab, Hoster
+from foxops.hosters import Hoster, HosterSettings
+from foxops.hosters.gitlab import GitLab, GitLabSettings, get_gitlab_settings
 from foxops.settings import DatabaseSettings, Settings
 
 # NOTE: Yes, you may absolutely use proper dependency injection at some point.
@@ -18,12 +19,17 @@ async_engine: AsyncEngine | None = None
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    return Settings()  # type: ignore
 
 
 @lru_cache
 def get_database_settings() -> DatabaseSettings:
     return DatabaseSettings()
+
+
+@lru_cache
+def get_hoster_settings() -> HosterSettings:
+    return GitLabSettings()  # type: ignore
 
 
 def get_dal(settings: DatabaseSettings = Depends(get_database_settings)) -> DAL:
@@ -35,10 +41,12 @@ def get_dal(settings: DatabaseSettings = Depends(get_database_settings)) -> DAL:
     return DAL(async_engine)
 
 
-def get_hoster(settings: Settings = Depends(get_settings)) -> Hoster:
+def get_hoster(settings: HosterSettings = Depends(get_gitlab_settings)) -> Hoster:
+    # this assert makes mypy happy
+    assert isinstance(settings, GitLabSettings)
     return GitLab(
-        address=settings.gitlab_address,
-        token=settings.gitlab_token.get_secret_value(),
+        address=settings.address,
+        token=settings.token.get_secret_value(),
     )
 
 
