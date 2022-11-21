@@ -24,6 +24,13 @@ class ReconciliationStatus(Enum):
     FAILED = "failed"
 
 
+class MergeRequestStatus(Enum):
+    OPEN = "open"
+    MERGED = "merged"
+    CLOSED = "closed"
+    UNKNOWN = "unknown"
+
+
 class Hoster(Protocol):
     async def validate(self) -> None:
         ...
@@ -68,6 +75,9 @@ class Hoster(Protocol):
         ...
 
     async def get_merge_request_url(self, incarnation_repository: str, merge_request_id: str) -> str:
+        ...
+
+    async def get_merge_request_status(self, incarnation_repository: str, merge_request_id: str) -> MergeRequestStatus:
         ...
 
 
