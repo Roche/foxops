@@ -25,7 +25,7 @@ async def assert_file_in_repository(
 async def assert_initialization_merge_request_exists(
     gitlab_test_client: AsyncClient,
     repository: str,
-):
+) -> str:
     params = {"state": "opened", "target_branch": "main"}
     response = await gitlab_test_client.get(f"/projects/{quote_plus(repository)}/merge_requests", params=params)
     response.raise_for_status()
