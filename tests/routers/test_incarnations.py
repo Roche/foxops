@@ -221,6 +221,7 @@ async def test_api_create_incarnation_already_exists_allowing_import_with_a_mism
     hoster_mock.get_reconciliation_status.return_value = "success"
     hoster_mock.get_commit_url.return_value = "some-commit-url"
     hoster_mock.get_merge_request_url.return_value = "some-merge-request-url"
+    hoster_mock.get_merge_request_status.return_value = MergeRequestStatus.MERGED
 
     app.dependency_overrides[get_reconciliation] = lambda: reconciliation_mock
     app.dependency_overrides[get_hoster] = lambda: hoster_mock
