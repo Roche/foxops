@@ -25,7 +25,9 @@ from foxops.external.git import (
 )
 from foxops.hosters.types import (
     GitSha,
+    Hoster,
     MergeRequestId,
+    MergeRequestStatus,
     ReconciliationStatus,
     RepositoryMetadata,
 )
@@ -64,7 +66,7 @@ def evaluate_gitlab_address(address: str) -> tuple[str, str]:
         return address, f"{address}/api/v4"
 
 
-class GitLab:
+class GitLab(Hoster):
     """REST API client for GitLab"""
 
     def __init__(self, address: str, token: str):
@@ -74,7 +76,7 @@ class GitLab:
             base_url=self.api_address, headers={"PRIVATE-TOKEN": self.token}, timeout=httpx.Timeout(120)
         )
 
-    async def validate(self):
+    async def validate(self) -> None:
         (await self.client.get("/version")).raise_for_status()
 
     async def __project_exists(self, project_identifier: str) -> bool:
@@ -398,6 +400,22 @@ class GitLab:
 
     async def get_merge_request_url(self, incarnation_repository: str, merge_request_id: str) -> str:
         return f"{self.web_address}/{incarnation_repository}/-/merge_requests/{merge_request_id}"
+
+    async def get_merge_request_status(self, incarnation_repository: str, merge_request_id: str) -> MergeRequestStatus:
+        response = await self.client.get(
+            f"/projects/{quote_plus(incarnation_repository)}/merge_requests/{merge_request_id}"
+        )
+        response.raise_for_status()
+
+        merge_request: MergeRequest = response.json()
+
+        mapping = {
+            "opened": MergeRequestStatus.OPEN,
+            "closed": MergeRequestStatus.CLOSED,
+            "merged": MergeRequestStatus.MERGED,
+            "locked": MergeRequestStatus.UNKNOWN,
+        }
+        return mapping[merge_request["state"]]
 
     async def _has_gitlab_ci_configuration(self, incarnation_repository: str, ref: str) -> bool:
         response = await self.client.head(

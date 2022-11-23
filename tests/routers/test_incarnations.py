@@ -10,6 +10,7 @@ from foxops.database import DAL
 from foxops.dependencies import get_hoster
 from foxops.engine import IncarnationState
 from foxops.errors import IncarnationAlreadyInitializedError
+from foxops.hosters.types import MergeRequestStatus
 from foxops.routers.incarnations import get_reconciliation
 
 pytestmark = [pytest.mark.api]
@@ -45,7 +46,9 @@ async def test_api_get_incarnations_returns_incarnations_from_inventory(
             "id": 1,
             "incarnation_repository": "test",
             "target_directory": "test",
+            "commit_sha": "commit_sha",
             "commit_url": "https://nonsense.com/test/-/commit/commit_sha",
+            "merge_request_id": "merge_request_id",
             "merge_request_url": "https://nonsense.com/test/-/merge_requests/merge_request_id",
         }
     ]
@@ -69,6 +72,7 @@ async def test_api_create_incarnation_adds_new_incarnation_to_inventory(
     hoster_mock.get_reconciliation_status.return_value = "success"
     hoster_mock.get_commit_url.return_value = "some-commit-url"
     hoster_mock.get_merge_request_url.return_value = "some-merge-request-url"
+    hoster_mock.get_merge_request_status.return_value = MergeRequestStatus.OPEN
 
     app.dependency_overrides[get_reconciliation] = lambda: reconciliation_mock
     app.dependency_overrides[get_hoster] = lambda: hoster_mock
@@ -91,8 +95,11 @@ async def test_api_create_incarnation_adds_new_incarnation_to_inventory(
         "id": 1,
         "incarnation_repository": "test",
         "target_directory": "test",
+        "commit_sha": "commit_sha",
         "commit_url": "some-commit-url",
+        "merge_request_id": "merge_request_id",
         "merge_request_url": "some-merge-request-url",
+        "merge_request_status": "open",
         "status": "success",
         "template_repository": "test",
         "template_repository_version": "version",
@@ -161,6 +168,7 @@ async def test_api_create_incarnation_already_exists_allowing_import_without_a_m
     hoster_mock.get_reconciliation_status.return_value = "success"
     hoster_mock.get_commit_url.return_value = "some-commit-url"
     hoster_mock.get_merge_request_url.return_value = "some-merge-request-url"
+    hoster_mock.get_merge_request_status.return_value = MergeRequestStatus.MERGED
 
     app.dependency_overrides[get_reconciliation] = lambda: reconciliation_mock
     app.dependency_overrides[get_hoster] = lambda: hoster_mock
@@ -213,6 +221,7 @@ async def test_api_create_incarnation_already_exists_allowing_import_with_a_mism
     hoster_mock.get_reconciliation_status.return_value = "success"
     hoster_mock.get_commit_url.return_value = "some-commit-url"
     hoster_mock.get_merge_request_url.return_value = "some-merge-request-url"
+    hoster_mock.get_merge_request_status.return_value = MergeRequestStatus.MERGED
 
     app.dependency_overrides[get_reconciliation] = lambda: reconciliation_mock
     app.dependency_overrides[get_hoster] = lambda: hoster_mock
