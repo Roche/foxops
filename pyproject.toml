@@ -81,6 +81,9 @@ myst-parser = "^0.18.0"
 furo = "^2022.9.15"
 pytest-alembic = "^0.8.4"
 
+[tool.poetry.group.dev.dependencies]
+black = {extras = ["d"], version = "^22.10.0"}
+
 [tool.black]
 line-length = 120
 

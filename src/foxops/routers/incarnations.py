@@ -291,6 +291,8 @@ async def delete_incarnation(
 
 
 async def get_incarnation_with_details(incarnation: Incarnation, hoster: Hoster) -> IncarnationWithDetails:
+    incarnation_basic = await get_incarnation_basic(incarnation, hoster)
+
     reconciliation_status = await hoster.get_reconciliation_status(
         incarnation.incarnation_repository,
         incarnation.target_directory,
@@ -299,9 +301,15 @@ async def get_incarnation_with_details(incarnation: Incarnation, hoster: Hoster)
         pipeline_timeout=timedelta(minutes=1),
     )
     response = IncarnationWithDetails(
-        **(await get_incarnation_basic(incarnation, hoster)).dict(),
+        **incarnation_basic.dict(),
         status=reconciliation_status,
     )
+
+    if incarnation.merge_request_id is not None:
+        response.merge_request_status = await hoster.get_merge_request_status(
+            incarnation.incarnation_repository,
+            incarnation.merge_request_id,
+        )
 
     incarnation_state = await hoster.get_incarnation_state(
         incarnation.incarnation_repository, incarnation.target_directory
@@ -317,12 +325,18 @@ async def get_incarnation_with_details(incarnation: Incarnation, hoster: Hoster)
 
 
 async def get_incarnation_basic(incarnation: Incarnation, hoster: Hoster) -> IncarnationBasic:
-    return IncarnationBasic(
-        **incarnation.dict(),
+    result = IncarnationBasic(
+        id=incarnation.id,
+        incarnation_repository=incarnation.incarnation_repository,
+        target_directory=incarnation.target_directory,
+        commit_sha=incarnation.commit_sha,
         commit_url=await hoster.get_commit_url(incarnation.incarnation_repository, incarnation.commit_sha),
-        merge_request_url=(
-            await hoster.get_merge_request_url(incarnation.incarnation_repository, incarnation.merge_request_id)
+        merge_request_id=incarnation.merge_request_id,
+        merge_request_url=await hoster.get_merge_request_url(
+            incarnation.incarnation_repository, incarnation.merge_request_id
         )
         if incarnation.merge_request_id
         else None,
     )
+
+    return result

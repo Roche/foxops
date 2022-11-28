@@ -50,8 +50,11 @@ async def should_initialize_incarnation_in_root_of_empty_repository_when_creatin
     assert incarnation["template_data"] == template_data
 
     assert incarnation["id"] == mocker.ANY
+    assert incarnation["commit_sha"] == mocker.ANY
     assert incarnation["commit_url"] == mocker.ANY
+    assert incarnation["merge_request_id"] is None
     assert incarnation["merge_request_url"] == mocker.ANY
+    assert incarnation["merge_request_status"] is None
     assert incarnation["template_repository_version_hash"] == mocker.ANY
 
     await assert_file_in_repository(
@@ -149,6 +152,7 @@ async def should_initialize_incarnation_in_root_of_nonempty_incarnation_in_a_mer
     assert incarnation["status"] == "pending"
     assert incarnation["commit_url"] == mocker.ANY
     assert incarnation["merge_request_url"] == mocker.ANY
+    assert incarnation["merge_request_status"] == "open"
 
     merge_request_source_branch = await assert_initialization_merge_request_exists(
         gitlab_test_client, empty_incarnation_gitlab_repository
@@ -202,6 +206,8 @@ async def should_initialize_incarnation_in_root_of_nonempty_incarnation_in_defau
     assert incarnation["status"] == "success"
     assert incarnation["commit_url"] == mocker.ANY
     assert incarnation["merge_request_url"] == mocker.ANY
+    assert incarnation["merge_request_status"] == "merged"
+
     await assert_file_in_repository(
         gitlab_test_client,
         empty_incarnation_gitlab_repository,
@@ -324,6 +330,8 @@ async def should_initialize_incarnation_in_subdir_of_empty_repository_when_creat
     assert incarnation["status"] == "success"
     assert incarnation["commit_url"] == mocker.ANY
     assert incarnation["merge_request_url"] == mocker.ANY
+    assert incarnation["merge_request_status"] is None
+
     await assert_file_in_repository(
         gitlab_test_client,
         empty_incarnation_gitlab_repository,
@@ -522,6 +530,7 @@ async def should_present_conflict_in_merge_request_when_updating(
     assert incarnation["status"] == "pending"
     assert incarnation["commit_url"] == mocker.ANY
     assert incarnation["merge_request_url"] == mocker.ANY
+    assert incarnation["merge_request_status"] == "open"
 
     await assert_update_merge_request_with_conflicts_exists(
         gitlab_test_client,
@@ -557,6 +566,7 @@ async def should_automerge_merge_request_when_flag_is_true(
     assert incarnation["status"] == "success"
     assert incarnation["commit_url"] == mocker.ANY
     assert incarnation["merge_request_url"] == mocker.ANY
+    assert incarnation["merge_request_status"] == "merged"
 
     await assert_file_in_repository(
         gitlab_test_client,

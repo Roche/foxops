@@ -1,9 +1,11 @@
 from functools import cache
 
-from pydantic import BaseSettings, SecretStr
+from pydantic import SecretStr
+
+from foxops.hosters import HosterSettings
 
 
-class GitLabSettings(BaseSettings):
+class GitLabSettings(HosterSettings):
     """Gitlab specific settings.
     client_id & client_secret are generated when registering foxops as OAuth application
     """

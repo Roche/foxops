@@ -1,7 +1,8 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from foxops.engine.models import TemplateDataValue
 from foxops.hosters import ReconciliationStatus
+from foxops.hosters.types import MergeRequestStatus
 
 
 class Incarnation(BaseModel):
@@ -21,7 +22,11 @@ class IncarnationBasic(BaseModel):
     id: int
     incarnation_repository: str
     target_directory: str
+
+    commit_sha: str
     commit_url: str
+
+    merge_request_id: str | None
     merge_request_url: str | None
 
     class Config:
@@ -29,7 +34,8 @@ class IncarnationBasic(BaseModel):
 
 
 class IncarnationWithDetails(IncarnationBasic):
-    status: ReconciliationStatus
+    status: ReconciliationStatus = Field(description="DEPRECATED. Use the 'merge_request_status' field instead.")
+    merge_request_status: MergeRequestStatus | None
 
     template_repository: str | None
     template_repository_version: str | None

@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 import foxops.reconciliation as reconciliation
 from foxops.auth import AuthData, AuthHTTPException, get_auth_data
 from foxops.database import DAL
-from foxops.hosters import Hoster
+from foxops.hosters import Hoster, HosterSettings
 from foxops.hosters.gitlab import (
     GitLab,
     GitLabSettings,
@@ -36,6 +36,11 @@ def get_database_settings() -> DatabaseSettings:
     return DatabaseSettings()
 
 
+@lru_cache
+def get_hoster_settings() -> HosterSettings:
+    return GitLabSettings()  # type: ignore
+
+
 def get_dal(settings: DatabaseSettings = Depends(get_database_settings)) -> DAL:
     global async_engine
 
@@ -52,9 +57,11 @@ async def get_hoster_token(*, auth_data: AuthData = Depends(get_auth_data)) -> O
 
 def get_hoster(
     *,
-    settings: GitLabSettings = Depends(get_gitlab_settings),
+    settings: HosterSettings = Depends(get_gitlab_settings),
     hoster_token: SecretStr = Depends(get_hoster_token),
 ) -> Hoster:
+    # this assert makes mypy happy
+    assert isinstance(settings, GitLabSettings)
     return GitLab(settings, hoster_token)
 
 
