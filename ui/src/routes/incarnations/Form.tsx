@@ -39,6 +39,11 @@ const ErrorText = styled.div({
   paddingTop: 10
 })
 
+const DeleteIncarnationLink = styled.span`
+  cursor: pointer;
+  text-decoration: underline;
+`
+
 type FormProps = {
   mutation: (data: IncarnationInput) => Promise<IncarnationApiView>,
   deleteIncarnation?: () => Promise<void>,
@@ -61,6 +66,7 @@ export const IncarnationsForm = ({
   const { register, handleSubmit, formState: { errors }, control, getValues, setFocus } = useForm({
     defaultValues
   })
+  const failed = incarnationStatus === 'failed'
   const [apiError, setApiError] = useState<ApiErrorResponse | null>()
   const { fields, append, remove } = useFieldArray({ name: 'templateData', control })
   const appendAndFocus = (key: string, value: string) => {
@@ -120,6 +126,83 @@ export const IncarnationsForm = ({
     : isSuccess ? 'Created!' : isLoading ? 'Creating' : 'Create'
 
   const deleteButtonTitle = deleteMutation.isSuccess ? 'Deleted!' : deleteMutation.isLoading ? 'Deleting' : 'Delete'
+
+  const form = (
+    <Hug as="form" mb={16} flex mx={-8} onSubmit={handleSubmit(onSubmit)}>
+      <Hug w="60%" miw={600} px={8}>
+        <Hug mb={16}>
+          <TextField autoFocus label="Incarnation repository" disabled={isLoading || isEdit} size="large" hasError={!!errors.repository} required {...register('repository', { required: true })} />
+        </Hug>
+        <Hug mb={16}>
+          <TextField label="Target directory" size="large" disabled={isLoading || isEdit} hasError={!!errors.targetDirectory} {...register('targetDirectory')} />
+        </Hug>
+        <Hug mb={16}>
+          <TextField label="Template repository" disabled={isLoading || isEdit} size="large" hasError={!!errors.templateRepository} required {...register('templateRepository', { required: true })} />
+        </Hug>
+        <Hug mb={16}>
+          <TextField label="Template version" disabled={isLoading} size="large" hasError={!!errors.templateVersion} required {...register('templateVersion', { required: true })} />
+        </Hug>
+        <h4>Template data</h4>
+        <Hug mb={16}>
+          {fields.map((field, index) => (
+            <Hug flex mb={8} mx={-4} key={field.id}>
+              <Hug w="50%" px={4}>
+                <TextField disabled={isLoading} placeholder="Key" {...register(`templateData.${index}.key` as const)} />
+              </Hug>
+              <Hug w="50%" pl={4} pr={8}>
+                <TextField disabled={isLoading} placeholder="Value" {...register(`templateData.${index}.value` as const)} />
+              </Hug>
+              <Hug pr={4}>
+                <IconButton disabled={isLoading} type="button" onClick={() => remove(index)} title="Delete">
+                  <Trash />
+                </IconButton>
+              </Hug>
+            </Hug>
+          ))}
+        </Hug>
+        <Hug flex mb={8} ml={-8}>
+          <Hug w="calc(50% - 18px)" pl={8} pr={4}>
+            <TextField disabled={isLoading} placeholder="Start typing to add new key..." value="" onChange={e => {
+              appendAndFocus(e.target.value, '')
+            }} />
+          </Hug>
+          <Hug w="calc(50% + 18px)" pl={4}>
+            <TextField disabled={isLoading} placeholder="...value pair" value="" onChange={e => {
+              appendAndFocus('', e.target.value)
+            }} />
+          </Hug>
+        </Hug>
+        <Hug flex={['jcfe', 'aic']}>
+          <Hug>
+            <Button loading={isLoading} style={{ minWidth: 120 }} type="submit" disabled={isLoading || isSuccess}>{buttonTitle}</Button>
+          </Hug>
+        </Hug>
+      </Hug>
+      {apiError
+        ? (
+          <Hug w="40%" px={8}>
+            <ErrorMessage>
+              <IconButton flying onClick={() => setApiError(null)} className="IconButton--Error" >
+                <Close />
+              </IconButton>
+              <ErrorText>{apiError.message}</ErrorText>
+              <Hug>
+                {apiError.documentation ? <a href={apiError.documentation} target="_blank" rel="noreferrer">Read more</a> : null}
+              </Hug>
+            </ErrorMessage>
+          </Hug>
+        )
+        : null}
+    </Hug>
+  )
+  const failedFeedback = (
+    <Hug as="form" mb={16} flex mx={-8}>
+      <Hug w="60%" miw={600} px={8} pt={32}>
+        It looks like this incarnation is not available anymore 😔.
+        You can <DeleteIncarnationLink onClick={onDelete}>delete</DeleteIncarnationLink> it.
+      </Hug>
+    </Hug>
+  )
   return (
     <Section>
       <Hug flex={['aic']} ml={-42} w="calc(60% + 42px)">
@@ -147,72 +230,7 @@ export const IncarnationsForm = ({
           )}
         </Hug>
       </Hug>
-      <Hug as="form" mb={16} flex mx={-8} onSubmit={handleSubmit(onSubmit)}>
-        <Hug w="60%" miw={600} px={8}>
-          <Hug mb={16}>
-            <TextField autoFocus label="Incarnation repository" disabled={isLoading || isEdit} size="large" hasError={!!errors.repository} required {...register('repository', { required: true })} />
-          </Hug>
-          <Hug mb={16}>
-            <TextField label="Target directory" size="large" disabled={isLoading || isEdit} hasError={!!errors.targetDirectory} {...register('targetDirectory')} />
-          </Hug>
-          <Hug mb={16}>
-            <TextField label="Template repository" disabled={isLoading || isEdit} size="large" hasError={!!errors.templateRepository} required {...register('templateRepository', { required: true })} />
-          </Hug>
-          <Hug mb={16}>
-            <TextField label="Template version" disabled={isLoading} size="large" hasError={!!errors.templateVersion} required {...register('templateVersion', { required: true })} />
-          </Hug>
-          <h4>Template data</h4>
-          <Hug mb={16}>
-            {fields.map((field, index) => (
-              <Hug flex mb={8} mx={-4} key={field.id}>
-                <Hug w="50%" px={4}>
-                  <TextField disabled={isLoading} placeholder="Key" {...register(`templateData.${index}.key` as const)} />
-                </Hug>
-                <Hug w="50%" pl={4} pr={8}>
-                  <TextField disabled={isLoading} placeholder="Value" {...register(`templateData.${index}.value` as const)} />
-                </Hug>
-                <Hug pr={4}>
-                  <IconButton disabled={isLoading} type="button" onClick={() => remove(index)} title="Delete">
-                    <Trash />
-                  </IconButton>
-                </Hug>
-              </Hug>
-            ))}
-          </Hug>
-          <Hug flex mb={8} ml={-8}>
-            <Hug w="calc(50% - 18px)" pl={8} pr={4}>
-              <TextField disabled={isLoading} placeholder="Start typing to add new key..." value="" onChange={e => {
-                appendAndFocus(e.target.value, '')
-              }} />
-            </Hug>
-            <Hug w="calc(50% + 18px)" pl={4}>
-              <TextField disabled={isLoading} placeholder="...value pair" value="" onChange={e => {
-                appendAndFocus('', e.target.value)
-              }} />
-            </Hug>
-          </Hug>
-          <Hug flex={['jcfe', 'aic']}>
-            <Hug>
-              <Button loading={isLoading} style={{ minWidth: 120 }} type="submit" disabled={isLoading || isSuccess}>{buttonTitle}</Button>
-            </Hug>
-          </Hug>
-        </Hug>
-        {apiError
-          ? (
-            <Hug w="40%" px={8}>
-              <ErrorMessage>
-                <IconButton flying onClick={() => setApiError(null)} className="IconButton--Error" >
-                  <Close />
-                </IconButton>
-                <ErrorText>{apiError.message}</ErrorText>
-                <Hug>
-                  {apiError.documentation ? <a href={apiError.documentation} target="_blank" rel="noreferrer">Read more</a> : null}
-                </Hug>
-              </ErrorMessage>
-            </Hug>
-          )
-          : null}
-      </Hug>
+      {failed ? failedFeedback : form}
     </Section>
   )
 }
