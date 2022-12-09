@@ -17,6 +17,8 @@ import styled from '@emotion/styled'
 import { Close } from '../../components/common/Icons/Close'
 import { Tooltip } from '../../components/common/Tooltip/Tooltip'
 import { IncarnationLinks } from './parts/IncarnationLinks'
+import isUrl from 'is-url'
+import { OpenInNew } from '../../components/common/Icons/OpenInNew'
 
 const ErrorMessage = styled.div(({ theme }) => ({
   position: 'relative',
@@ -58,7 +60,7 @@ export const IncarnationsForm = ({
   mergeRequestUrl,
   commitUrl
 }: FormProps) => {
-  const { register, handleSubmit, formState: { errors }, control, getValues, setFocus } = useForm({
+  const { register, handleSubmit, formState: { errors }, control, getValues, setFocus, watch } = useForm({
     defaultValues
   })
   const [apiError, setApiError] = useState<ApiErrorResponse | null>()
@@ -120,6 +122,7 @@ export const IncarnationsForm = ({
     : isSuccess ? 'Created!' : isLoading ? 'Creating' : 'Create'
 
   const deleteButtonTitle = deleteMutation.isSuccess ? 'Deleted!' : deleteMutation.isLoading ? 'Deleting' : 'Delete'
+  const templateRepo = watch('templateRepository')
   return (
     <Section>
       <Hug flex={['aic']} ml={-42} w="calc(60% + 42px)">
@@ -155,8 +158,19 @@ export const IncarnationsForm = ({
           <Hug mb={16}>
             <TextField label="Target directory" size="large" disabled={isLoading || isEdit} hasError={!!errors.targetDirectory} {...register('targetDirectory')} />
           </Hug>
-          <Hug mb={16}>
-            <TextField label="Template repository" disabled={isLoading || isEdit} size="large" hasError={!!errors.templateRepository} required {...register('templateRepository', { required: true })} />
+          <Hug mb={16} flex={['aic']}>
+            <Hug w="100%">
+              <TextField label="Template repository" disabled={isLoading || isEdit} size="large" hasError={!!errors.templateRepository} required {...register('templateRepository', { required: true })} />
+            </Hug>
+            {isUrl(templateRepo) && (
+              <Hug ml={8}>
+                <Tooltip title="Open in new tab">
+                  <a style={{ display: 'block' }} href={templateRepo} target="_blank" rel="noreferrer">
+                    <IconButton type="button"><OpenInNew /></IconButton>
+                  </a>
+                </Tooltip>
+              </Hug>
+            )}
           </Hug>
           <Hug mb={16}>
             <TextField label="Template version" disabled={isLoading} size="large" hasError={!!errors.templateVersion} required {...register('templateVersion', { required: true })} />
