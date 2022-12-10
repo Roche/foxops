@@ -80,7 +80,7 @@ export const IncarnationsList = () => {
       : null
   const { sort, asc, setSort } = useSort()
   const _data = Array.isArray(data)
-    ? data.filter(searchBy<Partial<IncarnationBase>>(search, ['incarnationRepository', 'targetDirectory']))
+    ? data.filter(searchBy<Partial<IncarnationBase>>(search, ['id', 'incarnationRepository', 'targetDirectory']))
       .sort((a, b) => {
         if (asc) {
           return a[sort].localeCompare(b[sort])
