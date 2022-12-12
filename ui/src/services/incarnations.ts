@@ -12,10 +12,10 @@ export type IncarnationStatus = 'unknown' | 'pending' | 'success' | 'failed'
 
 export interface IncarnationApiView extends IncarnationBaseApiView {
   status: IncarnationStatus,
-  template_repository: string,
-  template_repository_version: string,
-  template_repository_version_hash: string,
-  template_data: Record<string, string>
+  template_repository: string | null,
+  template_repository_version: string | null,
+  template_repository_version_hash: string | null,
+  template_data: Record<string, string> | null
 }
 
 export interface IncarnationBase {
@@ -64,10 +64,10 @@ const convertToUiBaseIncarnation = (x: IncarnationBaseApiView): IncarnationBase 
 const convertToUiIncarnation = (x: IncarnationApiView): Incarnation => ({
   ...convertToUiBaseIncarnation(x),
   status: x.status,
-  templateRepository: x.template_repository,
-  templateRepositoryVersion: x.template_repository_version,
-  templateRepositoryVersionHash: x.template_repository_version_hash,
-  templateData: x.template_data
+  templateRepository: x.template_repository ?? '',
+  templateRepositoryVersion: x.template_repository_version ?? '',
+  templateRepositoryVersionHash: x.template_repository_version_hash ?? '',
+  templateData: x.template_data ?? {}
 })
 
 interface IncarnationApiInput {

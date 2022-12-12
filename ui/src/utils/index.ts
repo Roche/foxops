@@ -6,7 +6,9 @@ export const searchBy = <T extends Record<string, unknown>>(query: string, field
   const search = (object: T) => {
     const values = fields.map(field => {
       const value = object[field]
-      return typeof value === 'string' ? value.toLowerCase() : ''
+      return typeof value === 'string' || typeof value === 'number'
+        ? value.toString().toLowerCase()
+        : ''
     })
     const string = values.join(' ')
     return string.includes(query.toLowerCase())
