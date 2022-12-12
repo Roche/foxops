@@ -109,13 +109,13 @@ export const IncarnationsList = () => {
               {sort === 'incarnationRepository' ? asc ? <SortDown /> : <SortUp /> : <Sort />}
             </IconButton>
           </th>
-          <th style={{ width: 220 }} className={sort === 'targetDirectory' ? 'sorted' : ''}>
+          <th style={{ width: 280 }} className={sort === 'targetDirectory' ? 'sorted' : ''}>
             Target directory{' '}
             <IconButton onClick={onSort('targetDirectory')} className="sort-icon" size="small" flying>
               {sort === 'targetDirectory' ? asc ? <SortDown /> : <SortUp /> : <Sort />}
             </IconButton>
           </th>
-          <th style={{ width: 116 }} />
+          <th style={{ width: 180 }} />
         </tr>
       </thead>
       <tbody>
