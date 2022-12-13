@@ -9,13 +9,17 @@ interface IncarnationBaseApiView {
 }
 
 export type IncarnationStatus = 'unknown' | 'pending' | 'success' | 'failed'
+export type MergeRequestStatus = 'open' | 'merged' | 'closed' | 'unknown'
 
 export interface IncarnationApiView extends IncarnationBaseApiView {
   status: IncarnationStatus,
   template_repository: string | null,
   template_repository_version: string | null,
   template_repository_version_hash: string | null,
-  template_data: Record<string, string> | null
+  template_data: Record<string, string> | null,
+  merge_request_id: string | null
+  merge_request_url: string | null
+  merge_request_status: MergeRequestStatus | null
 }
 
 export interface IncarnationBase {
@@ -31,7 +35,10 @@ export interface Incarnation extends IncarnationBase {
   templateRepository: string,
   templateRepositoryVersion: string,
   templateRepositoryVersionHash: string,
-  templateData: Record<string, string>
+  templateData: Record<string, string>,
+  mergeRequestId: string | null,
+  mergeRequestUrl: string | null,
+  mergeRequestStatus: MergeRequestStatus | null,
 }
 
 export interface IncarnationInput {
@@ -67,7 +74,10 @@ const convertToUiIncarnation = (x: IncarnationApiView): Incarnation => ({
   templateRepository: x.template_repository ?? '',
   templateRepositoryVersion: x.template_repository_version ?? '',
   templateRepositoryVersionHash: x.template_repository_version_hash ?? '',
-  templateData: x.template_data ?? {}
+  templateData: x.template_data ?? {},
+  mergeRequestId: x.merge_request_id,
+  mergeRequestUrl: x.merge_request_url,
+  mergeRequestStatus: x.merge_request_status
 })
 
 interface IncarnationApiInput {

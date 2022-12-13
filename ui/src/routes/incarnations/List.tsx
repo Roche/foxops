@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query'
 import create from 'zustand'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/common/Button/Button'
-import { FloatingActionButton } from '../../components/common/FloatingActionButton/FloatingActionButton'
 import { Hug } from '../../components/common/Hug/Hug'
 import { IconButton } from '../../components/common/IconButton/IconButton'
 import { Loader } from '../../components/common/Loader/Loader'
@@ -47,7 +46,7 @@ const Table = styled.table(({ theme }) => ({
     textAlign: 'left',
     position: 'sticky',
     background: theme.colors.baseBg,
-    zIndex: 3,
+    zIndex: 4,
     fontSize: 16,
     top: theme.sizes.toolbar
   },
@@ -134,7 +133,6 @@ export const IncarnationsList = () => {
         {isLoading && <Loader />}
       </Hug>
       {table}
-      <FloatingActionButton onClick={onCreate} title="Create new incarnation" />
     </Section>
   )
 }

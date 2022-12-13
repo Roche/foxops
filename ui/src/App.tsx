@@ -33,7 +33,7 @@ function App() {
           </Routes>
         </BrowserRouter>
       </ThemeProvider>
-      <ReactQueryDevtools position="bottom-right" />
+      <ReactQueryDevtools position="bottom-left" />
     </QueryClientProvider>
   )
 }

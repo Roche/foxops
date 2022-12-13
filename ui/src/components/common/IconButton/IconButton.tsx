@@ -3,13 +3,13 @@ import styled from '@emotion/styled'
 interface IconButtonProps {
   active?: boolean,
   flying?: boolean,
-  size?: 'small'
+  size?: 'medium' | 'small'
 }
 
 export const IconButton = styled('button')<IconButtonProps>(({ theme, active, flying, size }) => {
-  const _size = size === 'small' ? 24 : 38
-  const borderRadius = size === 'small' ? 4 : 8
-  const svgSize = size === 'small' ? 16 : 24
+  const _size = size === 'small' ? 24 : size === 'medium' ? 32 : 38
+  const borderRadius = size ? 4 : 8
+  const svgSize = size ? 16 : 24
   return ({
     background: 'none',
     border: flying ? 'none' : `1px solid ${active ? 'transparent' : theme.colors.iconButtonBorder}`,

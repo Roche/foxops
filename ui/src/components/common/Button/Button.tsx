@@ -29,7 +29,7 @@ const ButtonBox = styled('button')<ButtonBoxProps>(({ theme, size, disabled, var
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    height: size === 'small' ? '30px' : '38px',
+    height: size === 'small' ? '32px' : '38px',
     fontSize: size === 'small' ? '12px' : '16px',
     borderRadius: 4,
     background: backgroundColor,

@@ -1,0 +1,83 @@
+import { useIsFetching, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { ErrorTag, StatusTag } from '.'
+import { Button } from '../../../components/common/Button/Button'
+import { Hug } from '../../../components/common/Hug/Hug'
+import { IconButton } from '../../../components/common/IconButton/IconButton'
+import { Download } from '../../../components/common/Icons/Download'
+import { Minus } from '../../../components/common/Icons/Minus'
+import { Plus } from '../../../components/common/Icons/Plus'
+import { Tooltip } from '../../../components/common/Tooltip/Tooltip'
+import { Incarnation, incarnations } from '../../../services/incarnations'
+import { useSelectedIncarnationsStore } from '../../../stores/selected-incarnations'
+
+export const IncarnationStatus = ({ id, size }: { id: number, size?: 'small' | 'large' }) => {
+  const key = ['incarnations', id]
+  const isFetching = !!useIsFetching({ queryKey: key })
+  const queryClient = useQueryClient()
+  const cached = queryClient.getQueryData<Incarnation>(key)
+  const { refetch } = useQuery(
+    ['incarnations', id],
+    () => incarnations.getById(id),
+    { enabled: false }
+  )
+  const [statusRequested, setStatusRequested] = useState(Number(!!cached))
+
+  const handleGetStatus = () => {
+    setStatusRequested(statusRequested + 1)
+    if (statusRequested > 0) {
+      refetch()
+    }
+  }
+
+  const svgProps = size === 'small' ? { width: 16, height: 16 } : { width: 20, height: 20 }
+  return (
+    <>
+      {!!statusRequested && <Status id={id} key={statusRequested} incarnation={cached} />}
+      <Hug mr={4}>
+        <Tooltip title={isFetching ? 'Getting status...' : 'Get status'}>
+          <Button size={size} loading={isFetching} onClick={handleGetStatus}>
+            {!isFetching && <Download {...svgProps} />}
+          </Button>
+        </Tooltip>
+      </Hug>
+    </>
+  )
+}
+
+const Status = ({ id, incarnation }: { id: number, incarnation?: Incarnation }) => {
+  const { data, isError, isSuccess } = useQuery(
+    ['incarnations', id],
+    () => incarnations.getById(id),
+    { refetchOnWindowFocus: false, staleTime: Infinity }
+  )
+  const _incarnation = data || incarnation
+  const canShowInc = !!(_incarnation && isSuccess)
+  const { add, remove, selectedIncarnations } = useSelectedIncarnationsStore()
+  const selected = selectedIncarnations.some(x => x.id === _incarnation?.id)
+  const handleClick = () => {
+    if (!_incarnation) return
+    if (selected) {
+      remove(_incarnation)
+      return
+    }
+    add(_incarnation)
+  }
+  return (
+    <>
+      <Hug mr={4}>
+        {isError ? <ErrorTag>error</ErrorTag> : ''}
+        {canShowInc ? <StatusTag status={_incarnation.status} mergeRequestStatus={_incarnation.mergeRequestStatus} /> : ''}
+      </Hug>
+      {canShowInc && (
+        <Hug mr={4}>
+          <Tooltip title={selected ? 'Remove from bulk update' : 'Add to bulk update'}>
+            <IconButton size="medium" onClick={handleClick}>
+              {selected ? <Minus /> : <Plus />}
+            </IconButton>
+          </Tooltip>
+        </Hug>
+      )}
+    </>
+  )
+}

@@ -1,6 +1,6 @@
 import styled from '@emotion/styled'
 import { forwardRef } from 'react'
-import { IncarnationStatus } from '../../../services/incarnations'
+import { IncarnationStatus, MergeRequestStatus } from '../../../services/incarnations'
 import { transparentize } from '../../../styling/colors'
 
 export const Section = styled.div({
@@ -11,9 +11,12 @@ export const Section = styled.div({
 })
 
 interface StatusProps {
-  type: IncarnationStatus
+  status: IncarnationStatus
+  mergeRequestStatus: MergeRequestStatus | null
 }
 const createTagStyle = (color: string) => ({
+  width: 65,
+  textAlign: 'center' as const,
   fontSize: 12,
   padding: '4px 6px',
   color,
@@ -21,9 +24,25 @@ const createTagStyle = (color: string) => ({
   background: transparentize(color, 0.05),
   border: `1px solid ${color}`
 })
-const Status = styled.div<StatusProps>(({ theme, type }) => {
+const Status = styled.div<StatusProps>(({ theme, status, mergeRequestStatus }) => {
   let color = theme.colors.statusSuccess
-  switch (type) {
+  if (mergeRequestStatus) {
+    switch (mergeRequestStatus) {
+      case 'unknown':
+        color = theme.colors.statusUnknown
+        break
+      case 'merged':
+        color = theme.colors.statusSuccess
+        break
+      case 'closed':
+        color = theme.colors.statusPending
+        break
+      default:
+        break
+    }
+    return createTagStyle(color)
+  }
+  switch (status) {
     case 'pending':
       color = theme.colors.statusPending
       break
@@ -41,10 +60,17 @@ const Status = styled.div<StatusProps>(({ theme, type }) => {
 
 interface StatusTagProps {
   status: IncarnationStatus
+  mergeRequestStatus: MergeRequestStatus | null
 }
 
-export const StatusTag = forwardRef<HTMLDivElement, StatusTagProps>(({ status, ...rest }, ref) => (
-  <Status type={status} ref={ref} {...rest}>{status}</Status>
+export const StatusTag = forwardRef<HTMLDivElement, StatusTagProps>(({ status, mergeRequestStatus, ...rest }, ref) => (
+  <Status
+    status={status}
+    mergeRequestStatus={mergeRequestStatus}
+    ref={ref}
+    {...rest}>
+    {mergeRequestStatus || status}
+  </Status>
 ))
 
 StatusTag.displayName = 'StatusTag'
