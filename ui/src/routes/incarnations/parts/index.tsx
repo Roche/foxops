@@ -4,7 +4,7 @@ import { IncarnationStatus, MergeRequestStatus } from '../../../services/incarna
 import { transparentize } from '../../../styling/colors'
 
 export const Section = styled.div({
-  maxWidth: 1200,
+  maxWidth: 'calc(100% - 120px)',
   margin: '0 auto',
   padding: 8,
   position: 'relative'

@@ -33,6 +33,9 @@ const Table = styled.table(({ theme }) => ({
   borderCollapse: 'collapse',
   tableLayout: 'fixed',
   fontSize: 14,
+  thead: {
+    position: 'relative'
+  },
   'td, th': {
     padding: 8,
     borderBottom: `1px solid ${theme.colors.grey}`,
@@ -98,20 +101,20 @@ export const IncarnationsList = () => {
     <Table>
       <thead>
         <tr>
-          <th style={{ width: 40 }}>Id</th>
-          <th style={{ width: 'calc(50% - 40px - 218px)' }} className={sort === 'incarnationRepository' ? 'sorted' : ''}>
+          <th style={{ width: 50, textAlign: 'center' }}>Id</th>
+          <th className={sort === 'incarnationRepository' ? 'sorted' : ''}>
             Repository{' '}
             <IconButton onClick={onSort('incarnationRepository')} className="sort-icon" size="small" flying>
               {sort === 'incarnationRepository' ? asc ? <SortDown /> : <SortUp /> : <Sort />}
             </IconButton>
           </th>
-          <th style={{ width: 'calc(50% - 40px - 218px)' }} className={sort === 'targetDirectory' ? 'sorted' : ''}>
+          <th style={{ width: 280 }} className={sort === 'targetDirectory' ? 'sorted' : ''}>
             Target directory{' '}
             <IconButton onClick={onSort('targetDirectory')} className="sort-icon" size="small" flying>
               {sort === 'targetDirectory' ? asc ? <SortDown /> : <SortUp /> : <Sort />}
             </IconButton>
           </th>
-          <th style={{ width: 218 }} />
+          <th style={{ width: 180 }} />
         </tr>
       </thead>
       <tbody>
