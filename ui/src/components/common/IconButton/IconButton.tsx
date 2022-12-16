@@ -15,7 +15,7 @@ export const IconButton = styled('button')<IconButtonProps>(({ theme, active, fl
     border: flying ? 'none' : `1px solid ${active ? 'transparent' : theme.colors.iconButtonBorder}`,
     padding: size === 'small' ? 0 : 6,
     borderRadius,
-    color: active ? theme.colors.textContrast : theme.colors.iconButtonColor,
+    color: active ? theme.colors.contrastText : theme.colors.iconButtonColor,
     position: 'relative',
     overflow: 'hidden',
     cursor: 'pointer',

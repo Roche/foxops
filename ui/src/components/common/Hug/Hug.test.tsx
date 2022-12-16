@@ -1,4 +1,4 @@
-import { addPoints, checkPropValue, createFlexOptions, createOffsetProp, createWidthOptions, Hug, OffsetPropName } from './Hug'
+import { addPoints, checkPropValue, createFlexOptions, createHeightOptions, createOffsetProp, createWidthOptions, Hug, OffsetPropName } from './Hug'
 import { render, screen } from '../../../support/setup-tests'
 
 test('Hug:addPoints: adds points to the number or string', () => {
@@ -96,4 +96,11 @@ test('Hug:createWidthOptions should create CSS width related props', () => {
   expect(createWidthOptions({ w: '50%' })).toEqual({ width: '50%' })
   expect(createWidthOptions({ miw: 50, maw: '50%' })).toEqual({ minWidth: '50px', maxWidth: '50%' })
   expect(createWidthOptions({ maw: '50vh', miw: 'unset', w: 'inherit' })).toEqual({ minWidth: 'unset', maxWidth: '50vh', width: 'inherit' })
+})
+
+test('Hug:createHeightOptions should create CSS height related props', () => {
+  expect(createHeightOptions({ allh: '50%' })).toEqual({ height: '50%', minHeight: '50%', maxHeight: '50%' })
+  expect(createHeightOptions({ h: '50%' })).toEqual({ height: '50%' })
+  expect(createHeightOptions({ mih: 50, mah: '50%' })).toEqual({ minHeight: '50px', maxHeight: '50%' })
+  expect(createHeightOptions({ mah: '50vh', mih: 'unset', h: 'inherit' })).toEqual({ minHeight: 'unset', maxHeight: '50vh', height: 'inherit' })
 })

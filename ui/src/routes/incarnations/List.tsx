@@ -114,7 +114,7 @@ export const IncarnationsList = () => {
               {sort === 'targetDirectory' ? asc ? <SortDown /> : <SortUp /> : <Sort />}
             </IconButton>
           </th>
-          <th style={{ width: 180 }} />
+          <th style={{ width: 218 }} />
         </tr>
       </thead>
       <tbody>

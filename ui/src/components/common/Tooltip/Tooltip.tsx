@@ -13,7 +13,7 @@ const TooltipContent = styled.div(({ theme }) => ({
   fontSize: 11,
   padding: '4px 8px',
   borderRadius: 4,
-  color: theme.colors.textContrast,
+  color: theme.colors.contrastText,
   whiteSpace: 'normal',
   wordWrap: 'break-word'
 }))

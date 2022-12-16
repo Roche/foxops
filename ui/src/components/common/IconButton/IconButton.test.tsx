@@ -15,7 +15,7 @@ test('renders IconButton component with some svg inside', () => {
 test('renders IconButton component in its active state', () => {
   render(<IconButton data-testid="IconButton" active><DarkMode /></IconButton>)
   const iconButton = screen.getByTestId('IconButton')
-  expect(iconButton).toHaveStyle({ color: colors.textContrast })
+  expect(iconButton).toHaveStyle({ color: colors.contrastText })
 })
 
 test('renders IconButton component in its flying state (no border)', () => {

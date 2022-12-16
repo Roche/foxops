@@ -9,7 +9,7 @@ import { Minus } from '../../../components/common/Icons/Minus'
 import { Plus } from '../../../components/common/Icons/Plus'
 import { Tooltip } from '../../../components/common/Tooltip/Tooltip'
 import { Incarnation, incarnations } from '../../../services/incarnations'
-import { useSelectedIncarnationsStore } from '../../../stores/selected-incarnations'
+import { useIncarnationsOperations } from '../../../stores/incarnations-operations'
 
 export const IncarnationStatus = ({ id, size }: { id: number, size?: 'small' | 'large' }) => {
   const key = ['incarnations', id]
@@ -52,22 +52,23 @@ const Status = ({ id, incarnation }: { id: number, incarnation?: Incarnation }) 
     { refetchOnWindowFocus: false, staleTime: Infinity }
   )
   const _incarnation = data || incarnation
-  const canShowInc = !!(_incarnation && isSuccess)
-  const { add, remove, selectedIncarnations } = useSelectedIncarnationsStore()
+  const failed = _incarnation?.templateRepository === null
+  const canShowInc = !!(_incarnation && isSuccess && !failed)
+  const { select, deselect, selectedIncarnations } = useIncarnationsOperations()
   const selected = selectedIncarnations.some(x => x.id === _incarnation?.id)
   const handleClick = () => {
     if (!_incarnation) return
     if (selected) {
-      remove(_incarnation)
+      deselect(_incarnation)
       return
     }
-    add(_incarnation)
+    select(_incarnation)
   }
   return (
     <>
       <Hug mr={4}>
-        {isError ? <ErrorTag>error</ErrorTag> : ''}
-        {canShowInc ? <StatusTag status={_incarnation.status} mergeRequestStatus={_incarnation.mergeRequestStatus} /> : ''}
+        {isError || failed ? <ErrorTag>error</ErrorTag> : ''}
+        {canShowInc ? <StatusTag mergeRequestStatus={_incarnation.mergeRequestStatus} /> : ''}
       </Hug>
       {canShowInc && (
         <Hug mr={4}>

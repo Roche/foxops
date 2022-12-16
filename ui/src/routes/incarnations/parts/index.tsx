@@ -1,6 +1,6 @@
 import styled from '@emotion/styled'
 import { forwardRef } from 'react'
-import { IncarnationStatus, MergeRequestStatus } from '../../../services/incarnations'
+import { MergeRequestStatus } from '../../../services/incarnations'
 import { transparentize } from '../../../styling/colors'
 
 export const Section = styled.div({
@@ -11,7 +11,6 @@ export const Section = styled.div({
 })
 
 interface StatusProps {
-  status: IncarnationStatus
   mergeRequestStatus: MergeRequestStatus | null
 }
 const createTagStyle = (color: string) => ({
@@ -24,33 +23,18 @@ const createTagStyle = (color: string) => ({
   background: transparentize(color, 0.05),
   border: `1px solid ${color}`
 })
-const Status = styled.div<StatusProps>(({ theme, status, mergeRequestStatus }) => {
-  let color = theme.colors.statusSuccess
-  if (mergeRequestStatus) {
-    switch (mergeRequestStatus) {
-      case 'unknown':
-        color = theme.colors.statusUnknown
-        break
-      case 'merged':
-        color = theme.colors.statusSuccess
-        break
-      case 'closed':
-        color = theme.colors.statusPending
-        break
-      default:
-        break
-    }
-    return createTagStyle(color)
-  }
-  switch (status) {
-    case 'pending':
-      color = theme.colors.statusPending
-      break
+const Status = styled.div<StatusProps>(({ theme, mergeRequestStatus }) => {
+  let color = theme.colors.statusUnknown
+  switch (mergeRequestStatus) {
     case 'unknown':
       color = theme.colors.statusUnknown
       break
-    case 'failed':
-      color = theme.colors.statusFailure
+    case 'merged':
+    case 'open':
+      color = theme.colors.statusSuccess
+      break
+    case 'closed':
+      color = theme.colors.statusPending
       break
     default:
       break
@@ -59,17 +43,15 @@ const Status = styled.div<StatusProps>(({ theme, status, mergeRequestStatus }) =
 })
 
 interface StatusTagProps {
-  status: IncarnationStatus
   mergeRequestStatus: MergeRequestStatus | null
 }
 
-export const StatusTag = forwardRef<HTMLDivElement, StatusTagProps>(({ status, mergeRequestStatus, ...rest }, ref) => (
+export const StatusTag = forwardRef<HTMLDivElement, StatusTagProps>(({ mergeRequestStatus, ...rest }, ref) => (
   <Status
-    status={status}
     mergeRequestStatus={mergeRequestStatus}
     ref={ref}
     {...rest}>
-    {mergeRequestStatus || status}
+    {mergeRequestStatus ?? 'no MR'}
   </Status>
 ))
 

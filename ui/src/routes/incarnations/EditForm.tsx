@@ -9,8 +9,8 @@ import { Section } from './parts'
 const toIncarnationInput = (x: Incarnation): IncarnationInput => ({
   repository: x.incarnationRepository,
   targetDirectory: x.targetDirectory,
-  templateRepository: x.templateRepository,
-  templateVersion: x.templateRepositoryVersion,
+  templateRepository: x.templateRepository ?? '',
+  templateVersion: x.templateRepositoryVersion ?? '',
   templateData: Object.entries(x.templateData).map(([key, value]) => ({ key, value }))
 })
 
@@ -28,9 +28,9 @@ export const EditIncarnationForm = () => {
       <IncarnationsForm
         mergeRequestUrl={data.mergeRequestUrl}
         commitUrl={data.commitUrl}
-        mutation={(x => incarnations.update(id, x))}
+        mutation={x => incarnations.update(id, x)}
         defaultValues={toIncarnationInput(data)}
-        incarnationStatus={data.status}
+        incarnationMergeRequestStatus={data.mergeRequestStatus}
         deleteIncarnation={() => incarnations.delete(id)}
         isEdit />
     )

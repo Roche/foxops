@@ -8,7 +8,7 @@ import { ExpandLeft } from '../../components/common/Icons/ExpandLeft'
 import { Trash } from '../../components/common/Icons/Trash'
 import { TextField } from '../../components/common/TextField/TextField'
 import { Section, StatusTag } from './parts'
-import { IncarnationApiView, IncarnationInput, IncarnationStatus } from '../../services/incarnations'
+import { IncarnationApiView, IncarnationInput, MergeRequestStatus } from '../../services/incarnations'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ApiErrorResponse } from '../../services/api'
 import { delay } from '../../utils'
@@ -22,7 +22,7 @@ import { OpenInNew } from '../../components/common/Icons/OpenInNew'
 
 const ErrorMessage = styled.div(({ theme }) => ({
   position: 'relative',
-  color: theme.colors.textContrast,
+  color: theme.colors.contrastText,
   fontFamily: 'var(--monospace)',
   background: theme.colors.error,
   flex: 1,
@@ -32,7 +32,7 @@ const ErrorMessage = styled.div(({ theme }) => ({
   lineHeight: 1.5,
   minHeight: 70,
   '.IconButton--Error': {
-    color: theme.colors.textContrast,
+    color: theme.colors.contrastText,
     float: 'right'
   }
 }))
@@ -51,7 +51,7 @@ type FormProps = {
   deleteIncarnation?: () => Promise<void>,
   defaultValues: IncarnationInput,
   isEdit?: boolean,
-  incarnationStatus?: IncarnationStatus,
+  incarnationMergeRequestStatus?: MergeRequestStatus | null,
   mergeRequestUrl?: string | null,
   commitUrl?: string
 }
@@ -61,7 +61,7 @@ export const IncarnationsForm = ({
   defaultValues,
   isEdit,
   deleteIncarnation = () => Promise.resolve(),
-  incarnationStatus,
+  incarnationMergeRequestStatus,
   mergeRequestUrl,
   commitUrl
 }: FormProps) => {
@@ -69,7 +69,7 @@ export const IncarnationsForm = ({
     defaultValues
   })
   const templateRepo = watch('templateRepository')
-  const failed = incarnationStatus === 'failed'
+  const failed = templateRepo === '' && isEdit
   const [apiError, setApiError] = useState<ApiErrorResponse | null>()
   const { fields, append, remove } = useFieldArray({ name: 'templateData', control })
   const appendAndFocus = (key: string, value: string) => {
@@ -218,13 +218,20 @@ export const IncarnationsForm = ({
     <Section>
       <Hug flex={['aic']} ml={-42} w="calc(60% + 42px)">
         <Hug mr={8}>
-          <IconButton flying title="Back to incarnations" onClick={onBackClick}>
+          <IconButton flying onClick={onBackClick}>
             <ExpandLeft />
           </IconButton>
         </Hug>
         <Hug flex={['aic']} w="100%" pr={6}>
           {title}
-          {incarnationStatus && <Hug ml={16}><Tooltip title="Incarnation status"><StatusTag status={incarnationStatus} /></Tooltip></Hug>}
+          {incarnationMergeRequestStatus && (
+            <Hug ml={16}>
+              <Tooltip title="Merge request status">
+                <StatusTag
+                  mergeRequestStatus={incarnationMergeRequestStatus ?? null} />
+              </Tooltip>
+            </Hug>
+          )}
           {isEdit && (
             <Hug ml="auto" flex={['aic']}>
               <IncarnationLinks mergeRequestUrl={mergeRequestUrl} commitUrl={commitUrl} size="large" />

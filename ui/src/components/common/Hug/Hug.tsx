@@ -70,7 +70,7 @@ export const createOffsetProp = ({
 }
 
 type FlexOptions = 'inline'
-  | 'fdr' | 'fdrr' | 'fxdc' | 'fxdcr'
+  | 'fxdr' | 'fxdrr' | 'fxdc' | 'fxdcr'
   | 'fxww' | 'fxwnw'
   | 'jcfs' | 'jcfe' | 'jcc' | 'jcsb' | 'jcsa'
   | 'aifs' | 'aife' | 'aic' | 'ais' | 'aib'
@@ -84,8 +84,8 @@ type FlexCSSProps = {
 
 const flexOptionsMap = new Map([
   ['inline', { display: 'inline-flex' }],
-  ['fdr', { flexDirection: 'row' }],
-  ['fdrr', { flexDirection: 'row-reverse' }],
+  ['fxdr', { flexDirection: 'row' }],
+  ['fxdrr', { flexDirection: 'row-reverse' }],
   ['fxdc', { flexDirection: 'column' }],
   ['fxdcr', { flexDirection: 'column-reverse' }],
   ['fxww', { flexWrap: 'wrap' }],
@@ -133,7 +133,23 @@ export const createWidthOptions = (options: WidthOptions) => {
   return { width, minWidth, maxWidth }
 }
 
-interface BoxProps extends Partial<Record<OffsetPropsKeys, string | number>>, WidthOptions {
+interface HeightOptions {
+  mih?: string | number,
+  mah?: string | number,
+  h?: string | number,
+  allh?: string | number,
+}
+
+export const createHeightOptions = (options: HeightOptions) => {
+  const { mih, mah, h, allh } = options
+  const allHeight = checkPropValue(allh) ? reservedValueOrPoints(allh) : undefined
+  const height = checkPropValue(h) ? reservedValueOrPoints(h) : allHeight
+  const minHeight = checkPropValue(mih) ? reservedValueOrPoints(mih) : allHeight
+  const maxHeight = checkPropValue(mah) ? reservedValueOrPoints(mah) : allHeight
+  return { height, minHeight, maxHeight }
+}
+
+interface BoxProps extends Partial<Record<OffsetPropsKeys, string | number>>, WidthOptions, HeightOptions {
   flex?: boolean | FlexOptions[]
 }
 
@@ -143,10 +159,11 @@ const Box = styled(
   ...createOffsetProp({ name: 'margin', full: props.m, vertical: props.my, horizontal: props.mx, top: props.mt, bottom: props.mb, left: props.ml, right: props.mr }),
   ...createOffsetProp({ name: 'padding', full: props.p, vertical: props.py, horizontal: props.px, top: props.pt, bottom: props.pb, left: props.pl, right: props.pr }),
   ...createFlexOptions(props.flex),
-  ...createWidthOptions({ w: props.w, miw: props.miw, maw: props.maw, allw: props.allw })
+  ...createWidthOptions({ w: props.w, miw: props.miw, maw: props.maw, allw: props.allw }),
+  ...createHeightOptions({ h: props.h, mih: props.mih, mah: props.mah, allh: props.allh })
 }))
 
-interface HugProps extends Partial<Record<OffsetPropsKeys, string | number>>, React.HTMLAttributes<HTMLDivElement>, WidthOptions {
+interface HugProps extends Partial<Record<OffsetPropsKeys, string | number>>, React.HTMLAttributes<HTMLDivElement>, WidthOptions, HeightOptions {
   children?: React.ReactNode,
   as?: React.ElementType,
   flex?: boolean | FlexOptions[],

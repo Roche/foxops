@@ -20,7 +20,7 @@ export const THEMES: Record<ThemeMode, Theme> = {
       baseBg: '#fff',
       asideBg: '#F5F5F5',
       text: '#333',
-      textContrast: '#fff',
+      contrastText: '#fff',
       asideBorder: '#D2D2D2',
       inputBorder: '#d2d2d2',
       paleOrange: '#fcbf49',
@@ -42,7 +42,9 @@ export const THEMES: Record<ThemeMode, Theme> = {
       toolbarDropShadow: '0px 2px 4px rgba(0, 0, 0, 0.25)',
       popoverShadow: '0px 2px 4px rgba(0, 0, 0, 0.25)',
       actionButtonShadow: '0px 3px 5px -1px rgb(0 0 0 / 20%), 0px 6px 10px 0px rgb(0 0 0 / 14%), 0px 1px 18px 0px rgb(0 0 0 / 12%)',
-      actionButtonHoverShadow: '0px 7px 8px -4px rgb(0 0 0 / 20%), 0px 12px 17px 2px rgb(0 0 0 / 14%), 0px 5px 22px 4px rgb(0 0 0 / 12%)'
+      actionButtonHoverShadow: '0px 7px 8px -4px rgb(0 0 0 / 20%), 0px 12px 17px 2px rgb(0 0 0 / 14%), 0px 5px 22px 4px rgb(0 0 0 / 12%)',
+      incarnationOperationWindowShadow: '0px 0px 4px 0 rgba(0, 0, 0, 0.25)',
+      paperShadow: '0px 2px 4px rgba(0, 0, 0, 0.25)'
     },
     zIndex,
     sizes
@@ -52,7 +54,7 @@ export const THEMES: Record<ThemeMode, Theme> = {
       baseBg: '#333',
       asideBg: '#444',
       text: '#fff',
-      textContrast: '#fff',
+      contrastText: '#fff',
       asideBorder: '#4e4e4e',
       inputBorder: '#d2d2d2',
       paleOrange: '#fcbf49',
@@ -74,7 +76,9 @@ export const THEMES: Record<ThemeMode, Theme> = {
       toolbarDropShadow: '0px 2px 4px rgba(0, 0, 0, 0.25)',
       popoverShadow: '0px 2px 4px rgba(0, 0, 0, 0.25)',
       actionButtonShadow: '0px 3px 5px -1px rgb(0 0 0 / 20%), 0px 6px 10px 0px rgb(0 0 0 / 14%), 0px 1px 18px 0px rgb(0 0 0 / 12%)',
-      actionButtonHoverShadow: '0px 7px 8px -4px rgb(0 0 0 / 20%), 0px 12px 17px 2px rgb(0 0 0 / 14%), 0px 5px 22px 4px rgb(0 0 0 / 12%)'
+      actionButtonHoverShadow: '0px 7px 8px -4px rgb(0 0 0 / 20%), 0px 12px 17px 2px rgb(0 0 0 / 14%), 0px 5px 22px 4px rgb(0 0 0 / 12%)',
+      incarnationOperationWindowShadow: '0px 0px 4px 0 rgba(0, 0, 0, 0.25)',
+      paperShadow: '0px 2px 4px rgba(0, 0, 0, 0.25)'
     },
     zIndex,
     sizes

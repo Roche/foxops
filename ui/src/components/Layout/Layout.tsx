@@ -1,5 +1,6 @@
 import styled from '@emotion/styled'
 import { Outlet } from 'react-router-dom'
+import { IncarnationsOperationsWindow } from '../IncarnationsOperationsWindow/IncarnationsOperationsWindow'
 import { Aside } from './Aside/Aside'
 import { Content } from './Content/Content'
 import { Toolbar } from './Toolbar/Toolbar'
@@ -16,5 +17,6 @@ export const Layout = () => (
     <Content>
       <Outlet />
     </Content>
+    <IncarnationsOperationsWindow />
   </Box>
 )
