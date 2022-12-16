@@ -8,14 +8,16 @@ interface IncarnationBaseApiView {
   merge_request_url: null | string
 }
 
-export type IncarnationStatus = 'unknown' | 'pending' | 'success' | 'failed'
+export type MergeRequestStatus = 'open' | 'merged' | 'closed' | 'unknown'
 
 export interface IncarnationApiView extends IncarnationBaseApiView {
-  status: IncarnationStatus,
   template_repository: string | null,
   template_repository_version: string | null,
   template_repository_version_hash: string | null,
-  template_data: Record<string, string> | null
+  template_data: Record<string, string> | null,
+  merge_request_id: string | null
+  merge_request_url: string | null
+  merge_request_status: MergeRequestStatus | null
 }
 
 export interface IncarnationBase {
@@ -27,11 +29,13 @@ export interface IncarnationBase {
 }
 
 export interface Incarnation extends IncarnationBase {
-  status: IncarnationStatus,
-  templateRepository: string,
-  templateRepositoryVersion: string,
-  templateRepositoryVersionHash: string,
-  templateData: Record<string, string>
+  templateRepository: string | null,
+  templateRepositoryVersion: string | null,
+  templateRepositoryVersionHash: string | null,
+  templateData: Record<string, string>,
+  mergeRequestId: string | null,
+  mergeRequestUrl: string | null,
+  mergeRequestStatus: MergeRequestStatus | null,
 }
 
 export interface IncarnationInput {
@@ -47,6 +51,7 @@ export interface IncarnationInput {
 
 export interface IncarnationUpdateInput {
   templateVersion: string,
+  automerge: boolean,
   templateData: {
     key: string,
     value: string,
@@ -63,11 +68,13 @@ const convertToUiBaseIncarnation = (x: IncarnationBaseApiView): IncarnationBase 
 
 const convertToUiIncarnation = (x: IncarnationApiView): Incarnation => ({
   ...convertToUiBaseIncarnation(x),
-  status: x.status,
-  templateRepository: x.template_repository ?? '',
-  templateRepositoryVersion: x.template_repository_version ?? '',
-  templateRepositoryVersionHash: x.template_repository_version_hash ?? '',
-  templateData: x.template_data ?? {}
+  templateRepository: x.template_repository,
+  templateRepositoryVersion: x.template_repository_version,
+  templateRepositoryVersionHash: x.template_repository_version_hash,
+  templateData: x.template_data ?? {},
+  mergeRequestId: x.merge_request_id,
+  mergeRequestUrl: x.merge_request_url,
+  mergeRequestStatus: x.merge_request_status
 })
 
 interface IncarnationApiInput {
@@ -119,6 +126,16 @@ export const incarnations = {
     const incarnationApiInput = convertToApiUpdateInput(incarnation)
     return api.put<IncarnationUpdateApiInput, IncarnationApiView>(`/incarnations/${id}`, { body: incarnationApiInput })
   },
+  updateTemplateVersion: async (incarnation: Incarnation, templateVersion: string) => {
+    const incarnationApiInput: IncarnationUpdateApiInput = {
+      automerge: true,
+      template_repository_version: templateVersion,
+      template_data: incarnation.templateData
+    }
+    const data = await api.put<IncarnationUpdateApiInput, IncarnationApiView>(`/incarnations/${incarnation.id}`, { body: incarnationApiInput })
+    return convertToUiIncarnation(data)
+  },
+
   getById: async (id?: number | string) => {
     if (!id) throw new Error('No id provided')
     const apiIncarnation = await api.get<undefined, IncarnationApiView>(`/incarnations/${id}`)

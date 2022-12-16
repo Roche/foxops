@@ -15,7 +15,7 @@ const Box = styled.button(({ theme }: { theme: Theme }) => ({
   height: 56,
   borderRadius: '50%',
   backgroundColor: theme.colors.orange,
-  color: theme.colors.textContrast,
+  color: theme.colors.contrastText,
   cursor: 'pointer',
   boxShadow: theme.effects.actionButtonShadow,
   transition: 'box-shadow .25s var(--ease-out)',

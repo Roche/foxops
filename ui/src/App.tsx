@@ -10,6 +10,7 @@ import { THEMES } from './styling/themes'
 import { CreateIncarnationForm } from './routes/incarnations/CreateForm'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { EditIncarnationForm } from './routes/incarnations/EditForm'
+import { BulkUpdateIncarnations } from './routes/incarnations/BulkUpdate'
 
 const queryClient = new QueryClient()
 
@@ -26,6 +27,7 @@ function App() {
             <Route path="*" element={<EnterScreen />}>
               <Route path="incarnations" element={<IncarnationsList />} />
               <Route path="incarnations/create" element={<CreateIncarnationForm />} />
+              <Route path="incarnations/bulk-update" element={<BulkUpdateIncarnations />} />
               <Route path="incarnations/:id" element={<EditIncarnationForm />} />
               <Route path="*" element={<Navigate to="/incarnations" />} />
             </Route>
@@ -33,7 +35,7 @@ function App() {
           </Routes>
         </BrowserRouter>
       </ThemeProvider>
-      <ReactQueryDevtools position="bottom-right" />
+      <ReactQueryDevtools position="bottom-left" />
     </QueryClientProvider>
   )
 }

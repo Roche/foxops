@@ -47,7 +47,7 @@ const AsideButton = styled(NavLink)(({ theme }) => ({
   position: 'relative',
   color: theme.colors.text,
   '&.active': {
-    color: theme.colors.textContrast,
+    color: theme.colors.contrastText,
     '&::after': {
       opacity: 1,
       transitionTimingFunction: 'var(--ease-in)'

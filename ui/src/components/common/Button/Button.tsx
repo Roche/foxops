@@ -29,7 +29,7 @@ const ButtonBox = styled('button')<ButtonBoxProps>(({ theme, size, disabled, var
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    height: size === 'small' ? '30px' : '38px',
+    height: size === 'small' ? '32px' : '38px',
     fontSize: size === 'small' ? '12px' : '16px',
     borderRadius: 4,
     background: backgroundColor,
@@ -80,8 +80,8 @@ const ButtonInnerBox = styled.span`
 const Loader = styled.span`
   width: 16px;
   height: 16px;
-  border: 2px solid ${p => transparentize(p.theme.colors.textContrast, 0.4)};
-  border-bottom-color: ${p => p.theme.colors.textContrast};
+  border: 2px solid ${p => transparentize(p.theme.colors.contrastText, 0.4)};
+  border-bottom-color: ${p => p.theme.colors.contrastText};
   border-radius: 50%;
   display: inline-block;
   box-sizing: border-box;
@@ -114,7 +114,7 @@ interface ButtonLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> 
 const ButtonLinkBox = ButtonBox.withComponent('a')
 
 export const ButtonLink = forwardRef<HTMLAnchorElement, ButtonLinkProps>(({ children, dataTestid, ...props }, ref) => (
-  <ButtonLinkBox data-testid={dataTestid} ref={ref} {...props}>
+  <ButtonLinkBox data-testid={dataTestid} ref={ref} type="button" {...props}>
     <ButtonInnerBox>{children}</ButtonInnerBox>
   </ButtonLinkBox>
 ))

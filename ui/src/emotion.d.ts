@@ -6,7 +6,7 @@ declare module '@emotion/react' {
       baseBg: string
       asideBg: string
       text: string
-      textContrast: string
+      contrastText: string
       asideBorder: string
       inputBorder: string,
       paleOrange: string,
@@ -28,7 +28,9 @@ declare module '@emotion/react' {
       toolbarDropShadow: string,
       popoverShadow: string,
       actionButtonShadow: string,
-      actionButtonHoverShadow: string
+      actionButtonHoverShadow: string,
+      incarnationOperationWindowShadow: string,
+      paperShadow: string
     },
     zIndex: {
       popover: number,
