@@ -411,11 +411,20 @@ class GitLab(Hoster):
 
         mapping = {
             "opened": MergeRequestStatus.OPEN,
+            "locked": MergeRequestStatus.OPEN,  # assumed to be a transitional, internal Gitlab state
             "closed": MergeRequestStatus.CLOSED,
             "merged": MergeRequestStatus.MERGED,
-            "locked": MergeRequestStatus.UNKNOWN,
         }
-        return mapping[merge_request["state"]]
+        state = merge_request["state"]
+        try:
+            return mapping[state]
+        except KeyError:
+            logger.warning(
+                f"unknown merge request state '{state}'",
+                incarnation_repository=incarnation_repository,
+                merge_request_id=merge_request_id,
+            )
+            return MergeRequestStatus.UNKNOWN
 
     async def _has_gitlab_ci_configuration(self, incarnation_repository: str, ref: str) -> bool:
         response = await self.client.head(
