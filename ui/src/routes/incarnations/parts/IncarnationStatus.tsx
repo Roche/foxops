@@ -1,5 +1,5 @@
 import { useIsFetching, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ErrorTag, StatusTag } from '.'
 import { Button } from '../../../components/common/Button/Button'
 import { Hug } from '../../../components/common/Hug/Hug'
@@ -8,14 +8,16 @@ import { Download } from '../../../components/common/Icons/Download'
 import { Minus } from '../../../components/common/Icons/Minus'
 import { Plus } from '../../../components/common/Icons/Plus'
 import { Tooltip } from '../../../components/common/Tooltip/Tooltip'
-import { Incarnation, incarnations } from '../../../services/incarnations'
+import { Incarnation, IncarnationBase, incarnations } from '../../../services/incarnations'
 import { useIncarnationsOperations } from '../../../stores/incarnations-operations'
+import { useCanShowVersionStore } from '../../../stores/show-version'
 
 export const IncarnationStatus = ({ id, size }: { id: number, size?: 'small' | 'large' }) => {
   const key = ['incarnations', id]
   const isFetching = !!useIsFetching({ queryKey: key })
   const queryClient = useQueryClient()
   const cached = queryClient.getQueryData<Incarnation>(key)
+
   const { refetch } = useQuery(
     ['incarnations', id],
     () => incarnations.getById(id),
@@ -26,14 +28,20 @@ export const IncarnationStatus = ({ id, size }: { id: number, size?: 'small' | '
   const handleGetStatus = () => {
     setStatusRequested(statusRequested + 1)
     if (statusRequested > 0) {
-      refetch()
+      refetch().then(result => {
+        queryClient.setQueriesData<IncarnationBase[]>(['incarnations'], x => {
+          if (!result.isSuccess) return
+          if (!x) return [result.data]
+          return x.map(y => y.id === result.data?.id ? result.data : y)
+        })
+      })
     }
   }
 
   const svgProps = size === 'small' ? { width: 16, height: 16 } : { width: 20, height: 20 }
   return (
     <>
-      {!!statusRequested && <Status id={id} key={statusRequested} incarnation={cached} />}
+      {(!!cached || !!statusRequested) && <Status id={id} key={statusRequested} incarnation={cached} />}
       <Hug mr={4}>
         <Tooltip title={isFetching ? 'Getting status...' : 'Get status'}>
           <Button size={size} loading={isFetching} onClick={handleGetStatus}>
@@ -64,6 +72,11 @@ const Status = ({ id, incarnation }: { id: number, incarnation?: Incarnation }) 
     }
     select(_incarnation)
   }
+  const { setCanShow } = useCanShowVersionStore()
+  useEffect(() => {
+    if (!isSuccess) return
+    setCanShow(true)
+  }, [isSuccess, setCanShow])
   return (
     <>
       <Hug mr={4}>

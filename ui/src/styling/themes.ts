@@ -4,7 +4,7 @@ import { ThemeMode } from '../shared/types'
 const zIndex = {
   popover: 12,
   toolbar: 11,
-  aside: 4, // should be less than toolbar
+  aside: 5, // should be less than toolbar
   floatingActionButton: 5,
   tooltip: 10
 }

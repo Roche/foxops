@@ -1,5 +1,5 @@
 import styled from '@emotion/styled'
-import React from 'react'
+import React, { forwardRef } from 'react'
 
 type OffsetPropsKeys = 'm' | 'my' | 'mx' | 'mt' | 'ml' | 'mr' | 'mb' | 'p' | 'py' | 'px' | 'pt' | 'pr' | 'pb' | 'pl'
 
@@ -169,16 +169,22 @@ interface HugProps extends Partial<Record<OffsetPropsKeys, string | number>>, Re
   flex?: boolean | FlexOptions[],
 }
 
-export const Hug = ({ children, as = 'div', flex, miw, maw, w, allw, ...rest }: HugProps) => (
-  <Box
-    as={as}
-    className="Hug"
-    flex={flex}
-    miw={miw}
-    maw={maw}
-    w={w}
-    allw={allw}
-    {...rest}>
-    {children}
-  </Box>
-)
+export const Hug = forwardRef<HTMLDivElement, HugProps>((props, ref) => {
+  const { children, as = 'div', flex, miw, maw, w, allw, ...rest } = props
+  return (
+    <Box
+      ref={ref}
+      as={as}
+      className="Hug"
+      flex={flex}
+      miw={miw}
+      maw={maw}
+      w={w}
+      allw={allw}
+      {...rest}>
+      {children}
+    </Box>
+  )
+})
+
+Hug.displayName = 'Hug'
