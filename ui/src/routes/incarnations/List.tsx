@@ -1,6 +1,5 @@
 import styled from '@emotion/styled'
 import { useQuery } from '@tanstack/react-query'
-import create from 'zustand'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/common/Button/Button'
 import { Hug } from '../../components/common/Hug/Hug'
@@ -18,19 +17,7 @@ import clsx from 'clsx'
 import { CSSProperties, useEffect, useState } from 'react'
 import { FixedSizeList } from 'react-window'
 import { useCanShowVersionStore } from '../../stores/show-version'
-
-type SortBy = 'incarnationRepository' | 'targetDirectory'
-interface SortStore {
-  sort: SortBy,
-  asc: boolean,
-  setSort: (sort: SortBy, asc: boolean) => void,
-}
-
-const useSort = create<SortStore>()(set => ({
-  sort: 'incarnationRepository',
-  asc: true,
-  setSort: (sort, asc) => set({ sort, asc })
-}))
+import { IncarnationsSortBy, useIncarnationsSortStore } from '../../stores/incarnations-sort'
 
 const TableLike = styled(Hug)(({ theme }) => ({
   fontSize: 14,
@@ -62,14 +49,14 @@ const OFFSET = 210
 
 export const IncarnationsList = () => {
   const { search } = useToolbarSearchStore()
-  const { isLoading, isError, data, isSuccess } = useQuery(['incarnations'], incarnations.get) // TODO: wrap it to useIncarnationsQuery
+  const { isLoading, isError, data, isSuccess } = useQuery(['incarnations'], incarnations.get)
   const navigate = useNavigate()
   const pendingMessage = isLoading
     ? 'Loading...'
     : isError
       ? 'Error loading incarnations 😔'
       : null
-  const { sort, asc, setSort } = useSort()
+  const { sort, asc, setSort } = useIncarnationsSortStore()
   const _data = Array.isArray(data)
     ? data.filter(searchBy<Partial<IncarnationBase>>(search, ['id', 'incarnationRepository', 'targetDirectory']))
       .sort((a, b) => {
@@ -79,7 +66,7 @@ export const IncarnationsList = () => {
         return b[sort].localeCompare(a[sort])
       })
     : []
-  const onSort = (_sort: SortBy) => () => {
+  const onSort = (_sort: IncarnationsSortBy) => () => {
     if (sort === _sort) {
       setSort(_sort, !asc)
     } else {
