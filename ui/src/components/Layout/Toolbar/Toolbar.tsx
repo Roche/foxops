@@ -5,7 +5,6 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '../../../stores/auth'
 import { useThemeModeStore } from '../../../stores/theme-mode'
-import { useToolbarSearchStore } from '../../../stores/toolbar-search'
 import { Button } from '../../common/Button/Button'
 import { Hug } from '../../common/Hug/Hug'
 import { IconButton } from '../../common/IconButton/IconButton'
@@ -14,9 +13,9 @@ import { LightMode } from '../../common/Icons/LightMode'
 import { User } from '../../common/Icons/User'
 import { Logo } from '../../common/Logo/Logo'
 import { Popover } from '../../common/Popover/Popover'
-import { TextField } from '../../common/TextField/TextField'
 import { ToolbarProgress } from '../../common/ToolbarProgress/ToolbarProgress'
 import { Tooltip } from '../../common/Tooltip/Tooltip'
+import { Search } from './Search'
 
 const Box = styled.div`
   box-shadow: ${p => p.theme.effects.toolbarDropShadow};
@@ -45,7 +44,6 @@ export const Toolbar = () => {
     if (e.target.closest('.Popover') || e.target.closest('.Toolbar-IconButton--Profile')) return
     setProfileOpen(false)
   }
-  const { search, setSearch } = useToolbarSearchStore()
   const queryClient = useQueryClient()
   const theme = useTheme()
   const onLogout = () => {
@@ -58,7 +56,7 @@ export const Toolbar = () => {
       <Link to="/incarnations" style={{ color: 'inherit', textDecoration: 'none' }}><Logo /></Link>
       <Hug flex className="Toolbar-Controls" data-testid="Toolbar-Controls">
         <Hug mr={8}>
-          <TextField placeholder="Search..." type="search" value={search} onChange={e => setSearch(e.target.value)} />
+          <Search />
         </Hug>
         <Hug mr={8}>
           <Tooltip title={`Toggle ${mode} mode`} style={{ zIndex: theme.zIndex.toolbar + 1 }}>

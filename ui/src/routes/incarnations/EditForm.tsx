@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { Hug } from '../../components/common/Hug/Hug'
 import { Loader } from '../../components/common/Loader/Loader'
 import { Incarnation, IncarnationInput, incarnations } from '../../services/incarnations'
+import { useCanShowVersionStore } from '../../stores/show-version'
 import { IncarnationsForm } from './Form'
 import { Section } from './parts'
 
@@ -16,13 +18,18 @@ const toIncarnationInput = (x: Incarnation): IncarnationInput => ({
 
 export const EditIncarnationForm = () => {
   const { id } = useParams()
-  const { isLoading, isError, data, isSuccess } = useQuery(['incarnations', id], () => incarnations.getById(id))
+  const { isLoading, isError, data, isSuccess } = useQuery(['incarnations', Number(id)], () => incarnations.getById(id))
   if (!id) return null // narrowing for TS
   const pendingMessage = isLoading
     ? 'Loading...'
     : isError
       ? 'Error loading incarnation 😔'
       : null
+  const { setCanShow } = useCanShowVersionStore()
+  useEffect(() => {
+    if (!isSuccess) return
+    setCanShow(true)
+  }, [isSuccess, setCanShow])
   const body = isSuccess
     ? (
       <IncarnationsForm
