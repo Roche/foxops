@@ -34,7 +34,7 @@ def create_gitlab_test_user(test_run_id: str, gitlab_test_address: str, gitlab_t
         json={
             "name": test_user_name,
             "username": test_user_name,
-            "password": test_user_name,
+            "password": str(uuid.uuid4()),
             "email": f"{test_user_name}@foxops.io",
             "skip_confirmation": True,
         },
