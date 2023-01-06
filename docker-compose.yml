@@ -8,8 +8,8 @@
 version: '3'
 
 services:
-  gitlab-ee:
-    image: gitlab/gitlab-ee:${GITLAB_EE_VERSION:-15.7.0-ee.0}
+  gitlab-ce:
+    image: gitlab/gitlab-ce:${GITLAB_CE_VERSION:-15.7.0-ce.0}
     restart: always
     ports:
       - ${GITLAB_PORT:-5002}:80
@@ -21,9 +21,9 @@ services:
     labels:
       foxops-gitlab/owned: ''
     volumes:
-      - config-ee:/etc/gitlab
-      - logs-ee:/var/log/gitlab
-      - data-ee:/var/opt/gitlab
+      - config-ce:/etc/gitlab
+      - logs-ce:/var/log/gitlab
+      - data-ce:/var/opt/gitlab
       - ${PWD}/scripts/healthcheck-and-setup.sh:/healthcheck-and-setup.sh:Z
     healthcheck:
       test: /healthcheck-and-setup.sh
@@ -34,6 +34,3 @@ volumes:
   config-ce:
   logs-ce:
   data-ce:
-  config-ee:
-  logs-ee:
-  data-ee:
