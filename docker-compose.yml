@@ -9,12 +9,12 @@ version: '3'
 
 services:
   gitlab-ee:
-    image: gitlab/gitlab-ee:${GITLAB_EE_VERSION:-latest}
+    image: gitlab/gitlab-ee:${GITLAB_EE_VERSION:-15.7.0-ee.0}
     restart: always
     ports:
       - ${GITLAB_PORT:-5002}:80
     environment:
-      GITLAB_ROOT_PASSWORD: adminadmin
+      GITLAB_ROOT_PASSWORD: dvqMom4ruD9oqcErwtij
       GITLAB_OMNIBUS_CONFIG: |
         external_url "http://${GITLAB_HOST:-127.0.0.1}:${GITLAB_PORT:-5002}"
         nginx['listen_port'] = 80
