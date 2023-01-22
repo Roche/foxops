@@ -3,5 +3,4 @@ from foxops.hosters.types import (  # noqa: F401
     Hoster,
     HosterSettings,
     MergeRequestId,
-    ReconciliationStatus,
 )

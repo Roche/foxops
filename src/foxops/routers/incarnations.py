@@ -1,5 +1,3 @@
-from datetime import timedelta
-
 from fastapi import APIRouter, Depends, Response, status
 
 from foxops.database import DAL
@@ -261,16 +259,8 @@ async def delete_incarnation(
 async def get_incarnation_with_details(incarnation: Incarnation, hoster: Hoster) -> IncarnationWithDetails:
     incarnation_basic = await get_incarnation_basic(incarnation, hoster)
 
-    reconciliation_status = await hoster.get_reconciliation_status(
-        incarnation.incarnation_repository,
-        incarnation.target_directory,
-        incarnation.commit_sha,
-        incarnation.merge_request_id,
-        pipeline_timeout=timedelta(minutes=1),
-    )
     response = IncarnationWithDetails(
         **incarnation_basic.dict(),
-        status=reconciliation_status,
     )
 
     if incarnation.merge_request_id is not None:

@@ -69,7 +69,6 @@ async def test_api_create_incarnation_adds_new_incarnation_to_inventory(
         template_repository_version_hash="hash",
         template_data={"foo": "bar"},
     )
-    hoster_mock.get_reconciliation_status.return_value = "success"
     hoster_mock.get_commit_url.return_value = "some-commit-url"
     hoster_mock.get_merge_request_url.return_value = "some-merge-request-url"
     hoster_mock.get_merge_request_status.return_value = MergeRequestStatus.OPEN
@@ -100,7 +99,6 @@ async def test_api_create_incarnation_adds_new_incarnation_to_inventory(
         "merge_request_id": "merge_request_id",
         "merge_request_url": "some-merge-request-url",
         "merge_request_status": "open",
-        "status": "success",
         "template_repository": "test",
         "template_repository_version": "version",
         "template_repository_version_hash": "hash",
@@ -165,7 +163,6 @@ async def test_api_create_incarnation_already_exists_allowing_import_without_a_m
     )
 
     hoster_mock = mocker.AsyncMock()
-    hoster_mock.get_reconciliation_status.return_value = "success"
     hoster_mock.get_commit_url.return_value = "some-commit-url"
     hoster_mock.get_merge_request_url.return_value = "some-merge-request-url"
     hoster_mock.get_merge_request_status.return_value = MergeRequestStatus.MERGED
@@ -193,7 +190,6 @@ async def test_api_create_incarnation_already_exists_allowing_import_without_a_m
     assert incarnation["id"] == 1
     assert incarnation["incarnation_repository"] == "test"
     assert incarnation["target_directory"] == "test"
-    assert incarnation["status"] == "success"
     assert incarnation["commit_url"] == "some-commit-url"
     assert incarnation["merge_request_url"] == "some-merge-request-url"
 
@@ -218,7 +214,6 @@ async def test_api_create_incarnation_already_exists_allowing_import_with_a_mism
     )
 
     hoster_mock = mocker.AsyncMock()
-    hoster_mock.get_reconciliation_status.return_value = "success"
     hoster_mock.get_commit_url.return_value = "some-commit-url"
     hoster_mock.get_merge_request_url.return_value = "some-merge-request-url"
     hoster_mock.get_merge_request_status.return_value = MergeRequestStatus.MERGED
@@ -246,7 +241,6 @@ async def test_api_create_incarnation_already_exists_allowing_import_with_a_mism
     assert incarnation["id"] == 1
     assert incarnation["incarnation_repository"] == "test"
     assert incarnation["target_directory"] == "test"
-    assert incarnation["status"] == "success"
     assert incarnation["commit_url"] == "some-commit-url"
     assert incarnation["merge_request_url"] == "some-merge-request-url"
 

@@ -44,7 +44,6 @@ async def should_initialize_incarnation_in_root_of_empty_repository_when_creatin
     # THEN
     assert incarnation["incarnation_repository"] == empty_incarnation_gitlab_repository
     assert incarnation["target_directory"] == "."
-    assert incarnation["status"] == "success"
     assert incarnation["template_repository"] == template_repository
     assert incarnation["template_repository_version"] == template_repository_version
     assert incarnation["template_data"] == template_data
@@ -101,7 +100,6 @@ async def should_initialize_incarnation_in_root_of_repository_with_fvars_file_wh
     # THEN
     assert incarnation["incarnation_repository"] == empty_incarnation_gitlab_repository
     assert incarnation["target_directory"] == "."
-    assert incarnation["status"] == "success"
     assert incarnation["commit_url"] == mocker.ANY
     assert incarnation["merge_request_url"] == mocker.ANY
 
@@ -149,7 +147,6 @@ async def should_initialize_incarnation_in_root_of_nonempty_incarnation_in_a_mer
     # THEN
     assert incarnation["incarnation_repository"] == empty_incarnation_gitlab_repository
     assert incarnation["target_directory"] == "."
-    assert incarnation["status"] == "pending"
     assert incarnation["commit_url"] == mocker.ANY
     assert incarnation["merge_request_url"] == mocker.ANY
     assert incarnation["merge_request_status"] == "open"
@@ -203,7 +200,6 @@ async def should_initialize_incarnation_in_root_of_nonempty_incarnation_in_defau
     # THEN
     assert incarnation["incarnation_repository"] == empty_incarnation_gitlab_repository
     assert incarnation["target_directory"] == "."
-    assert incarnation["status"] == "success"
     assert incarnation["commit_url"] == mocker.ANY
     assert incarnation["merge_request_url"] == mocker.ANY
     assert incarnation["merge_request_status"] == "merged"
@@ -263,7 +259,6 @@ async def should_initialize_incarnation_in_root_of_nonempty_repository_with_fvar
     # THEN
     assert incarnation["incarnation_repository"] == empty_incarnation_gitlab_repository
     assert incarnation["target_directory"] == "."
-    assert incarnation["status"] == "pending"
     assert incarnation["commit_url"] == mocker.ANY
     assert incarnation["merge_request_url"] == mocker.ANY
     merge_request_branch_name = await assert_initialization_merge_request_exists(
@@ -327,7 +322,6 @@ async def should_initialize_incarnation_in_subdir_of_empty_repository_when_creat
     # THEN
     assert incarnation["incarnation_repository"] == empty_incarnation_gitlab_repository
     assert incarnation["target_directory"] == "subdir"
-    assert incarnation["status"] == "success"
     assert incarnation["commit_url"] == mocker.ANY
     assert incarnation["merge_request_url"] == mocker.ANY
     assert incarnation["merge_request_status"] is None
@@ -378,14 +372,12 @@ async def should_initialize_incarnations_in_subdirs_of_empty_repository_when_cre
     assert subdir1_incarnation["id"] == 1
     assert subdir1_incarnation["incarnation_repository"] == empty_incarnation_gitlab_repository
     assert subdir1_incarnation["target_directory"] == "subdir1"
-    assert subdir1_incarnation["status"] == "success"
     assert subdir1_incarnation["commit_url"] == mocker.ANY
     assert subdir1_incarnation["merge_request_url"] == mocker.ANY
 
     assert subdir2_incarnation["id"] == 2
     assert subdir2_incarnation["incarnation_repository"] == empty_incarnation_gitlab_repository
     assert subdir2_incarnation["target_directory"] == "subdir2"
-    assert subdir2_incarnation["status"] == "success"
     assert subdir2_incarnation["commit_url"] == mocker.ANY
     assert subdir2_incarnation["merge_request_url"] == mocker.ANY
 
@@ -427,7 +419,6 @@ async def should_create_merge_request_when_file_changed_during_update(
     # THEN
     assert incarnation["incarnation_repository"] == incarnation_repository
     assert incarnation["target_directory"] == "."
-    assert incarnation["status"] == "pending"
     assert incarnation["commit_url"] == mocker.ANY
     assert incarnation["merge_request_url"] == mocker.ANY
 
@@ -476,7 +467,6 @@ async def should_create_merge_request_when_file_changed_with_fvars_during_update
     # THEN
     assert incarnation["incarnation_repository"] == incarnation_repository
     assert incarnation["target_directory"] == "."
-    assert incarnation["status"] == "pending"
     assert incarnation["commit_url"] == mocker.ANY
     assert incarnation["merge_request_url"] == mocker.ANY
 
@@ -527,7 +517,6 @@ async def should_present_conflict_in_merge_request_when_updating(
     # THEN
     assert incarnation["incarnation_repository"] == incarnation_repository
     assert incarnation["target_directory"] == "."
-    assert incarnation["status"] == "pending"
     assert incarnation["commit_url"] == mocker.ANY
     assert incarnation["merge_request_url"] == mocker.ANY
     assert incarnation["merge_request_status"] == "open"
@@ -563,7 +552,6 @@ async def should_automerge_merge_request_when_flag_is_true(
     # THEN
     assert incarnation["incarnation_repository"] == incarnation_repository
     assert incarnation["target_directory"] == "."
-    assert incarnation["status"] == "success"
     assert incarnation["commit_url"] == mocker.ANY
     assert incarnation["merge_request_url"] == mocker.ANY
     assert incarnation["merge_request_status"] == "merged"
