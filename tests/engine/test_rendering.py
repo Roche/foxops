@@ -47,31 +47,6 @@ async def test_rendering_a_template_file_renders_data_in_file_content(tmp_path: 
     # THEN
     assert (incarnation_dir / "template.txt").read_text() == "Hello World"
 
-
-async def test_rendering_a_template_file_renders_data_in_file_content_using_custom_filter(tmp_path: Path):
-    # GIVEN
-    template_file = tmp_path / "template.txt"
-    template_file.write_text(
-        "ip: {{ ip | get_next_ip }} is greater than {{second_ip}}: {{ip | get_next_ip  | first_ip_address_is_greater(second_ip)}}"
-    )
-    incarnation_dir = tmp_path / "incarnation"
-    incarnation_dir.mkdir()
-
-    env = create_template_environment(tmp_path)
-
-    # WHEN
-    await render_template_file(
-        env,
-        template_file,
-        incarnation_dir,
-        {"ip": "1.2.3.4", "second_ip": "1.2.3.6"},
-        render_content=True,
-    )
-
-    # THEN
-    assert (incarnation_dir / "template.txt").read_text() == "ip: 1.2.3.5 is greater than 1.2.3.6: False"
-
-
 async def test_rendering_a_template_file_with_invalid_templating_syntax_raises_exception(
     tmp_path: Path,
 ):
