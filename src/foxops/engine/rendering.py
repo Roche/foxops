@@ -2,6 +2,8 @@ import functools
 import os
 import typing
 from pathlib import Path
+import ipaddress
+
 
 from aiopath import AsyncPath
 from jinja2 import FileSystemLoader, StrictUndefined
@@ -13,6 +15,10 @@ from foxops.logger import get_logger
 #: Holds the module logger
 logger = get_logger(__name__)
 
+def  get_next_ip(ip):
+    """Get next consecutive IP"""
+    next_ip = ipaddress.ip_address(ip) +1
+    return str(next_ip)
 
 def create_template_environment(template_root_dir: Path) -> SandboxedEnvironment:
     """Create a virtual environment to render a template into an incarnation.
@@ -29,7 +35,9 @@ def create_template_environment(template_root_dir: Path) -> SandboxedEnvironment
         keep_trailing_newline=True,
         undefined=StrictUndefined,
     )
+    env.filters["get_next_ip"] = get_next_ip
     return env
+
 
 
 async def render_template(
