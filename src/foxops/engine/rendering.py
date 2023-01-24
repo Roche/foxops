@@ -1,5 +1,4 @@
 import functools
-import ipaddress
 import os
 import typing
 from pathlib import Path
@@ -8,25 +7,15 @@ from aiopath import AsyncPath
 from jinja2 import FileSystemLoader, StrictUndefined
 from jinja2.sandbox import SandboxedEnvironment
 
+from foxops.engine.custom_filters import (
+    first_ip_address_is_greater_than,
+    increase_ip_add,
+)
 from foxops.engine.models import TemplateData
 from foxops.logger import get_logger
 
 #: Holds the module logger
 logger = get_logger(__name__)
-
-
-def first_ip_address_is_greater(first_ip, second_ip):
-    """Checks with of the two IP addresses is greater
-
-    Returns True if first one is greater. Otherwise False.
-    """
-    return ipaddress.ip_address(first_ip) > ipaddress.ip_address(second_ip)
-
-
-def get_next_ip(ip):
-    """Get next consecutive IP"""
-    next_ip = ipaddress.ip_address(ip) + 1
-    return str(next_ip)
 
 
 def create_template_environment(template_root_dir: Path) -> SandboxedEnvironment:
@@ -44,8 +33,8 @@ def create_template_environment(template_root_dir: Path) -> SandboxedEnvironment
         keep_trailing_newline=True,
         undefined=StrictUndefined,
     )
-    env.filters["get_next_ip"] = get_next_ip
-    env.filters["first_ip_address_is_greater"] = first_ip_address_is_greater
+    env.filters["increase_ip_add"] = increase_ip_add
+    env.filters["first_ip_address_is_greater_than"] = first_ip_address_is_greater_than
     return env
 
 
