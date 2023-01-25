@@ -71,7 +71,7 @@ def setup_logging(level: int | str) -> None:
     root_logger.setLevel(level)
 
     foxops_logger = logging.getLogger("foxops")
-    foxops_logger.setLevel(logging.DEBUG)
+    foxops_logger.setLevel(level)
     foxops_logger.propagate = True
 
 
