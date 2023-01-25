@@ -7,7 +7,7 @@ from aiopath import AsyncPath
 from jinja2 import FileSystemLoader, StrictUndefined
 from jinja2.sandbox import SandboxedEnvironment
 
-from foxops.engine.custom_filters import ip_add_increase, ip_is_greater_than
+from foxops.engine.custom_filters import ip_add_increase
 from foxops.engine.models import TemplateData
 from foxops.logger import get_logger
 
@@ -31,7 +31,6 @@ def create_template_environment(template_root_dir: Path) -> SandboxedEnvironment
         undefined=StrictUndefined,
     )
     env.filters["ip_add_increase"] = ip_add_increase
-    env.filters["ip_is_greater_than"] = ip_is_greater_than
     return env
 
 
