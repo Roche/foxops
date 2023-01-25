@@ -8,8 +8,8 @@ from jinja2 import FileSystemLoader, StrictUndefined
 from jinja2.sandbox import SandboxedEnvironment
 
 from foxops.engine.custom_filters import (
-    first_ip_address_is_greater_than,
-    increase_ip_add,
+    ip_is_greater_than,
+    ip_add_increase,
 )
 from foxops.engine.models import TemplateData
 from foxops.logger import get_logger
@@ -33,8 +33,8 @@ def create_template_environment(template_root_dir: Path) -> SandboxedEnvironment
         keep_trailing_newline=True,
         undefined=StrictUndefined,
     )
-    env.filters["increase_ip_add"] = increase_ip_add
-    env.filters["first_ip_address_is_greater_than"] = first_ip_address_is_greater_than
+    env.filters["ip_add_increase"] = ip_add_increase
+    env.filters["ip_is_greater_than"] = ip_is_greater_than
     return env
 
 

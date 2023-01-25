@@ -3,10 +3,10 @@ from pathlib import Path
 from foxops.engine.rendering import create_template_environment, render_template_file
 
 
-async def test_rendering_custom_filter_increase_ip_add(tmp_path: Path):
+async def test_custom_filter_ip_add_increase(tmp_path: Path):
     # GIVEN
     template_file = tmp_path / "template.txt"
-    template_file.write_text("increased ip: {{ ip | increase_ip_add }}")
+    template_file.write_text("increased ip: {{ ip | ip_add_increase }}")
     incarnation_dir = tmp_path / "incarnation"
     incarnation_dir.mkdir()
 
@@ -24,10 +24,10 @@ async def test_rendering_custom_filter_increase_ip_add(tmp_path: Path):
     assert (incarnation_dir / "template.txt").read_text() == "increased ip: 1.2.3.5"
 
 
-async def test_rendering_custom_filter_increase_ip_add_by_5(tmp_path: Path):
+async def test_custom_filter_ip_add_increase_by_5(tmp_path: Path):
     # GIVEN
     template_file = tmp_path / "template.txt"
-    template_file.write_text("increased ip by 5: {{ ip | increase_ip_add(5) }}")
+    template_file.write_text("increased ip by 5: {{ ip | ip_add_increase(5) }}")
     incarnation_dir = tmp_path / "incarnation"
     incarnation_dir.mkdir()
 
@@ -45,11 +45,11 @@ async def test_rendering_custom_filter_increase_ip_add_by_5(tmp_path: Path):
     assert (incarnation_dir / "template.txt").read_text() == "increased ip by 5: 1.2.3.9"
 
 
-async def test_rendering_custom_filter_first_ip_address_is_greater(tmp_path: Path):
+async def test_custom_filter_ip_is_greater_than(tmp_path: Path):
     # GIVEN
     template_file = tmp_path / "template.txt"
     template_file.write_text(
-        "ip {{ ip }} is greater than {{second_ip}}: {{ip | first_ip_address_is_greater_than(second_ip)}}"
+        "ip {{ ip }} is greater than {{second_ip}}: {{ip | ip_is_greater_than(second_ip)}}"
     )
     incarnation_dir = tmp_path / "incarnation"
     incarnation_dir.mkdir()
