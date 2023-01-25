@@ -48,9 +48,7 @@ async def test_custom_filter_ip_add_increase_by_5(tmp_path: Path):
 async def test_custom_filter_ip_is_greater_than(tmp_path: Path):
     # GIVEN
     template_file = tmp_path / "template.txt"
-    template_file.write_text(
-        "ip {{ ip }} is greater than {{second_ip}}: {{ip | ip_is_greater_than(second_ip)}}"
-    )
+    template_file.write_text("ip {{ ip }} is greater than {{second_ip}}: {{ip | ip_is_greater_than(second_ip)}}")
     incarnation_dir = tmp_path / "incarnation"
     incarnation_dir.mkdir()
 

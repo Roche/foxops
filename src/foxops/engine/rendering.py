@@ -7,10 +7,7 @@ from aiopath import AsyncPath
 from jinja2 import FileSystemLoader, StrictUndefined
 from jinja2.sandbox import SandboxedEnvironment
 
-from foxops.engine.custom_filters import (
-    ip_is_greater_than,
-    ip_add_increase,
-)
+from foxops.engine.custom_filters import ip_add_increase, ip_is_greater_than
 from foxops.engine.models import TemplateData
 from foxops.logger import get_logger
 
