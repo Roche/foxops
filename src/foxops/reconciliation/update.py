@@ -1,7 +1,7 @@
 import os
-from pathlib import Path
 
 import foxops.engine as fengine
+from foxops.engine.patching.git_diff_patch import PatchResult
 from foxops.errors import ReconciliationError
 from foxops.external.git import GitRepository
 from foxops.hosters import GitSha, Hoster
@@ -85,7 +85,7 @@ async def update_incarnation(
         (
             update_performed,
             updated_incarnation_state,
-            files_with_conflicts,
+            patch_result,
         ) = await fengine.update_incarnation_from_git_template_repository(
             template_git_repository=local_template_repository.directory,
             update_template_repository_version=template_repository_version_update,
@@ -112,21 +112,21 @@ async def update_incarnation(
             commit_sha=commit_sha,
         )
 
-        if not files_with_conflicts:
+        if patch_result and patch_result.has_errors():
+            commit_sha, merge_request_id = await _handle_update_merge_request_with_conflicts(
+                hoster,
+                incarnation,
+                update_branch,
+                template_repository_version_update,
+                patch_result,
+            )
+        else:
             commit_sha, merge_request_id = await _handle_update_merge_request_without_conflicts(
                 hoster,
                 incarnation,
                 update_branch,
                 template_repository_version_update,
                 desired_incarnation_state_patch.automerge,
-            )
-        else:
-            commit_sha, merge_request_id = await _handle_update_merge_request_with_conflicts(
-                hoster,
-                incarnation,
-                update_branch,
-                template_repository_version_update,
-                files_with_conflicts,
             )
 
         return commit_sha, merge_request_id
@@ -153,19 +153,35 @@ async def _handle_update_merge_request_with_conflicts(
     incarnation: Incarnation,
     update_branch: str,
     template_repository_version: str,
-    files_with_conflicts: list[Path],
+    patch_result: PatchResult,
 ) -> tuple[GitSha, MergeRequestId]:
     logger.info(
-        f"detected conflicts for files: {', '.join([str(f) for f in files_with_conflicts])} after update to new template"
+        f"detected conflicts for files: {', '.join([str(f) for f in patch_result.conflicts])} after update to new template"
+    )
+    logger.info(
+        f"detected deleted files in incarnation: {', '.join([str(f) for f in patch_result.deleted])} after update to new template"
     )
     title = f"🚧 - CONFLICT: Update to {template_repository_version}"
     description = f"""Update to {template_repository_version}
 
-There are conflicts in this Merge Request. Please check the rejection files
-of the following files from your repository:
+There were issues with automatically applying the changes from the template in this incarnation."""
 
-{os.linesep.join([f"- {f}" for f in files_with_conflicts])}
-    """
+    if patch_result.conflicts:
+        description += f"""
+
+The following files were updated in the template repository - and at the same time - also
+modified in the incarnation repository. Please resolve the conflicts manually:
+
+{os.linesep.join([f"- {f}" for f in patch_result.conflicts])}"""
+
+    if patch_result.deleted:
+        description += f"""
+
+The following files were updated in the template repository but are no longer
+present in this incarnation repository. Please resolve the conflicts manually:
+
+{os.linesep.join([f"- {f}" for f in patch_result.deleted])}"""
+
     return await hoster.merge_request(
         incarnation_repository=incarnation.incarnation_repository,
         source_branch=update_branch,

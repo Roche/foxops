@@ -230,7 +230,7 @@ def cmd_update(
     )
 
     try:
-        _, _, files_with_conflicts = asyncio.run(
+        _, _, patch_result = asyncio.run(
             update_incarnation_from_git_template_repository(
                 template_git_repository=Path(incarnation_state.template_repository),
                 update_template_repository_version=update_repository_version,
@@ -240,10 +240,14 @@ def cmd_update(
             )
         )
 
-        if files_with_conflicts:
+        if patch_result and patch_result.has_errors():
             logger.error(
                 f"update failed, there were conflicts while updating the "
-                f"following files: {', '.join([str(f) for f in files_with_conflicts])}"
+                f"following files: {', '.join([str(f) for f in patch_result.conflicts])}"
+            )
+            logger.error(
+                f"update failed, the following files had changes, but didn't exist anymore "
+                f"in the incarnation: {', '.join([str(f) for f in patch_result.deleted])}"
             )
         else:
             logger.info("successfully updated incarnation")

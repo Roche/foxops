@@ -4,6 +4,7 @@ import re
 import shutil
 import typing
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory, mkstemp
 
@@ -15,11 +16,22 @@ from foxops.utils import CalledProcessError, check_call
 logger = get_logger(__name__)
 
 
+@dataclass
+class PatchResult:
+    # file paths that should have been patched, but could not because of a conflict
+    conflicts: list[Path]
+    # file paths that should have been patched, but could not because of a missing file
+    deleted: list[Path]
+
+    def has_errors(self) -> bool:
+        return len(self.conflicts) >= 1 or len(self.deleted) >= 1
+
+
 async def diff_and_patch(
     diff_a_directory: Path,
     diff_b_directory: Path,
     patch_directory: Path,
-) -> list[Path] | None:
+) -> PatchResult | None:
     if (patch_path := await diff(diff_a_directory, diff_b_directory)) is not None:
         try:
             return await patch(
@@ -96,7 +108,7 @@ async def patch(
     patch_path: Path,
     incarnation_root_dir: Path,
     rendered_updated_template_directory: Path,
-) -> list[Path]:
+) -> PatchResult:
     # NOTE(TF): it's crucial that the paths are fully resolved here,
     #           because we are going to fiddle around how they
     #           are relative to each other.
@@ -135,15 +147,14 @@ async def patch(
             exc=exc,
         )
         apply_rejection_output = exc.stderr
-        files_with_conflicts = await analyze_patch_rejections(
+        return await analyze_patch_rejections(
             apply_rejection_output,
             incarnation_repository_dir,
             incarnation_subdir,
             rendered_updated_template_directory,
         )
-        return files_with_conflicts
     else:
-        return []
+        return PatchResult(conflicts=[], deleted=[])
 
 
 async def analyze_patch_rejections(
@@ -151,14 +162,16 @@ async def analyze_patch_rejections(
     incarnation_repository_dir: Path,
     incarnation_subdir: Path | None,
     rendered_updated_template_directory: Path,
-) -> list[Path]:
+) -> PatchResult:
     if incarnation_subdir is None:
         incarnation_dir = incarnation_repository_dir
     else:
         incarnation_dir = incarnation_repository_dir / incarnation_subdir
 
+    patch_outcome = parse_git_apply_rejection_output(apply_rejection_output)
+
     files_with_conflicts: list[Path] = []
-    for file_with_rejection in parse_git_apply_rejection_output(apply_rejection_output):
+    for file_with_rejection in patch_outcome.conflicts:
         conflict_fixed = await attempt_fixing_rejection(
             (incarnation_repository_dir / file_with_rejection).relative_to(incarnation_dir),
             incarnation_dir,
@@ -167,7 +180,7 @@ async def analyze_patch_rejections(
         if not conflict_fixed:
             logger.debug(f"file {file_with_rejection} still has conflicts")
             files_with_conflicts.append(file_with_rejection)
-    return files_with_conflicts
+    return PatchResult(conflicts=files_with_conflicts, deleted=patch_outcome.deleted)
 
 
 async def attempt_fixing_rejection(
@@ -192,23 +205,30 @@ async def attempt_fixing_rejection(
     return False
 
 
-def parse_git_apply_rejection_output(output: bytes) -> list[Path]:
+def parse_git_apply_rejection_output(output: bytes) -> PatchResult:
     """
     Parse the output of `git apply --reject` to extract the list of files.
 
     Returns:
         list[Path]: the list of filenames with rejections. The returned paths are relative to the repository root.
+        list[Path]: the list of filenames that have changes but have been deleted in the incarnation.
+                    The returned paths are relative to the repository root.
     """
     reject_file_regex = re.compile(rb"Applying patch (.*?) with (\d+) reject...")
+    deleted_target_regex = re.compile(rb"error: (.*): No such file or directory")
 
     files_with_rejections = []
+    deleted_target_files = []
     for line in output.splitlines():
         if match := reject_file_regex.match(line):
             files_with_rejections.append(Path(match.group(1).decode()))
+        if match := deleted_target_regex.match(line):
+            deleted_target_files.append(Path(match.group(1).decode()))
 
     logger.debug(
-        f"detected {len(files_with_rejections)} files with rejections",
+        f"detected {len(files_with_rejections)} files with rejections and {len(deleted_target_files)} deleted target files",
         files_with_rejections=files_with_rejections,
+        deleted_target_files=deleted_target_files,
     )
 
-    return files_with_rejections
+    return PatchResult(conflicts=files_with_rejections, deleted=deleted_target_files)
