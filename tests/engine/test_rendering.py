@@ -348,3 +348,31 @@ async def test_rendering_a_template_directory_inherits_file_permissions(tmp_path
     assert stat.S_IMODE((incarnation_dir / "subdir").stat().st_mode) == expected_subdir_mode
     assert (incarnation_dir / "subdir" / "template.txt").exists()
     assert stat.S_IMODE((incarnation_dir / "subdir" / "template.txt").stat().st_mode) == expected_file_mode
+
+
+@pytest.mark.parametrize(
+    "orig,statement,expected",
+    [
+        ("192.168.0.0", "{{ x | ip_add_integer }}", "192.168.0.1"),
+        ("192.168.0.0", "{{ x | ip_add_integer(2) }}", "192.168.0.2"),
+    ],
+)
+async def test_availability_of_custom_filters(tmp_path: Path, orig: str, statement: str, expected: str):
+    # GIVEN
+    template_file = tmp_path / "template.txt"
+    template_file.write_text(statement)
+    incarnation_dir = tmp_path / "incarnation"
+    incarnation_dir.mkdir()
+
+    env = create_template_environment(tmp_path)
+
+    # WHEN
+    await render_template_file(
+        env,
+        template_file,
+        incarnation_dir,
+        {"x": orig},
+        render_content=True,
+    )
+    # THEN
+    assert (incarnation_dir / "template.txt").read_text() == expected
