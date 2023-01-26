@@ -1,4 +1,3 @@
-from datetime import timedelta
 from enum import Enum
 from typing import AsyncContextManager, Protocol, TypedDict
 
@@ -59,16 +58,6 @@ class Hoster(Protocol):
         ...
 
     async def get_repository_metadata(self, project_identifier: str) -> RepositoryMetadata:
-        ...
-
-    async def get_reconciliation_status(
-        self,
-        incarnation_repository: str,
-        target_directory: str,
-        commit_sha: GitSha,
-        merge_request_id: str | None,
-        pipeline_timeout: timedelta | None = None,
-    ) -> ReconciliationStatus:
         ...
 
     async def get_commit_url(self, incarnation_repository: str, commit_sha: GitSha) -> str:
