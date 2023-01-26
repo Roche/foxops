@@ -34,7 +34,7 @@ speedups = ["Brotli", "aiodns", "cchardet"]
 
 [[package]]
 name = "aiopath"
-version = "0.6.10"
+version = "0.6.11"
 description = "📁 Async pathlib for Python"
 category = "main"
 optional = false
@@ -1312,8 +1312,8 @@ aiohttp = [
     {file = "aiohttp-3.8.3.tar.gz", hash = "sha256:3828fb41b7203176b82fe5d699e0d845435f2374750a44b480ea6b930f6be269"},
 ]
 aiopath = [
-    {file = "aiopath-0.6.10-py2.py3-none-any.whl", hash = "sha256:44a5376de098b4875eefa4b4599f5ac99fd9451b88c314f237716571e16ccce2"},
-    {file = "aiopath-0.6.10.tar.gz", hash = "sha256:6ca97a864fe32478d53af6c40e1951de64ab01d6b402d88524ce72d80362eb7a"},
+    {file = "aiopath-0.6.11-py2.py3-none-any.whl", hash = "sha256:7b1f1aa3acb422050908ac3c4755b5e43f625111be003f1bfc7dc2193027c45d"},
+    {file = "aiopath-0.6.11.tar.gz", hash = "sha256:2f0d4d9195281612c6508cbfa12ac3184c31540d13b9e6215a325897da59decd"},
 ]
 aiosignal = [
     {file = "aiosignal-1.3.1-py3-none-any.whl", hash = "sha256:f8376fb07dd1e86a584e4fcdec80b36b7f81aac666ebc724e2c090300dd83b17"},
