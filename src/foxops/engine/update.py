@@ -5,6 +5,7 @@ from foxops import utils
 from foxops.engine.fvars import merge_template_data_with_fvars
 from foxops.engine.initialization import _initialize_incarnation
 from foxops.engine.models import IncarnationState, TemplateData, load_incarnation_state
+from foxops.engine.patching.git_diff_patch import PatchResult
 from foxops.logger import get_logger
 
 #: Holds the module logger
@@ -17,7 +18,7 @@ async def update_incarnation_from_git_template_repository(
     update_template_data: TemplateData,
     incarnation_root_dir: Path,
     diff_patch_func,
-) -> tuple[bool, IncarnationState, list[Path] | None]:
+) -> tuple[bool, IncarnationState, PatchResult | None]:
     # initialize pristine incarnation from current incarnation state
     current_incarnation_state_path = incarnation_root_dir / ".fengine.yaml"
     current_incarnation_state = load_incarnation_state(current_incarnation_state_path)
@@ -65,7 +66,7 @@ async def update_incarnation(
     updated_template_data: TemplateData,
     incarnation_root_dir: Path,
     diff_patch_func,
-) -> tuple[bool, IncarnationState, list[Path] | None]:
+) -> tuple[bool, IncarnationState, PatchResult | None]:
     """Update an incarnation with a new version of a template."""
     # initialize pristine incarnation from current incarnation state
     current_incarnation_state_path = incarnation_root_dir / ".fengine.yaml"
@@ -110,13 +111,13 @@ async def update_incarnation(
             patch_directory=incarnation_root_dir,
         )
         if (
-            files_with_conflicts := await diff_patch_func(
+            patch_result := await diff_patch_func(
                 diff_a_directory=tmp_pristine_incarnation_dir,
                 diff_b_directory=tmp_updated_incarnation_dir,
                 patch_directory=incarnation_root_dir,
             )
         ) is not None:
-            return True, updated_incarnation_state, files_with_conflicts
+            return True, updated_incarnation_state, patch_result
         else:
             logger.debug("Update didn't change anything")
             return False, updated_incarnation_state, None

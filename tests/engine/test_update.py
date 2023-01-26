@@ -299,7 +299,7 @@ c
     await init_repository(incarnation_directory)
 
     # WHEN
-    update_performed, _, files_with_conflicts = await update_incarnation(
+    update_performed, _, patch_result = await update_incarnation(
         original_template_root_dir=template_directory,
         updated_template_root_dir=updated_template_directory,
         updated_template_repository_version=incarnation_state.template_repository_version,
@@ -310,7 +310,7 @@ c
 
     # THEN
     assert update_performed is True
-    assert Path("myfile.txt") in files_with_conflicts
+    assert Path("myfile.txt") in patch_result.conflicts
 
 
 @pytest.mark.parametrize("diff_patch_func", [diff_and_patch])
@@ -514,3 +514,58 @@ async def test_diff_and_patch_success_when_deleting_file_in_template(
     # THEN
     assert (incarnation_directory / "myfile1.txt").exists()
     assert not (incarnation_directory / "myfile2.txt").exists()
+
+
+@pytest.mark.parametrize("diff_patch_func", [diff_and_patch])
+async def test_diff_and_patch_success_when_changed_file_is_deleted_in_incarnation(
+    diff_patch_func,
+    tmp_path,
+):
+    # GIVEN
+    template_directory = tmp_path / "template"
+    template_directory.mkdir()
+
+    (template_directory / "template").mkdir()
+    (template_directory / "template" / "myfile1.txt").write_text("some content")
+    (template_directory / "template" / "myfile2.txt").write_text("more content")
+    await init_repository(tmp_path)
+
+    incarnation_directory = tmp_path / "incarnation"
+    incarnation_directory.mkdir()
+    incarnation_state = await initialize_incarnation(
+        template_root_dir=template_directory,
+        template_repository="any-repository-url",
+        template_repository_version="any-version",
+        template_data={},
+        incarnation_root_dir=incarnation_directory,
+    )
+
+    # WHEN
+    # file is changed in template
+    # ... and at the same time deleted in the incarnation
+    updated_template_directory = tmp_path / "updated-template"
+    shutil.copytree(template_directory, updated_template_directory)
+    (updated_template_directory / "template" / "myfile2.txt").write_text("new content")
+
+    await utils.check_call("git", "init", ".", cwd=str(incarnation_directory))
+    await utils.check_call("git", "config", "user.name", "test", cwd=str(incarnation_directory))
+    await utils.check_call("git", "config", "user.email", "test@test.com", cwd=str(incarnation_directory))
+    await utils.check_call("git", "add", ".", cwd=str(incarnation_directory))
+    await utils.check_call("git", "commit", "-am", "Initial commit", cwd=str(incarnation_directory))
+
+    (incarnation_directory / "myfile2.txt").unlink()
+    _, _, patch_result = await update_incarnation(
+        original_template_root_dir=template_directory,
+        updated_template_root_dir=updated_template_directory,
+        updated_template_repository_version=incarnation_state.template_repository_version,
+        updated_template_data=incarnation_state.template_data,
+        incarnation_root_dir=incarnation_directory,
+        diff_patch_func=diff_patch_func,
+    )
+
+    # THEN
+    assert Path("myfile2.txt") in patch_result.deleted
+
+    assert (incarnation_directory / "myfile1.txt").exists()
+    assert not (incarnation_directory / "myfile2.txt").exists()
+    # `git apply --reject` does not keep .rej files when the target file was deleted (unfortunately)
