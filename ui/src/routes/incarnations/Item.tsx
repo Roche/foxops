@@ -40,7 +40,7 @@ export const IncarnationItem = ({ incarnation }: IncarnationItemProps) => {
   const cached = queryClient.getQueryData<Incarnation>(['incarnations', id])
 
   return (
-    <Row flex key={incarnation.id}>
+    <Row flex key={incarnation.id} h={41}>
       <Hug flex={['aic', 'jcc']} allw={50} py={4} px={8}>{id}</Hug>
       <Hug
         allw={`calc(100% - 50px - 280px - 218px${canShow ? ' - 200px' : ''})`}

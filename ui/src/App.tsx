@@ -12,7 +12,13 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { EditIncarnationForm } from './routes/incarnations/EditForm'
 import { BulkUpdateIncarnations } from './routes/incarnations/BulkUpdate'
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 0
+    }
+  }
+})
 
 function App() {
   const { mode } = useThemeModeStore()

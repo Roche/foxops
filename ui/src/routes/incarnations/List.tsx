@@ -122,16 +122,12 @@ export const IncarnationsList = () => {
               itemCount={_data.length}
               itemSize={41}
               itemData={_data}
+              itemKey={index => _data[index].id}
               width="100%">
               {Row}
             </FixedSizeList>
           )
           : <NoResults />}
-        {/* <FixedSizeList>
-          {_data.length ? virtualRows.getVirtualItems().map(x => (
-            <IncarnationItem key={x.key} incarnation={_data[x.index]} />
-          )) : <NoResults />}
-        </FixedSizeList> */}
       </Hug>
     </TableLike>
   )
@@ -151,7 +147,13 @@ export const IncarnationsList = () => {
   )
 }
 
-const Row = ({ index, style, data }: { index: number, style: CSSProperties, data: IncarnationBase[] }) => (
+interface RowProps {
+  index: number
+  style: CSSProperties
+  data: IncarnationBase[]
+}
+
+const Row = ({ index, style, data }: RowProps) => (
   <div style={style}>
     <IncarnationItem incarnation={data[index]} />
   </div>
