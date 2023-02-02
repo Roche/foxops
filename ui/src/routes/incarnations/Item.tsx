@@ -31,9 +31,10 @@ const CellLink = styled(Link)({
 
 interface IncarnationItemProps {
   incarnation: IncarnationBase
+  isScrolling: boolean
 }
 
-export const IncarnationItem = ({ incarnation }: IncarnationItemProps) => {
+export const IncarnationItem = ({ incarnation, isScrolling }: IncarnationItemProps) => {
   const { id, incarnationRepository, targetDirectory } = incarnation
   const { canShow } = useCanShowVersionStore()
   const queryClient = useQueryClient()
@@ -62,12 +63,12 @@ export const IncarnationItem = ({ incarnation }: IncarnationItemProps) => {
           </Tooltip>
         </Hug>
       )}
-      <Hug flex={['aic', 'jcfe']} py={4} allw="218px" px={8}>
+      {!isScrolling && <Hug flex={['aic', 'jcfe']} py={4} allw="218px" px={8}>
         <IncarnationLinks
           id={incarnation.id}
           commitUrl={incarnation.commitUrl}
           mergeRequestUrl={incarnation.mergeRequestUrl} />
-      </Hug>
+      </Hug>}
     </Row>
   )
 }

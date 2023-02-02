@@ -122,6 +122,7 @@ export const IncarnationsList = () => {
               itemCount={_data.length}
               itemSize={41}
               itemData={_data}
+              useIsScrolling
               itemKey={index => _data[index].id}
               width="100%">
               {Row}
@@ -150,11 +151,12 @@ export const IncarnationsList = () => {
 interface RowProps {
   index: number
   style: CSSProperties
-  data: IncarnationBase[]
+  data: IncarnationBase[],
+  isScrolling?: boolean
 }
 
-const Row = ({ index, style, data }: RowProps) => (
+const Row = ({ index, style, data, isScrolling }: RowProps) => (
   <div style={style}>
-    <IncarnationItem incarnation={data[index]} />
+    <IncarnationItem incarnation={data[index]} isScrolling={!!isScrolling} />
   </div>
 )
