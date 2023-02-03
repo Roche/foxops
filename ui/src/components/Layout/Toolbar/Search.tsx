@@ -1,6 +1,6 @@
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Incarnation, IncarnationBase, incarnations } from '../../../services/incarnations'
+import { Incarnation, incarnations } from '../../../services/incarnations'
 import { useIncarnationsSortStore } from '../../../stores/incarnations-sort'
 import { useToolbarSearchStore } from '../../../stores/toolbar-search'
 import { searchSortIncarnations } from '../../../utils/search-sort-incarnations'
