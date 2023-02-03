@@ -1,6 +1,6 @@
-import { useQueries, useQuery } from '@tanstack/react-query'
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { incarnations } from '../../../services/incarnations'
+import { Incarnation, IncarnationBase, incarnations } from '../../../services/incarnations'
 import { useIncarnationsSortStore } from '../../../stores/incarnations-sort'
 import { useToolbarSearchStore } from '../../../stores/toolbar-search'
 import { searchSortIncarnations } from '../../../utils/search-sort-incarnations'
@@ -46,11 +46,29 @@ export const Search = () => {
     })
   }
 
+  const queryClient = useQueryClient()
   useQueries({
     queries: requested.map((id, index) => ({
       queryKey: ['incarnations', id],
       queryFn: () => incarnations.getById(id),
       onSuccess: () => statusReceived(id),
+      onError: () => {
+        // isError doesn't appear in the IncarnationStatus component, 
+        // so we need to manually set it to true
+        // basically, directly it's not possible, 
+        // instead of it there is a workaround:
+        // we set templateRepository to null to show the error tag 🤷‍♂️
+        statusReceived(id)
+        let data: Incarnation | undefined = queryClient.getQueryData(['incarnations', id])
+        if (!data) {
+          data = ((queryClient.getQueryData(['incarnations']) || []) as Incarnation[])
+            .find(x => x.id === id)
+        }
+        queryClient.setQueryData(['incarnations', id], {
+          ...data,
+          templateRepository: null
+        })
+      },
       enabled: index < limit
     }))
   })
