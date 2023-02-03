@@ -90,7 +90,7 @@ export const Search = () => {
       )}
       <Hug allw={300}>
         <TextField
-          placeholder="Search..."
+          placeholder="Search (RegEx)..."
           type="search"
           value={search}
           onChange={e => setSearch(e.target.value)} />
