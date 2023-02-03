@@ -31,16 +31,17 @@ const CellLink = styled(Link)({
 
 interface IncarnationItemProps {
   incarnation: IncarnationBase
+  isScrolling: boolean
 }
 
-export const IncarnationItem = ({ incarnation }: IncarnationItemProps) => {
+export const IncarnationItem = ({ incarnation, isScrolling }: IncarnationItemProps) => {
   const { id, incarnationRepository, targetDirectory } = incarnation
   const { canShow } = useCanShowVersionStore()
   const queryClient = useQueryClient()
   const cached = queryClient.getQueryData<Incarnation>(['incarnations', id])
 
   return (
-    <Row flex key={incarnation.id}>
+    <Row flex key={incarnation.id} h={41}>
       <Hug flex={['aic', 'jcc']} allw={50} py={4} px={8}>{id}</Hug>
       <Hug
         allw={`calc(100% - 50px - 280px - 218px${canShow ? ' - 200px' : ''})`}
@@ -62,12 +63,12 @@ export const IncarnationItem = ({ incarnation }: IncarnationItemProps) => {
           </Tooltip>
         </Hug>
       )}
-      <Hug flex={['aic', 'jcfe']} py={4} allw="218px" px={8}>
+      {!isScrolling && <Hug flex={['aic', 'jcfe']} py={4} allw="218px" px={8}>
         <IncarnationLinks
           id={incarnation.id}
           commitUrl={incarnation.commitUrl}
           mergeRequestUrl={incarnation.mergeRequestUrl} />
-      </Hug>
+      </Hug>}
     </Row>
   )
 }
