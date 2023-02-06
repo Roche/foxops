@@ -1,1 +1,1 @@
-export type IncarnationsSortBy = 'incarnationRepository' | 'targetDirectory'
+export type IncarnationsSortBy = 'incarnationRepository' | 'targetDirectory' | 'templateVersion'

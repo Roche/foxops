@@ -21,7 +21,7 @@ export const Search = () => {
 
   const results = search ? `${_data.length} result${_data.length === 1 ? '' : 's'}` : ''
 
-  const showFetchStatusButton = search && _data.length > 0
+  const hasResults = search && _data.length > 0
 
   const incarnationIds = _data.map(x => x.id)
   const [requested, setRequested] = useState<number[]>([])
@@ -72,29 +72,40 @@ export const Search = () => {
       enabled: index < limit
     }))
   })
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (hasResults) {
+      handleRequestStatuses()
+    }
+  }
+
+  const showButton = hasResults || requested.length > 0
   return (
-    <Hug flex={['aic']}>
-      <Hug mr={8}>
-        {results}
-      </Hug>
-      {showFetchStatusButton && (
+    <form onSubmit={handleSubmit}>
+      <Hug flex={['aic']}>
         <Hug mr={8}>
-          <Tooltip style={{ zIndex: 13 }} title={limit > 0 ? 'Stop getting statuses' : 'Get statuses of found incarnations'}>
-            <Button
-              style={{ padding: 0, width: 38 }}
-              onClick={handleRequestStatuses}>
-              {limit > 0 ? <Pause width={20} height={20} /> : <Download width={20} height={20} />}
-            </Button>
-          </Tooltip>
+          {results}
         </Hug>
-      )}
-      <Hug allw={300}>
-        <TextField
-          placeholder="Search (RegEx)..."
-          type="search"
-          value={search}
-          onChange={e => setSearch(e.target.value)} />
+        {showButton && (
+          <Hug mr={8}>
+            <Tooltip style={{ zIndex: 13 }} title={limit > 0 ? 'Stop getting statuses' : 'Get statuses of found incarnations'}>
+              <Button
+                type="button"
+                style={{ padding: 0, width: 38 }}
+                onClick={handleRequestStatuses}>
+                {limit > 0 ? <Pause width={20} height={20} /> : <Download width={20} height={20} />}
+              </Button>
+            </Tooltip>
+          </Hug>
+        )}
+        <Hug allw={300}>
+          <TextField
+            placeholder="Search (RegEx)..."
+            type="search"
+            value={search}
+            onChange={e => setSearch(e.target.value)} />
+        </Hug>
       </Hug>
-    </Hug>
+    </form>
   )
 }
