@@ -1,9 +1,9 @@
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Incarnation, IncarnationBase, incarnations } from '../../../services/incarnations'
+import { Incarnation, incarnations } from '../../../services/incarnations'
 import { useIncarnationsSortStore } from '../../../stores/incarnations-sort'
 import { useToolbarSearchStore } from '../../../stores/toolbar-search'
-import { searchBy } from '../../../utils'
+import { searchSortIncarnations } from '../../../utils/search-sort-incarnations'
 import { Button } from '../../common/Button/Button'
 import { Hug } from '../../common/Hug/Hug'
 import { Download } from '../../common/Icons/Download'
@@ -17,15 +17,8 @@ export const Search = () => {
   const { search, setSearch } = useToolbarSearchStore()
   const { data } = useQuery(['incarnations'], incarnations.get)
   const { sort, asc } = useIncarnationsSortStore()
-  const _data = Array.isArray(data)
-    ? data.filter(searchBy<Partial<IncarnationBase>>(search, ['id', 'incarnationRepository', 'targetDirectory']))
-      .sort((a, b) => {
-        if (asc) {
-          return a[sort].localeCompare(b[sort])
-        }
-        return b[sort].localeCompare(a[sort])
-      })
-    : []
+  const _data = searchSortIncarnations(data || [], { search, sort, asc })
+
   const results = search ? `${_data.length} result${_data.length === 1 ? '' : 's'}` : ''
 
   const showFetchStatusButton = search && _data.length > 0
@@ -95,11 +88,13 @@ export const Search = () => {
           </Tooltip>
         </Hug>
       )}
-      <TextField
-        placeholder="Search..."
-        type="search"
-        value={search}
-        onChange={e => setSearch(e.target.value)} />
+      <Hug allw={300}>
+        <TextField
+          placeholder="Search (RegEx)..."
+          type="search"
+          value={search}
+          onChange={e => setSearch(e.target.value)} />
+      </Hug>
     </Hug>
   )
 }

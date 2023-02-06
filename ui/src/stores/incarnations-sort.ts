@@ -1,6 +1,6 @@
 import create from 'zustand'
+import { IncarnationsSortBy } from '../interfaces/incarnations.type'
 
-export type IncarnationsSortBy = 'incarnationRepository' | 'targetDirectory'
 interface IncarnationsSortStore {
   sort: IncarnationsSortBy,
   asc: boolean,

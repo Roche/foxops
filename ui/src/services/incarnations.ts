@@ -1,10 +1,12 @@
 import { api } from '../services/api'
 
-interface IncarnationBaseApiView {
+export interface IncarnationBaseApiView {
   id: number,
   incarnation_repository: string,
   target_directory: string,
   commit_url: string,
+  commit_sha: string,
+  merge_request_id: null | string,
   merge_request_url: null | string
 }
 
@@ -58,7 +60,7 @@ export interface IncarnationUpdateInput {
   }[]
 }
 
-const convertToUiBaseIncarnation = (x: IncarnationBaseApiView): IncarnationBase => ({
+export const convertToUiBaseIncarnation = (x: IncarnationBaseApiView): IncarnationBase => ({
   id: x.id,
   incarnationRepository: x.incarnation_repository,
   targetDirectory: x.target_directory,

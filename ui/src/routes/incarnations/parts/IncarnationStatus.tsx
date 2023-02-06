@@ -54,10 +54,20 @@ export const IncarnationStatus = ({ id, size }: { id: number, size?: 'small' | '
 }
 
 const Status = ({ id, incarnation }: { id: number, incarnation?: Incarnation }) => {
+  const queryClient = useQueryClient()
   const { data, isError, isSuccess } = useQuery(
     ['incarnations', id],
     () => incarnations.getById(id),
-    { refetchOnWindowFocus: false, staleTime: Infinity }
+    {
+      refetchOnWindowFocus: false,
+      staleTime: Infinity,
+      onSuccess: data => {
+        queryClient.setQueryData(
+          ['incarnations'],
+          (x: IncarnationBase[] | undefined) => x?.map(y => y.id === data?.id ? data : y)
+        )
+      }
+    }
   )
   const _incarnation = data || incarnation
   const failed = _incarnation?.templateRepository === null

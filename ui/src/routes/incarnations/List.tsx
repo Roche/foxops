@@ -7,7 +7,6 @@ import { IconButton } from '../../components/common/IconButton/IconButton'
 import { Loader } from '../../components/common/Loader/Loader'
 import { IncarnationBase, incarnations } from '../../services/incarnations'
 import { useToolbarSearchStore } from '../../stores/toolbar-search'
-import { searchBy } from '../../utils'
 import { Section } from './parts'
 import { SortDown } from '../../components/common/Icons/SortDown'
 import { SortUp } from '../../components/common/Icons/SortUp'
@@ -17,7 +16,9 @@ import clsx from 'clsx'
 import { CSSProperties, useEffect, useState } from 'react'
 import { FixedSizeList } from 'react-window'
 import { useCanShowVersionStore } from '../../stores/show-version'
-import { IncarnationsSortBy, useIncarnationsSortStore } from '../../stores/incarnations-sort'
+import { useIncarnationsSortStore } from '../../stores/incarnations-sort'
+import { searchSortIncarnations } from '../../utils/search-sort-incarnations'
+import { IncarnationsSortBy } from '../../interfaces/incarnations.type'
 
 const TableLike = styled(Hug)(({ theme }) => ({
   fontSize: 14,
@@ -57,15 +58,7 @@ export const IncarnationsList = () => {
       ? 'Error loading incarnations 😔'
       : null
   const { sort, asc, setSort } = useIncarnationsSortStore()
-  const _data = Array.isArray(data)
-    ? data.filter(searchBy<Partial<IncarnationBase>>(search, ['id', 'incarnationRepository', 'targetDirectory']))
-      .sort((a, b) => {
-        if (asc) {
-          return a[sort].localeCompare(b[sort])
-        }
-        return b[sort].localeCompare(a[sort])
-      })
-    : []
+  const _data = searchSortIncarnations(data || [], { search, sort, asc })
   const onSort = (_sort: IncarnationsSortBy) => () => {
     if (sort === _sort) {
       setSort(_sort, !asc)
@@ -106,8 +99,8 @@ export const IncarnationsList = () => {
           </IconButton>
         </Hug>
         {canShow && (
-          <Hug allw={200} className="heading">
-            Template version
+          <Hug allw={200} className="heading" flex={['aic']}>
+            <Hug mr={4}>Template version</Hug>
           </Hug>
         )}
         <Hug className="heading" allw={218}>
