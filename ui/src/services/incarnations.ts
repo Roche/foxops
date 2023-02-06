@@ -28,6 +28,7 @@ export interface IncarnationBase {
   targetDirectory: string,
   commitUrl: string,
   mergeRequestUrl: null | string,
+  templateVersion: string // UI only
 }
 
 export interface Incarnation extends IncarnationBase {
@@ -65,7 +66,8 @@ export const convertToUiBaseIncarnation = (x: IncarnationBaseApiView): Incarnati
   incarnationRepository: x.incarnation_repository,
   targetDirectory: x.target_directory,
   commitUrl: x.commit_url,
-  mergeRequestUrl: x.merge_request_url
+  mergeRequestUrl: x.merge_request_url,
+  templateVersion: '' // UI only
 })
 
 const convertToUiIncarnation = (x: IncarnationApiView): Incarnation => ({

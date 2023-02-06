@@ -1,11 +1,11 @@
 import styled from '@emotion/styled'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/common/Button/Button'
 import { Hug } from '../../components/common/Hug/Hug'
 import { IconButton } from '../../components/common/IconButton/IconButton'
 import { Loader } from '../../components/common/Loader/Loader'
-import { IncarnationBase, incarnations } from '../../services/incarnations'
+import { Incarnation, IncarnationBase, incarnations } from '../../services/incarnations'
 import { useToolbarSearchStore } from '../../stores/toolbar-search'
 import { Section } from './parts'
 import { SortDown } from '../../components/common/Icons/SortDown'
@@ -48,9 +48,37 @@ const NoResults = () => (
 
 const OFFSET = 210
 
+const getSingleIncarnations = (queryClient: ReturnType<typeof useQueryClient>) => {
+  const singleIncarnationsMap = new Map<number, Incarnation>()
+  queryClient
+    .getQueriesData({
+      predicate: query => query.queryKey[0] === 'incarnations' && query.queryKey.length === 2
+    }).forEach(([, x]) => {
+      const _x = x as Incarnation | undefined
+      if (!_x) return
+      singleIncarnationsMap.set(_x.id, _x)
+    })
+  return singleIncarnationsMap
+}
+
 export const IncarnationsList = () => {
   const { search } = useToolbarSearchStore()
-  const { isLoading, isError, data, isSuccess } = useQuery(['incarnations'], incarnations.get)
+  const queryClient = useQueryClient()
+  const singleIncarnationsMap = getSingleIncarnations(queryClient)
+
+  const { isLoading, isError, data, isSuccess } = useQuery(
+    ['incarnations'],
+    incarnations.get
+  )
+  let _data: IncarnationBase[] = (data || [] as IncarnationBase[])
+    .map(x => singleIncarnationsMap.has(x.id)
+      ? {
+        ...x,
+        templateVersion: singleIncarnationsMap.get(x.id)?.templateRepositoryVersion || ''
+      } as IncarnationBase
+      : x
+    )
+
   const navigate = useNavigate()
   const pendingMessage = isLoading
     ? 'Loading...'
@@ -58,7 +86,8 @@ export const IncarnationsList = () => {
       ? 'Error loading incarnations 😔'
       : null
   const { sort, asc, setSort } = useIncarnationsSortStore()
-  const _data = searchSortIncarnations(data || [], { search, sort, asc })
+
+  _data = searchSortIncarnations(_data || [], { search, sort, asc })
   const onSort = (_sort: IncarnationsSortBy) => () => {
     if (sort === _sort) {
       setSort(_sort, !asc)
@@ -101,6 +130,9 @@ export const IncarnationsList = () => {
         {canShow && (
           <Hug allw={200} className="heading" flex={['aic']}>
             <Hug mr={4}>Template version</Hug>
+            <IconButton onClick={onSort('templateVersion')} className="sort-icon" size="small" flying>
+              {sort === 'templateVersion' ? asc ? <SortDown /> : <SortUp /> : <Sort />}
+            </IconButton>
           </Hug>
         )}
         <Hug className="heading" allw={218}>
