@@ -1,6 +1,12 @@
 import { searchBy } from '.'
 import { IncarnationsSortBy } from '../interfaces/incarnations.type'
 import { IncarnationBase } from '../services/incarnations'
+import * as semver from 'semver'
+
+function semverRegex() {
+  return /(?<=^v?|\sv?)(?:(?:0|[1-9]\d{0,9}?)\.){2}(?:0|[1-9]\d{0,9})(?:-(?:--+)?(?:0|[1-9]\d*|\d*[a-z]+\d*)){0,100}(?=$| |\+|\.)(?:(?<=-\S+)(?:\.(?:--?|[\da-z-]*[a-z-]\d*|0|[1-9]\d*)){1,100}?)?(?!\.)(?:\+(?:[\da-z]\.?-?){1,100}?(?!\w))?(?!\+)/gi
+}
+
 const mergeIncarnations = (a: IncarnationBase[], b: IncarnationBase[]) => {
   const result = [...a]
   b.forEach(x => {
@@ -22,12 +28,29 @@ export const searchSortIncarnations = (incarnations: IncarnationBase[], { search
   const filteredData = Array.isArray(incarnations)
     ? incarnations.filter(searchBy<Partial<IncarnationBase>>(search, ['id', 'incarnationRepository', 'targetDirectory']))
     : []
-  const sortFunc = (a: IncarnationBase, b: IncarnationBase) => {
+  const sortByStringField = (a: IncarnationBase, b: IncarnationBase) => {
     if (asc) {
       return a[sort].localeCompare(b[sort])
     }
     return b[sort].localeCompare(a[sort])
   }
+  const sortBySemverField = (a: IncarnationBase, b: IncarnationBase) => {
+    const sv1 = semverRegex().exec(a[sort])?.[0]
+    const sv2 = semverRegex().exec(b[sort])?.[0]
+    if (!sv1) {
+      return 1
+    }
+    if (!sv2) {
+      return -1
+    }
+    if (asc) {
+      return semver.compare(sv1, sv2)
+    }
+    return semver.compare(sv2, sv1)
+  }
+  const sortFunc = sort === 'templateVersion'
+    ? sortBySemverField
+    : sortByStringField
   try {
     const searchRegex = new RegExp(search, 'i')
     const regexFilteredData = Array.isArray(incarnations)

@@ -49,7 +49,10 @@ const data: IncarnationBaseApiView[] = [
   }
 ]
 
-const _data = data.map(convertToUiBaseIncarnation)
+const _data = data.map(convertToUiBaseIncarnation).map((x, i) => ({
+  ...x,
+  templateVersion: i === 2 ? '' : `${i}.0.0`
+}))
 
 describe('searchSortIncarnations', () => {
   it('should sort by incarnation repository', () => {
@@ -87,6 +90,24 @@ describe('searchSortIncarnations', () => {
       'dir/4',
       'dir/5'
     ].reverse())
+  })
+  it('should sort by template version', () => {
+    let result = searchSortIncarnations(_data, { search: '', sort: 'templateVersion', asc: true })
+    expect(result.map(x => x.templateVersion)).toEqual([
+      '0.0.0',
+      '1.0.0',
+      '3.0.0',
+      '4.0.0',
+      ''
+    ])
+    result = searchSortIncarnations(_data, { search: '', sort: 'templateVersion', asc: false })
+    expect(result.map(x => x.templateVersion)).toEqual([
+      '4.0.0',
+      '3.0.0',
+      '1.0.0',
+      '0.0.0',
+      ''
+    ])
   })
   it('should search by incarnation repository, search is a string', () => {
     const result = searchSortIncarnations(_data, { search: 'repo1', sort: 'targetDirectory', asc: true })
