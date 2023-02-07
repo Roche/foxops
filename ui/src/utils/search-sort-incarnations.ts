@@ -37,16 +37,20 @@ export const searchSortIncarnations = (incarnations: IncarnationBase[], { search
   const sortBySemverField = (a: IncarnationBase, b: IncarnationBase) => {
     const sv1 = semverRegex().exec(a[sort])?.[0]
     const sv2 = semverRegex().exec(b[sort])?.[0]
-    if (!sv1) {
+
+    if (!a[sort]) {
       return 1
     }
-    if (!sv2) {
+    if (!b[sort]) {
       return -1
     }
-    if (asc) {
-      return semver.compare(sv1, sv2)
+    if (sv1 && sv2) {
+      if (asc) {
+        return semver.compare(sv1, sv2)
+      }
+      return semver.compare(sv2, sv1)
     }
-    return semver.compare(sv2, sv1)
+    return sortByStringField(a, b)
   }
   const sortFunc = sort === 'templateVersion'
     ? sortBySemverField
