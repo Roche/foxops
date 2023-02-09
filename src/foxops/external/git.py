@@ -10,7 +10,8 @@ from foxops.utils import CalledProcessError, check_call
 class GitError(FoxopsError):
     """Error raised when a call to git fails."""
 
-    def __init__(self, message=None):
+    def __init__(self, message: str):
+        self.message = message
         super().__init__(f"Git failed with an unexpected non-zero exit code: '{message}'")
 
 
@@ -46,7 +47,7 @@ async def git_exec(*args, **kwargs) -> asyncio.subprocess.Process:
         ):
             raise oracle_hit_exc from exc
 
-        raise GitError(message=exc.stderr) from exc
+        raise GitError(message=exc.stderr.decode()) from exc
 
 
 def add_authentication_to_git_clone_url(source: str, username: str, password: str):
@@ -125,10 +126,14 @@ class GitRepository:
 
         return (await proc.stdout.read()).strip().decode()
 
-    async def push(self) -> str:
+    async def push(self, tags: bool = False) -> str:
         current_branch = await self.current_branch()
 
-        proc = await self._run("push", "--porcelain", "-u", "origin", current_branch)
+        additional_args = []
+        if tags:
+            additional_args.append("--tags")
+
+        proc = await self._run("push", "--porcelain", "-u", "origin", *additional_args, current_branch)
         if proc.stderr is None:
             stderr = ""
         else:
@@ -137,7 +142,7 @@ class GitRepository:
         # exclude remote messages from stderr
         stderr_non_remote_lines = list(filter(lambda line: not line.startswith("remote:"), stderr.splitlines()))
         if len(stderr_non_remote_lines) > 0:
-            raise GitError()
+            raise GitError("\n".join(stderr_non_remote_lines))
 
         return await self.head()
 
@@ -149,3 +154,13 @@ class GitRepository:
 
     async def fetch(self, refspec: str) -> None:
         await self._run("fetch", "origin", refspec)
+
+    async def tag(self, tag: str):
+        await self._run("tag", tag)
+
+    async def last_commit_id_that_changed_file(self, path: str) -> str:
+        proc = await self._run("log", "-1", "--format=%H", "--", path)
+        if proc.stdout is None:
+            raise GitError("unable to determine the last commit that changed a file")
+
+        return (await proc.stdout.read()).decode().strip()

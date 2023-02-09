@@ -15,9 +15,11 @@ from foxops.models import (
     IncarnationWithDetails,
 )
 from foxops.models.errors import ApiError
+from foxops.routers import changes
 
 #: Holds the router for the incarnations API endpoints
 router = APIRouter(prefix="/api/incarnations", tags=["incarnations"])
+router.include_router(changes.router, prefix="/{incarnation_id}/changes", tags=["changes"])
 
 #: Holds the logger for these routes
 logger = get_logger(__name__)

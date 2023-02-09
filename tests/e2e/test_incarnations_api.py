@@ -6,7 +6,7 @@ import pytest
 from httpx import AsyncClient
 from pytest_mock import MockFixture
 
-from .assertions import (
+from tests.e2e.assertions import (
     assert_file_in_repository,
     assert_initialization_merge_request_exists,
     assert_update_merge_request_exists,

@@ -9,6 +9,7 @@ import foxops.reconciliation as reconciliation
 from foxops.database import DAL
 from foxops.hosters import Hoster, HosterSettings
 from foxops.hosters.gitlab import GitLab, GitLabSettings, get_gitlab_settings
+from foxops.services.change import ChangeService
 from foxops.settings import DatabaseSettings, Settings
 
 # NOTE: Yes, you may absolutely use proper dependency injection at some point.
@@ -48,6 +49,10 @@ def get_hoster(settings: HosterSettings = Depends(get_gitlab_settings)) -> Hoste
         address=settings.address,
         token=settings.token.get_secret_value(),
     )
+
+
+def get_change_service(hoster: Hoster = Depends(get_hoster)) -> ChangeService:
+    return ChangeService(hoster=hoster)
 
 
 def get_reconciliation():

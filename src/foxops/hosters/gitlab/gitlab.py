@@ -395,6 +395,16 @@ class GitLab(Hoster):
             )
             return ReconciliationStatus.UNKNOWN
 
+    async def does_commit_exist(self, incarnation_repository: str, commit_sha: GitSha) -> bool:
+        response = await self.client.get(
+            f"/projects/{quote_plus(incarnation_repository)}/repository/commits/{commit_sha}"
+        )
+        if response.status_code == 404:
+            return False
+
+        response.raise_for_status()
+        return True
+
     async def get_commit_url(self, incarnation_repository: str, commit_sha: GitSha) -> str:
         return f"{self.web_address}/{incarnation_repository}/-/commit/{commit_sha}"
 
