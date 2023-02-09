@@ -17,11 +17,11 @@ fengine = 'foxops.engine.__main__:app'
 python = ">=3.10,<4.0"
 
 # Web Framework
-uvicorn = "^0.20.0"
-fastapi = "^0.90.0"
+uvicorn = "^0.18.2"
+fastapi = "0.85.0"
 
 # Auxiliary
-httpx = "^0.23.3"
+httpx = "^0.23.0"
 tenacity = "^8.0.1"
 pydantic = "^1.9.0"
 structlog = ">=21.2,<23.0"
@@ -29,10 +29,13 @@ aiopath = "^0.6.10"
 
 # Database
 SQLAlchemy = {extras = ["asyncio"], version = "^1.4.39"}
-asyncpg = "^0.27.0"
-aiosqlite = "^0.18.0"
+asyncpg = "^0.26.0"
+aiosqlite = "^0.17.0"
 alembic = {extras = ["tz"], version = "^1.8.1"}
-greenlet = "^2.0.2"
+
+# Remove once there are proper wheels available for 1.1.3+,
+# see https://github.com/python-greenlet/greenlet/issues/312
+greenlet = "1.1.3.post0"
 
 # CLI
 typer = ">=0.4,<0.8"
@@ -43,19 +46,20 @@ Jinja2 = "^3.0.3"
 
 [tool.poetry.dev-dependencies]
 # Linting
-flake8 = "^6.0.0"
-flake8-bugbear = "^23.1.20"
+flake8 = "^5.0.4"
+flake8-bugbear = "^22.9.23"
 isort = "^5.9.3"
+black = "^22.10.0"
 
 # Testing
 pytest = "^7.1.3"
-pytest-cov = "^4.0.0"
+pytest-cov = "^3.0.0"
 pytest-asyncio = "^0.20.1"
 pytest-mock = "^3.10.0"
 pytest-randomly = "^3.12.0"
 
 # Typing
-mypy = "^1.0.0"
+mypy = "^0.990"
 SQLAlchemy = {extras = ["mypy"], version = "^1.4.39"}
 
 # Docs
@@ -63,13 +67,13 @@ Sphinx = "^5.3.0"
 sphinx-copybutton = "^0.5.0"
 sphinx-design = "^0.3.0"
 sphinx-autobuild = "^2021.3.14"
-sphinxcontrib-mermaid = "^0.8"
+sphinxcontrib-mermaid = "^0.7.1"
 myst-parser = "^0.18.0"
 furo = "^2022.9.15"
-pytest-alembic = "^0.10.0"
+pytest-alembic = "^0.8.4"
 
 [tool.poetry.group.dev.dependencies]
-black = {extras = ["d"], version = "^23.1.0"}
+black = {extras = ["d"], version = "^22.10.0"}
 
 [tool.black]
 line-length = 120
