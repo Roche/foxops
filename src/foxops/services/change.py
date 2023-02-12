@@ -117,7 +117,9 @@ class ChangeService:
         # Fetch the template repository
         # NOTE (ahg, 01/2023): Ideally, in the future we can just read this from the DB
         async with incarnation_repo_cm as local_incarnation_repository:
-            incarnation_state = fengine.load_incarnation_state(local_incarnation_repository.directory / ".fengine.yaml")
+            incarnation_state = fengine.load_incarnation_state(
+                local_incarnation_repository.directory / incarnation.target_directory / ".fengine.yaml"
+            )
 
         template_repo_cm = self._hoster.cloned_repository(
             incarnation_state.template_repository,
@@ -199,6 +201,9 @@ class ChangeService:
         """
 
         change = await self._change_repository.get_change(change_id)
+        if change.commit_pushed:
+            self._log.debug("Change is already complete (commit_pushed=True). Skipping.", change_id=change_id)
+            return
 
         # don't touch if the change is very new - the git push might still be in progress
         if change.created_at > datetime.now(timezone.utc) - timedelta(minutes=1):
@@ -219,7 +224,10 @@ class ChangeService:
 
         change = await self._change_repository.get_change(change_id)
         if not change.commit_pushed:
-            raise IncompleteChange()
+            raise IncompleteChange(
+                "the given change is in an incomplete state (commit_pushed=False). "
+                "Try calling update_incomplete_change(change_id) first."
+            )
 
         return ChangeWithDirectCommit(
             id=change.id,
@@ -233,7 +241,7 @@ class ChangeService:
 
     async def get_latest_change_for_incarnation(self, incarnation_id: int) -> ChangeWithDirectCommit:
         """
-        Returns the latest change (highest revision) for the given incarnation.
+        Returns the latest change (the highest revision) for the given incarnation.
 
         Be aware that this is only at the time of calling this function.
         New changes might come in between getting this response and doing other actions.
