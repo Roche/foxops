@@ -38,8 +38,6 @@ change = Table(
     Column("commit_pushed", Boolean),
     # fields for merge request changes
     Column("merge_request_id", String),
-    Column("merge_request_status", String),
     Column("merge_request_branch_name", String),
-    Column("main_branch_commit_sha", String),
     UniqueConstraint("incarnation_id", "revision", name="change_incarnation_revision"),
 )

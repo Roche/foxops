@@ -1,3 +1,4 @@
+import inspect
 import json
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -46,6 +47,7 @@ class _PreparedChangeEnvironment:
     Contains metadata about the change that was applied (like the branch name and commit sha that contains it).
     """
     incarnation_repository: GitRepository
+    incarnation_repository_identifier: str
     incarnation_repository_default_branch: str
 
     to_version: str
@@ -161,20 +163,50 @@ class ChangeService:
                 requested_version=env.to_version,
                 requested_data=json.dumps(env.to_data),
             )
-            # FIXME: Add cleanup task
 
-            try:
-                await env.incarnation_repository.push()
-            except GitError as e:
-                self._log.exception(
-                    "Failed to push commit to incarnation repository. Removing change from database.",
-                    change_id=change_in_db.id,
-                )
-                await self._change_repository.delete_change(change_in_db.id)
+            await self._push_change_commit_and_update_database(env, change_in_db.id)
 
-                raise ChangeFailed from e
-            else:
-                change_in_db = await self._change_repository.update_change_commit_pushed(change_in_db.id, True)
+        return await self.get_change(change_in_db.id)
+
+    async def create_change_merge_request(
+        self, incarnation_id: int, requested_version: str | None = None, requested_data: dict[str, str] | None = None, automerge: bool = False
+    ):
+        # https://youtrack.jetbrains.com/issue/PY-36444
+        env: _PreparedChangeEnvironment
+        async with self._prepared_change_environment(incarnation_id, requested_version, requested_data) as env:
+            change_in_db = await self._change_repository.create_change(
+                incarnation_id=incarnation_id,
+                revision=env.expected_revision,
+                change_type=ChangeType.MERGE_REQUEST,
+                commit_sha=env.commit_sha,
+                commit_pushed=False,
+                requested_version=env.to_version,
+                requested_data=json.dumps(env.to_data),
+                merge_request_branch_name=env.branch_name,
+            )
+
+            await self._push_change_commit_and_update_database(env, change_in_db.id)
+
+        if env.patch_result.has_errors():
+            title = f"🚧 - CONFLICT: Update to {env.to_version}"
+            description = _construct_merge_request_conflict_description(
+                conflict_files=env.patch_result.conflicts,
+                deleted_files=env.patch_result.deleted,
+            )
+            automerge = False
+        else:
+            title = f"Update to {env.to_version}"
+            description = "Foxops detected no conflicts when applying this change."
+
+        _, merge_request_id = await self._hoster.merge_request(
+            incarnation_repository=env.incarnation_repository_identifier,
+            source_branch=env.branch_name,
+            title=title,
+            description=description,
+            with_automerge=automerge,
+        )
+
+        await self._change_repository.update_merge_request_id(change_in_db.id, merge_request_id)
 
         return await self.get_change(change_in_db.id)
 
@@ -198,7 +230,7 @@ class ChangeService:
 
         commit_exists = await self._hoster.does_commit_exist(incarnation.incarnation_repository, change.commit_sha)
         if commit_exists:
-            await self._change_repository.update_change_commit_pushed(change_id, True)
+            await self._change_repository.update_commit_pushed(change_id, True)
         else:
             await self._change_repository.delete_change(change_id)
 
@@ -293,6 +325,7 @@ class ChangeService:
 
             yield _PreparedChangeEnvironment(
                 incarnation_repository=local_incarnation_repository,
+                incarnation_repository_identifier=incarnation.incarnation_repository,
                 incarnation_repository_default_branch=incarnation_repo_metadata["default_branch"],
                 to_version=to_version,
                 to_data=to_data,
@@ -301,3 +334,47 @@ class ChangeService:
                 commit_sha=commit_sha,
                 patch_result=patch_result,
             )
+
+    async def _push_change_commit_and_update_database(self, env: _PreparedChangeEnvironment, change_id: int) -> None:
+        try:
+            await env.incarnation_repository.push()
+        except GitError as e:
+            self._log.exception(
+                "Failed to push commit to incarnation repository. Removing change from database.",
+                change_id=change_id,
+            )
+            await self._change_repository.delete_change(change_id)
+
+            raise ChangeFailed from e
+        else:
+            await self._change_repository.update_commit_pushed(change_id, True)
+
+
+def _construct_merge_request_conflict_description(conflict_files: list[Path] | None, deleted_files: list[Path] | None) -> str:
+    description_paragraphs = [
+        "Foxops couldn't automatically apply the changes from the template in this incarnation"
+    ]
+
+    if conflict_files is not None:
+        conflict_files_text = "\n".join([f"- {f}" for f in conflict_files])
+        description_paragraphs.append(inspect.cleandoc(
+            f"""
+            The following files were updated in the template repository - and at the same time - also
+            **modified** in the incarnation repository. Please resolve the conflicts manually:
+
+            {conflict_files_text}
+            """
+        ))
+
+    if deleted_files is not None:
+        deleted_files_text = "\n".join([f"- {f}" for f in deleted_files])
+        description_paragraphs.append(inspect.cleandoc(
+            f"""
+            The following files were updated in the template repository but are **no longer
+            present** in this incarnation repository. Please resolve the conflicts manually:
+
+            {deleted_files_text}
+            """
+        ))
+
+    return "\n\n".join(description_paragraphs)

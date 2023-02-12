@@ -1,3 +1,6 @@
+import inspect
+from pathlib import Path
+
 import pytest
 from pytest import fixture
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -11,6 +14,7 @@ from foxops.database.repositories.change import (
     IncarnationHasNoChangesError,
 )
 from foxops.models import DesiredIncarnationState, Incarnation
+from foxops.services.change import _construct_merge_request_conflict_description
 
 
 @fixture
@@ -47,14 +51,11 @@ async def test_create_change_persists_all_data(change_repository: ChangeReposito
         requested_version="v99",
         requested_data="dummy data (should be json)",
         merge_request_id="123",
-        merge_request_status="open",
         merge_request_branch_name="mybranch",
-        main_branch_commit_sha="merge sha",
     )
 
     assert change.id is not None
     assert change.type == ChangeType.DIRECT
-    print(change)
 
 
 async def test_create_change_rejects_double_revision(change_repository: ChangeRepository, incarnation: Incarnation):
@@ -131,7 +132,7 @@ async def test_update_change_commit_pushed_succeeds(change_repository: ChangeRep
     )
 
     # WHEN
-    await change_repository.update_change_commit_pushed(change.id, True)
+    await change_repository.update_commit_pushed(change.id, True)
 
     # THEN
     updated_change = await change_repository.get_change(change.id)

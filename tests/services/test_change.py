@@ -1,3 +1,4 @@
+import inspect
 from pathlib import Path
 
 import pytest
@@ -11,7 +12,7 @@ from foxops.hosters.local import LocalHoster
 from foxops.models import DesiredIncarnationState, DesiredIncarnationStatePatch
 from foxops.models.change import ChangeWithDirectCommit
 from foxops.reconciliation import initialize_incarnation
-from foxops.services.change import ChangeFailed, ChangeService
+from foxops.services.change import ChangeFailed, ChangeService, _construct_merge_request_conflict_description
 
 
 @fixture(scope="function")
@@ -142,3 +143,46 @@ async def test_create_change_direct(change_service: ChangeService, initialized_l
     assert change.revision == 2
     assert change.commit_sha is not None
     assert change.requested_version == "v1.1.0"
+
+
+async def test_construct_merge_request_conflict_description_with_conflicts():
+    # GIVEN
+    conflict_files = [Path("README.md")]
+
+    # WHEN
+    description = _construct_merge_request_conflict_description(conflict_files, None)
+
+    # THEN
+    assert description == inspect.cleandoc("""
+    Foxops couldn't automatically apply the changes from the template in this incarnation
+    
+    The following files were updated in the template repository - and at the same time - also
+    **modified** in the incarnation repository. Please resolve the conflicts manually:
+    
+    - README.md
+    """)
+
+
+async def test_construct_merge_request_conflict_description_with_conflicts_and_deletions():
+    # GIVEN
+    conflict_files = [Path("README.md")]
+    deleted_files = [Path("CONTRIBUTING.md")]
+
+    # WHEN
+    description = _construct_merge_request_conflict_description(conflict_files, deleted_files)
+
+    # THEN
+    assert description == inspect.cleandoc("""
+    Foxops couldn't automatically apply the changes from the template in this incarnation
+    
+    The following files were updated in the template repository - and at the same time - also
+    **modified** in the incarnation repository. Please resolve the conflicts manually:
+    
+    - README.md
+    
+    The following files were updated in the template repository but are **no longer
+    present** in this incarnation repository. Please resolve the conflicts manually:
+    
+    - CONTRIBUTING.md
+    """)
+

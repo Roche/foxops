@@ -63,9 +63,7 @@ class ChangeRepository:
         requested_version: str | None = None,
         requested_data: str | None = None,
         merge_request_id: str | None = None,
-        merge_request_status: str | None = None,
         merge_request_branch_name: str | None = None,
-        main_branch_commit_sha: str | None = None,
     ) -> ChangeInDB:
         """
         Create a new change for the given incarnation with the given "revision" number.
@@ -88,9 +86,7 @@ class ChangeRepository:
                 commit_sha=commit_sha,
                 commit_pushed=commit_pushed,
                 merge_request_id=merge_request_id,
-                merge_request_status=merge_request_status,
                 merge_request_branch_name=merge_request_branch_name,
-                main_branch_commit_sha=main_branch_commit_sha,
             ).returning(*change.columns)
             try:
                 result = await conn.execute(query)
@@ -134,10 +130,16 @@ class ChangeRepository:
         if result.rowcount == 0:
             raise ChangeNotFoundError(id_)
 
-    async def update_change_commit_pushed(self, id_: int, commit_pushed: bool) -> ChangeInDB:
+    async def update_commit_pushed(self, id_: int, commit_pushed: bool) -> ChangeInDB:
+        return await self._update_one(id_, commit_pushed=commit_pushed)
+
+    async def update_merge_request_id(self, id_: int, merge_request_id: str) -> ChangeInDB:
+        return await self._update_one(id_, merge_request_id=merge_request_id)
+
+    async def _update_one(self, id_: int, **kwargs) -> ChangeInDB:
         query = (
             update(change)
-            .values(commit_pushed=commit_pushed)
+            .values(**kwargs)
             .where(change.c.id == id_)
             .returning(*change.columns)
         )
