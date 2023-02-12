@@ -61,7 +61,7 @@ pytest-mock = "^3.10.0"
 pytest-randomly = "^3.12.0"
 
 # Typing
-mypy = "^0.990"
+mypy = "^1.0.0"
 SQLAlchemy = {extras = ["mypy"], version = "^2.0.2"}
 
 # Docs
@@ -69,7 +69,7 @@ Sphinx = "^5.3.0"
 sphinx-copybutton = "^0.5.0"
 sphinx-design = "^0.3.0"
 sphinx-autobuild = "^2021.3.14"
-sphinxcontrib-mermaid = "^0.7.1"
+sphinxcontrib-mermaid = "^0.8"
 myst-parser = "^0.18.0"
 furo = "^2022.9.15"
 pytest-alembic = "^0.10.0"
