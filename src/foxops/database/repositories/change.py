@@ -59,9 +59,9 @@ class ChangeRepository:
         revision: int,
         change_type: ChangeType,
         commit_sha: str,
-        commit_pushed: bool | None = None,
-        requested_version: str | None = None,
-        requested_data: str | None = None,
+        commit_pushed: bool,
+        requested_version: str,
+        requested_data: str,
         merge_request_id: str | None = None,
         merge_request_branch_name: str | None = None,
     ) -> ChangeInDB:

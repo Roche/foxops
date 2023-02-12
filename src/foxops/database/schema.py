@@ -32,10 +32,10 @@ change = Table(
     Column("revision", Integer, nullable=False),
     Column("type", String, nullable=False),
     Column("created_at", DateTime, nullable=False),
-    Column("requested_version", String),
-    Column("requested_data", String),
+    Column("requested_version", String, nullable=False),
+    Column("requested_data", String, nullable=False),
     Column("commit_sha", String, nullable=False),
-    Column("commit_pushed", Boolean),
+    Column("commit_pushed", Boolean, nullable=False),
     # fields for merge request changes
     Column("merge_request_id", String),
     Column("merge_request_branch_name", String),

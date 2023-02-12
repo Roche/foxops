@@ -98,14 +98,15 @@ class ChangeService:
                     f"manually set the `merge_request_id` column to NULL."
                 )
 
-        commit_sha, incarnation_state = await self._hoster.get_incarnation_state(
+        get_incarnation_state_result = await self._hoster.get_incarnation_state(
             incarnation.incarnation_repository, incarnation.target_directory
         )
-        if incarnation_state is None:
+        if get_incarnation_state_result is None:
             raise ChangeFailed(
                 f"Cannot initialize legacy incarnation {incarnation_id} because it does not have a .fengine.yaml file. "
                 f"This is NOT expected at this stage. Please investigate."
             )
+        commit_sha, incarnation_state = get_incarnation_state_result
 
         change_in_db = await self._change_repository.create_change(
             incarnation_id=incarnation_id,
@@ -285,8 +286,8 @@ class ChangeService:
         incarnation = await self._incarnation_repository.get_incarnation(incarnation_id)
         last_change = await self.get_latest_change_for_incarnation(incarnation_id)
 
-        to_version = requested_version or last_change.requested_version
-        to_data = requested_data or last_change.requested_data
+        to_version = requested_version if requested_data is not None else last_change.requested_version
+        to_data = requested_data if requested_data is not None else last_change.requested_data
 
         incarnation_repo_metadata = await self._hoster.get_repository_metadata(incarnation.incarnation_repository)
 

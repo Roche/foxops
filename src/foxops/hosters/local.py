@@ -126,7 +126,11 @@ class LocalHoster(Hoster):
 
             raise
 
-        return (await result.stdout.read()).strip().decode()
+        if result.stdout is None:
+            raise RuntimeError("git rev-parse did not return any output")
+        stdout = await result.stdout.read()
+
+        return stdout.strip().decode()
 
     async def has_pending_incarnation_merge_request(
         self, project_identifier: str, branch: str
