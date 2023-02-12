@@ -2,7 +2,7 @@ import enum
 from datetime import datetime, timezone
 
 from pydantic import BaseModel
-from sqlalchemy import delete, select, text
+from sqlalchemy import delete, select, text, insert, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -64,8 +64,8 @@ class ChangeRepository:
         requested_data: str | None = None,
         merge_request_id: str | None = None,
         merge_request_status: str | None = None,
-        branch_name: str | None = None,
-        merge_commit_sha: str | None = None,
+        merge_request_branch_name: str | None = None,
+        main_branch_commit_sha: str | None = None,
     ) -> ChangeInDB:
         """
         Create a new change for the given incarnation with the given "revision" number.
@@ -77,58 +77,23 @@ class ChangeRepository:
         This is a useful mechanism to prevent conflicting changes.
         """
 
-        async with self.engine.execution_options(isolation_level="SERIALIZABLE").begin() as conn:
-            query = text(
-                """
-                    INSERT INTO change (
-                        `incarnation_id`,
-                        `revision`,
-                        `type`,
-                        `created_at`,
-                        `requested_version`,
-                        `requested_data`,
-                        `commit_sha`,
-                        `commit_pushed`,
-                        `merge_request_id`,
-                        `merge_request_status`,
-                        `branch_name`,
-                        `merge_commit_sha`
-                    )
-                    VALUES (
-                        :incarnation_id,
-                        :revision,
-                        :type,
-                        :created_at,
-                        :requested_version,
-                        :requested_data,
-                        :commit_sha,
-                        :commit_pushed,
-                        :merge_request_id,
-                        :merge_request_status,
-                        :branch_name,
-                        :merge_commit_sha
-                    )
-                    RETURNING *
-                    """
-            )
+        async with self.engine.connect() as conn:
+            query = insert(change).values(
+                incarnation_id=incarnation_id,
+                revision=revision,
+                type=change_type.value,
+                created_at=datetime.now(timezone.utc),
+                requested_version=requested_version,
+                requested_data=requested_data,
+                commit_sha=commit_sha,
+                commit_pushed=commit_pushed,
+                merge_request_id=merge_request_id,
+                merge_request_status=merge_request_status,
+                merge_request_branch_name=merge_request_branch_name,
+                main_branch_commit_sha=main_branch_commit_sha,
+            ).returning(*change.columns)
             try:
-                result = await conn.execute(
-                    query,
-                    {
-                        "incarnation_id": incarnation_id,
-                        "revision": revision,
-                        "type": change_type.value,
-                        "created_at": datetime.now(timezone.utc),
-                        "requested_version": requested_version,
-                        "requested_data": requested_data,
-                        "commit_sha": commit_sha,
-                        "commit_pushed": commit_pushed,
-                        "merge_request_id": merge_request_id,
-                        "merge_request_status": merge_request_status,
-                        "branch_name": branch_name,
-                        "merge_commit_sha": merge_commit_sha,
-                    },
-                )
+                result = await conn.execute(query)
             except IntegrityError:
                 raise ChangeConflictError(incarnation_id, revision)
 
@@ -138,8 +103,9 @@ class ChangeRepository:
         return ChangeInDB.from_orm(row)
 
     async def get_change(self, id_: int) -> ChangeInDB:
+        query = select(change).where(change.c.id == id_)
         async with self.engine.connect() as conn:
-            result = await conn.execute(select(change).where(change.c.id == id_))
+            result = await conn.execute(query)
 
             try:
                 row = result.one()
@@ -149,21 +115,9 @@ class ChangeRepository:
                 return ChangeInDB.from_orm(row)
 
     async def get_latest_change_for_incarnation(self, incarnation_id: int) -> ChangeInDB:
+        query = select(change).where(change.c.incarnation_id == incarnation_id).order_by(change.c.revision.desc()).limit(1)
         async with self.engine.connect() as conn:
-            result = await conn.execute(
-                text(
-                    """
-                    SELECT *
-                    FROM change
-                    WHERE incarnation_id = :incarnation_id
-                    ORDER BY revision DESC
-                    LIMIT 1
-                    """
-                ),
-                {
-                    "incarnation_id": incarnation_id,
-                },
-            )
+            result = await conn.execute(query)
 
             try:
                 row = result.one()
@@ -181,21 +135,14 @@ class ChangeRepository:
             raise ChangeNotFoundError(id_)
 
     async def update_change_commit_pushed(self, id_: int, commit_pushed: bool) -> ChangeInDB:
+        query = (
+            update(change)
+            .values(commit_pushed=commit_pushed)
+            .where(change.c.id == id_)
+            .returning(*change.columns)
+        )
         async with self.engine.connect() as conn:
-            result = await conn.execute(
-                text(
-                    """
-                    UPDATE change
-                    SET commit_pushed = :commit_pushed
-                    WHERE id = :id
-                    RETURNING *
-                    """
-                ),
-                {
-                    "id": id_,
-                    "commit_pushed": commit_pushed,
-                },
-            )
+            result = await conn.execute(query)
 
             row = result.one()
             await conn.commit()

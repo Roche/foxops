@@ -48,8 +48,8 @@ async def test_create_change_persists_all_data(change_repository: ChangeReposito
         requested_data="dummy data (should be json)",
         merge_request_id="123",
         merge_request_status="open",
-        branch_name="mybranch",
-        merge_commit_sha="merge sha",
+        merge_request_branch_name="mybranch",
+        main_branch_commit_sha="merge sha",
     )
 
     assert change.id is not None
