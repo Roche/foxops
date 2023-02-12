@@ -1,6 +1,9 @@
 import json
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import AsyncIterator
 
 import foxops.engine as fengine
 from foxops.database import DAL
@@ -9,10 +12,12 @@ from foxops.database.repositories.change import (
     ChangeType,
     IncarnationHasNoChangesError,
 )
-from foxops.external.git import GitError
+from foxops.engine.patching.git_diff_patch import PatchResult
+from foxops.external.git import GitError, GitRepository
 from foxops.hosters import Hoster
 from foxops.hosters.types import MergeRequestStatus
 from foxops.models.change import ChangeWithDirectCommit
+from foxops.reconciliation.utils import generate_foxops_branch_name
 from foxops.utils import get_logger
 
 
@@ -32,6 +37,24 @@ class ChangeFailed(Exception):
 
 class IncompleteChange(Exception):
     pass
+
+
+@dataclass
+class _PreparedChangeEnvironment:
+    """
+    Represents a locally checked out incarnation repository, where a change was applied.
+    Contains metadata about the change that was applied (like the branch name and commit sha that contains it).
+    """
+    incarnation_repository: GitRepository
+    incarnation_repository_default_branch: str
+
+    to_version: str
+    to_data: dict[str, str]
+    expected_revision: int
+
+    branch_name: str
+    commit_sha: str
+    patch_result: PatchResult
 
 
 class ChangeService:
@@ -94,7 +117,7 @@ class ChangeService:
         return await self.get_change(change_in_db.id)
 
     async def create_change_direct(
-        self, incarnation_id: int, requested_version: str | None, requested_data: dict[str, str] | None
+        self, incarnation_id: int, requested_version: str | None = None, requested_data: dict[str, str] | None = None
     ) -> ChangeWithDirectCommit:
         """
         Perform a DIRECT change on the given incarnation.
@@ -103,51 +126,12 @@ class ChangeService:
         pushed to the default branch.
         """
 
-        if requested_version is None and requested_data is None:
-            raise ChangeRejectedDueToNoChanges("Either requested_version or requested_data must be set.")
-
-        incarnation = await self._incarnation_repository.get_incarnation(incarnation_id)
-        last_change = await self.get_latest_change_for_incarnation(incarnation_id)
-
-        to_version = requested_version or last_change.requested_version
-        to_data = requested_data or last_change.requested_data
-
-        incarnation_repo_cm = self._hoster.cloned_repository(incarnation.incarnation_repository)
-
-        # Fetch the template repository
-        # NOTE (ahg, 01/2023): Ideally, in the future we can just read this from the DB
-        async with incarnation_repo_cm as local_incarnation_repository:
-            incarnation_state = fengine.load_incarnation_state(
-                local_incarnation_repository.directory / incarnation.target_directory / ".fengine.yaml"
-            )
-
-        template_repo_cm = self._hoster.cloned_repository(
-            incarnation_state.template_repository,
-            bare=True,
-        )
-        async with (
-            incarnation_repo_cm as local_incarnation_repository,
-            template_repo_cm as local_template_repository,
-        ):
-            (
-                update_performed,
-                updated_incarnation_state,
-                patch_result,
-            ) = await fengine.update_incarnation_from_git_template_repository(
-                template_git_repository=local_template_repository.directory,
-                update_template_repository_version=to_version,
-                update_template_data=to_data,
-                incarnation_root_dir=(local_incarnation_repository.directory / incarnation.target_directory),
-                diff_patch_func=fengine.diff_and_patch,
-            )
-
-            if not update_performed:
-                raise ChangeRejectedDueToNoChanges()
-            if patch_result and patch_result.has_errors():
-                raise ChangeRejectedDueToConflicts(patch_result.conflicts, patch_result.deleted)
-
-            await local_incarnation_repository.commit_all(f"foxops: updating incarnation to version {to_version}")
-            commit_sha = await local_incarnation_repository.head()
+        # https://youtrack.jetbrains.com/issue/PY-36444
+        env: _PreparedChangeEnvironment
+        async with self._prepared_change_environment(incarnation_id, requested_version, requested_data) as env:
+            # because we want to apply the change without an MR, let's merge the change directly into the default branch
+            await env.incarnation_repository.checkout_branch(env.incarnation_repository_default_branch)
+            await env.incarnation_repository.merge_ff_only(env.branch_name)
 
             # now comes the tricky part:
             # Making the following logic resilient to failures at any stage (crashes, DB connection failures, ...)
@@ -169,17 +153,17 @@ class ChangeService:
             # violation on the revision number.
             change_in_db = await self._change_repository.create_change(
                 incarnation_id=incarnation_id,
-                revision=last_change.revision + 1,
+                revision=env.expected_revision,
                 change_type=ChangeType.DIRECT,
-                commit_sha=commit_sha,
+                commit_sha=env.commit_sha,
                 commit_pushed=False,
-                requested_version=to_version,
-                requested_data=json.dumps(to_data),
+                requested_version=env.to_version,
+                requested_data=json.dumps(env.to_data),
             )
             # FIXME: Add cleanup task
 
             try:
-                await local_incarnation_repository.push()
+                await env.incarnation_repository.push()
             except GitError as e:
                 self._log.exception(
                     "Failed to push commit to incarnation repository. Removing change from database.",
@@ -249,3 +233,70 @@ class ChangeService:
 
         last_change = await self._change_repository.get_latest_change_for_incarnation(incarnation_id)
         return await self.get_change(last_change.id)
+
+    @asynccontextmanager
+    async def _prepared_change_environment(
+        self, incarnation_id: int, requested_version: str | None, requested_data: dict[str, str] | None
+    ) -> AsyncIterator[_PreparedChangeEnvironment]:
+        """
+        This method checks out the incarnation repository, prepares a branch that contains the update and commits.
+        """
+        if requested_version is None and requested_data is None:
+            raise ChangeRejectedDueToNoChanges("Either requested_version or requested_data must be set.")
+
+        incarnation = await self._incarnation_repository.get_incarnation(incarnation_id)
+        last_change = await self.get_latest_change_for_incarnation(incarnation_id)
+
+        to_version = requested_version or last_change.requested_version
+        to_data = requested_data or last_change.requested_data
+
+        incarnation_repo_metadata = await self._hoster.get_repository_metadata(incarnation.incarnation_repository)
+
+        # Fetch the template repository
+        # NOTE (ahg, 01/2023): Ideally, in the future we can just read this from the DB
+        async with self._hoster.cloned_repository(incarnation.incarnation_repository) as local_incarnation_repository:
+            incarnation_state = fengine.load_incarnation_state(
+                local_incarnation_repository.directory / incarnation.target_directory / ".fengine.yaml"
+            )
+
+        async with (
+            self._hoster.cloned_repository(incarnation.incarnation_repository) as local_incarnation_repository,
+            self._hoster.cloned_repository(incarnation_state.template_repository, bare=True) as local_template_repository,
+        ):
+            branch_name = generate_foxops_branch_name(
+                prefix="update-to",
+                target_directory=incarnation.target_directory,
+                template_repository_version=to_version,
+            )
+            await local_incarnation_repository.create_and_checkout_branch(branch_name, exist_ok=False)
+
+            (
+                update_performed,
+                _,
+                patch_result,
+            ) = await fengine.update_incarnation_from_git_template_repository(
+                template_git_repository=local_template_repository.directory,
+                update_template_repository_version=to_version,
+                update_template_data=to_data,
+                incarnation_root_dir=(local_incarnation_repository.directory / incarnation.target_directory),
+                diff_patch_func=fengine.diff_and_patch,
+            )
+
+            if not update_performed:
+                raise ChangeRejectedDueToNoChanges()
+            if patch_result is None:
+                raise ChangeFailed("Patch result was None. That is unexpected at this stage.")
+
+            await local_incarnation_repository.commit_all(f"foxops: updating incarnation to version {to_version}")
+            commit_sha = await local_incarnation_repository.head()
+
+            yield _PreparedChangeEnvironment(
+                incarnation_repository=local_incarnation_repository,
+                incarnation_repository_default_branch=incarnation_repo_metadata["default_branch"],
+                to_version=to_version,
+                to_data=to_data,
+                expected_revision=last_change.revision + 1,
+                branch_name=branch_name,
+                commit_sha=commit_sha,
+                patch_result=patch_result,
+            )

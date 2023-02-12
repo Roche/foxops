@@ -128,3 +128,17 @@ async def test_initialize_legacy_incarnation_fails_if_incarnation_has_incomplete
     # WHEN
     with pytest.raises(ChangeFailed, match="pending merge request"):
         await change_service.initialize_legacy_incarnation(initialized_legacy_incarnation_id)
+
+
+async def test_create_change_direct(change_service: ChangeService, initialized_legacy_incarnation_id: int):
+    # GIVEN
+    await change_service.initialize_legacy_incarnation(initialized_legacy_incarnation_id)
+
+    # WHEN
+    change = await change_service.create_change_direct(initialized_legacy_incarnation_id, requested_version="v1.1.0")
+
+    # THEN
+    assert change.incarnation_id == initialized_legacy_incarnation_id
+    assert change.revision == 2
+    assert change.commit_sha is not None
+    assert change.requested_version == "v1.1.0"

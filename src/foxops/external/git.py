@@ -85,6 +85,9 @@ class GitRepository:
 
         return len(stdout.strip()) > 0
 
+    async def checkout_branch(self, branch: str):
+        await self._run("checkout", branch)
+
     async def create_and_checkout_branch(self, branch: str, exist_ok=False):
         try:
             await self._run("checkout", "-b", branch)
@@ -125,6 +128,9 @@ class GitRepository:
             raise GitError("unable to determine the current git branch")
 
         return (await proc.stdout.read()).strip().decode()
+
+    async def merge_ff_only(self, branch: str):
+        await self._run("merge", "--ff-only", branch)
 
     async def push(self, tags: bool = False) -> str:
         current_branch = await self.current_branch()
