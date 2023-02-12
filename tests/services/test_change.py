@@ -8,11 +8,16 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from foxops import reconciliation
 from foxops.database import DAL
 from foxops.database.repositories.change import ChangeRepository
+from foxops.engine import load_incarnation_state
 from foxops.hosters.local import LocalHoster
 from foxops.models import DesiredIncarnationState, DesiredIncarnationStatePatch
-from foxops.models.change import ChangeWithDirectCommit
+from foxops.models.change import Change
 from foxops.reconciliation import initialize_incarnation
-from foxops.services.change import ChangeFailed, ChangeService, _construct_merge_request_conflict_description
+from foxops.services.change import (
+    ChangeFailed,
+    ChangeService,
+    _construct_merge_request_conflict_description,
+)
 
 
 @fixture(scope="function")
@@ -34,11 +39,12 @@ async def git_repo_template(local_hoster: LocalHoster) -> str:
     await local_hoster.create_repository(repo_name)
 
     async with local_hoster.cloned_repository(repo_name) as repo:
-        (repo.directory / "README.md").write_text("Hello, world!")
+        (repo.directory / "template").mkdir()
+        (repo.directory / "template" / "README.md").write_text("Hello, world!")
         await repo.commit_all("Initial commit")
         await repo.tag("v1.0.0")
 
-        (repo.directory / "README.md").write_text("Hello, world2!")
+        (repo.directory / "template" / "README.md").write_text("Hello, world2!")
         await repo.commit_all("update")
         await repo.tag("v1.1.0")
 
@@ -88,7 +94,7 @@ async def test_initialize_legacy_incarnation(change_service: ChangeService, init
     change = await change_service.initialize_legacy_incarnation(initialized_legacy_incarnation_id)
 
     # THEN
-    assert isinstance(change, ChangeWithDirectCommit)
+    assert isinstance(change, Change)
     assert change.revision == 1
     assert change.incarnation_id == initialized_legacy_incarnation_id
     assert change.commit_sha is not None
@@ -131,8 +137,11 @@ async def test_initialize_legacy_incarnation_fails_if_incarnation_has_incomplete
         await change_service.initialize_legacy_incarnation(initialized_legacy_incarnation_id)
 
 
-async def test_create_change_direct(change_service: ChangeService, initialized_legacy_incarnation_id: int):
+async def test_create_change_direct(
+    change_service: ChangeService, incarnation_repository: DAL, initialized_legacy_incarnation_id: int
+):
     # GIVEN
+    incarnation = await incarnation_repository.get_incarnation(initialized_legacy_incarnation_id)
     await change_service.initialize_legacy_incarnation(initialized_legacy_incarnation_id)
 
     # WHEN
@@ -144,6 +153,12 @@ async def test_create_change_direct(change_service: ChangeService, initialized_l
     assert change.commit_sha is not None
     assert change.requested_version == "v1.1.0"
 
+    async with change_service._hoster.cloned_repository(incarnation.incarnation_repository) as repo:
+        assert (repo.directory / "README.md").read_text() == "Hello, world2!"
+
+        incarnation_state = load_incarnation_state(repo.directory / ".fengine.yaml")
+        assert incarnation_state.template_repository_version == "v1.1.0"
+
 
 async def test_construct_merge_request_conflict_description_with_conflicts():
     # GIVEN
@@ -153,14 +168,16 @@ async def test_construct_merge_request_conflict_description_with_conflicts():
     description = _construct_merge_request_conflict_description(conflict_files, None)
 
     # THEN
-    assert description == inspect.cleandoc("""
+    assert description == inspect.cleandoc(
+        """
     Foxops couldn't automatically apply the changes from the template in this incarnation
-    
+
     The following files were updated in the template repository - and at the same time - also
     **modified** in the incarnation repository. Please resolve the conflicts manually:
-    
+
     - README.md
-    """)
+    """
+    )
 
 
 async def test_construct_merge_request_conflict_description_with_conflicts_and_deletions():
@@ -172,17 +189,18 @@ async def test_construct_merge_request_conflict_description_with_conflicts_and_d
     description = _construct_merge_request_conflict_description(conflict_files, deleted_files)
 
     # THEN
-    assert description == inspect.cleandoc("""
+    assert description == inspect.cleandoc(
+        """
     Foxops couldn't automatically apply the changes from the template in this incarnation
-    
+
     The following files were updated in the template repository - and at the same time - also
     **modified** in the incarnation repository. Please resolve the conflicts manually:
-    
+
     - README.md
-    
+
     The following files were updated in the template repository but are **no longer
     present** in this incarnation repository. Please resolve the conflicts manually:
-    
-    - CONTRIBUTING.md
-    """)
 
+    - CONTRIBUTING.md
+    """
+    )

@@ -17,7 +17,7 @@ from foxops.engine.patching.git_diff_patch import PatchResult
 from foxops.external.git import GitError, GitRepository
 from foxops.hosters import Hoster
 from foxops.hosters.types import MergeRequestStatus
-from foxops.models.change import ChangeWithDirectCommit
+from foxops.models.change import Change
 from foxops.reconciliation.utils import generate_foxops_branch_name
 from foxops.utils import get_logger
 
@@ -46,6 +46,7 @@ class _PreparedChangeEnvironment:
     Represents a locally checked out incarnation repository, where a change was applied.
     Contains metadata about the change that was applied (like the branch name and commit sha that contains it).
     """
+
     incarnation_repository: GitRepository
     incarnation_repository_identifier: str
     incarnation_repository_default_branch: str
@@ -67,7 +68,7 @@ class ChangeService:
 
         self._log = get_logger("change_service")
 
-    async def initialize_legacy_incarnation(self, incarnation_id: int) -> ChangeWithDirectCommit:
+    async def initialize_legacy_incarnation(self, incarnation_id: int) -> Change:
         """
         Initialize a legacy incarnation.
 
@@ -120,7 +121,7 @@ class ChangeService:
 
     async def create_change_direct(
         self, incarnation_id: int, requested_version: str | None = None, requested_data: dict[str, str] | None = None
-    ) -> ChangeWithDirectCommit:
+    ) -> Change:
         """
         Perform a DIRECT change on the given incarnation.
 
@@ -169,7 +170,11 @@ class ChangeService:
         return await self.get_change(change_in_db.id)
 
     async def create_change_merge_request(
-        self, incarnation_id: int, requested_version: str | None = None, requested_data: dict[str, str] | None = None, automerge: bool = False
+        self,
+        incarnation_id: int,
+        requested_version: str | None = None,
+        requested_data: dict[str, str] | None = None,
+        automerge: bool = False,
     ):
         # https://youtrack.jetbrains.com/issue/PY-36444
         env: _PreparedChangeEnvironment
@@ -234,7 +239,7 @@ class ChangeService:
         else:
             await self._change_repository.delete_change(change_id)
 
-    async def get_change(self, change_id: int) -> ChangeWithDirectCommit:
+    async def get_change(self, change_id: int) -> Change:
         """
         Returns a change object for the given change ID.
         """
@@ -246,7 +251,7 @@ class ChangeService:
                 "Try calling update_incomplete_change(change_id) first."
             )
 
-        return ChangeWithDirectCommit(
+        return Change(
             id=change.id,
             incarnation_id=change.incarnation_id,
             revision=change.revision,
@@ -256,7 +261,7 @@ class ChangeService:
             commit_sha=change.commit_sha,
         )
 
-    async def get_latest_change_for_incarnation(self, incarnation_id: int) -> ChangeWithDirectCommit:
+    async def get_latest_change_for_incarnation(self, incarnation_id: int) -> Change:
         """
         Returns the latest change (the highest revision) for the given incarnation.
 
@@ -294,7 +299,9 @@ class ChangeService:
 
         async with (
             self._hoster.cloned_repository(incarnation.incarnation_repository) as local_incarnation_repository,
-            self._hoster.cloned_repository(incarnation_state.template_repository, bare=True) as local_template_repository,
+            self._hoster.cloned_repository(
+                incarnation_state.template_repository, bare=True
+            ) as local_template_repository,
         ):
             branch_name = generate_foxops_branch_name(
                 prefix="update-to",
@@ -303,11 +310,7 @@ class ChangeService:
             )
             await local_incarnation_repository.create_and_checkout_branch(branch_name, exist_ok=False)
 
-            (
-                update_performed,
-                _,
-                patch_result,
-            ) = await fengine.update_incarnation_from_git_template_repository(
+            (update_performed, _, patch_result,) = await fengine.update_incarnation_from_git_template_repository(
                 template_git_repository=local_template_repository.directory,
                 update_template_repository_version=to_version,
                 update_template_data=to_data,
@@ -350,31 +353,35 @@ class ChangeService:
             await self._change_repository.update_commit_pushed(change_id, True)
 
 
-def _construct_merge_request_conflict_description(conflict_files: list[Path] | None, deleted_files: list[Path] | None) -> str:
-    description_paragraphs = [
-        "Foxops couldn't automatically apply the changes from the template in this incarnation"
-    ]
+def _construct_merge_request_conflict_description(
+    conflict_files: list[Path] | None, deleted_files: list[Path] | None
+) -> str:
+    description_paragraphs = ["Foxops couldn't automatically apply the changes from the template in this incarnation"]
 
     if conflict_files is not None:
         conflict_files_text = "\n".join([f"- {f}" for f in conflict_files])
-        description_paragraphs.append(inspect.cleandoc(
-            f"""
+        description_paragraphs.append(
+            inspect.cleandoc(
+                f"""
             The following files were updated in the template repository - and at the same time - also
             **modified** in the incarnation repository. Please resolve the conflicts manually:
 
             {conflict_files_text}
             """
-        ))
+            )
+        )
 
     if deleted_files is not None:
         deleted_files_text = "\n".join([f"- {f}" for f in deleted_files])
-        description_paragraphs.append(inspect.cleandoc(
-            f"""
+        description_paragraphs.append(
+            inspect.cleandoc(
+                f"""
             The following files were updated in the template repository but are **no longer
             present** in this incarnation repository. Please resolve the conflicts manually:
 
             {deleted_files_text}
             """
-        ))
+            )
+        )
 
     return "\n\n".join(description_paragraphs)

@@ -198,7 +198,7 @@ async def test_get_incarnation_state_returns_state_of_incarnation_in_subdirector
         template_repository_version_hash="abcdef12",
         template_data={
             "foo": "bar",
-        }
+        },
     )
 
     await local_hoster.create_repository(repo_name)

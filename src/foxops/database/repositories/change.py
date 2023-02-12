@@ -2,7 +2,7 @@ import enum
 from datetime import datetime, timezone
 
 from pydantic import BaseModel
-from sqlalchemy import delete, select, text, insert, update
+from sqlalchemy import delete, insert, select, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -76,18 +76,22 @@ class ChangeRepository:
         """
 
         async with self.engine.connect() as conn:
-            query = insert(change).values(
-                incarnation_id=incarnation_id,
-                revision=revision,
-                type=change_type.value,
-                created_at=datetime.now(timezone.utc),
-                requested_version=requested_version,
-                requested_data=requested_data,
-                commit_sha=commit_sha,
-                commit_pushed=commit_pushed,
-                merge_request_id=merge_request_id,
-                merge_request_branch_name=merge_request_branch_name,
-            ).returning(*change.columns)
+            query = (
+                insert(change)
+                .values(
+                    incarnation_id=incarnation_id,
+                    revision=revision,
+                    type=change_type.value,
+                    created_at=datetime.now(timezone.utc),
+                    requested_version=requested_version,
+                    requested_data=requested_data,
+                    commit_sha=commit_sha,
+                    commit_pushed=commit_pushed,
+                    merge_request_id=merge_request_id,
+                    merge_request_branch_name=merge_request_branch_name,
+                )
+                .returning(*change.columns)
+            )
             try:
                 result = await conn.execute(query)
             except IntegrityError:
@@ -111,7 +115,9 @@ class ChangeRepository:
                 return ChangeInDB.from_orm(row)
 
     async def get_latest_change_for_incarnation(self, incarnation_id: int) -> ChangeInDB:
-        query = select(change).where(change.c.incarnation_id == incarnation_id).order_by(change.c.revision.desc()).limit(1)
+        query = (
+            select(change).where(change.c.incarnation_id == incarnation_id).order_by(change.c.revision.desc()).limit(1)
+        )
         async with self.engine.connect() as conn:
             result = await conn.execute(query)
 
@@ -137,12 +143,7 @@ class ChangeRepository:
         return await self._update_one(id_, merge_request_id=merge_request_id)
 
     async def _update_one(self, id_: int, **kwargs) -> ChangeInDB:
-        query = (
-            update(change)
-            .values(**kwargs)
-            .where(change.c.id == id_)
-            .returning(*change.columns)
-        )
+        query = update(change).values(**kwargs).where(change.c.id == id_).returning(*change.columns)
         async with self.engine.connect() as conn:
             result = await conn.execute(query)
 

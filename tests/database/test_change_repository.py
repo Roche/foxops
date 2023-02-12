@@ -1,6 +1,3 @@
-import inspect
-from pathlib import Path
-
 import pytest
 from pytest import fixture
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -14,7 +11,6 @@ from foxops.database.repositories.change import (
     IncarnationHasNoChangesError,
 )
 from foxops.models import DesiredIncarnationState, Incarnation
-from foxops.services.change import _construct_merge_request_conflict_description
 
 
 @fixture
