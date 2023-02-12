@@ -129,7 +129,8 @@ class ChangeService:
         # https://youtrack.jetbrains.com/issue/PY-36444
         env: _PreparedChangeEnvironment
         async with self._prepared_change_environment(incarnation_id, requested_version, requested_data) as env:
-            # because we want to apply the change without an MR, let's merge the change directly into the default branch
+            # because we want to apply the change without an MR
+            # ... let's merge the change directly into the default branch
             await env.incarnation_repository.checkout_branch(env.incarnation_repository_default_branch)
             await env.incarnation_repository.merge_ff_only(env.branch_name)
 
