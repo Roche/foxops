@@ -6,7 +6,7 @@ from sqlalchemy import delete, insert, select, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from foxops.database.schema import change
+from foxops.database.schema import change, incarnations
 from foxops.errors import FoxopsError
 
 
@@ -42,8 +42,8 @@ class ChangeInDB(BaseModel):
     type: ChangeType
     created_at: datetime
 
-    requested_version: str | None
-    requested_data: str | None
+    requested_version: str
+    requested_data: str
 
     class Config:
         orm_mode = True
@@ -101,6 +101,53 @@ class ChangeRepository:
             await conn.commit()
 
         return ChangeInDB.from_orm(row)
+
+    async def create_incarnation_with_first_change(
+        self,
+        incarnation_repository: str,
+        target_directory: str,
+        commit_sha: str,
+        requested_version: str,
+        requested_data: str,
+    ) -> ChangeInDB:
+        async with self.engine.connect() as conn:
+            query_insert_incarnation = (
+                insert(incarnations)
+                .values(
+                    incarnation_repository=incarnation_repository,
+                    target_directory=target_directory,
+                    commit_sha=commit_sha,
+                )
+                .returning(incarnations.c.id)
+            )
+            result = await conn.execute(query_insert_incarnation)
+            incarnation_id = result.one()[0]
+
+            query_insert_change = (
+                insert(change)
+                .values(
+                    incarnation_id=incarnation_id,
+                    revision=1,
+                    type=ChangeType.DIRECT.value,
+                    created_at=datetime.now(timezone.utc),
+                    requested_version=requested_version,
+                    requested_data=requested_data,
+                    commit_sha=commit_sha,
+                    commit_pushed=False,
+                )
+                .returning(*change.columns)
+            )
+            result = await conn.execute(query_insert_change)
+
+            row = result.one()
+            await conn.commit()
+
+        return ChangeInDB.from_orm(row)
+
+    async def delete_incarnation(self, id_: int) -> None:
+        async with self.engine.connect() as conn:
+            await conn.execute(delete(incarnations).where(incarnations.c.id == id_))
+            await conn.commit()
 
     async def get_change(self, id_: int) -> ChangeInDB:
         query = select(change).where(change.c.id == id_)

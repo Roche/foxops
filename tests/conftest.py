@@ -9,6 +9,7 @@ from typing import AsyncGenerator
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
+from sqlalchemy import event, Engine
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from foxops.__main__ import FRONTEND_SUBDIRS, create_app
@@ -47,6 +48,14 @@ def use_testing_gitconfig():
 
 @pytest.fixture(name="test_async_engine")
 async def test_async_engine() -> AsyncGenerator[AsyncEngine, None]:
+    # enforce foreign key constraints on SQLite:
+    # https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#foreign-key-support
+    @event.listens_for(Engine, "connect")
+    def set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
     async_engine = create_async_engine("sqlite+aiosqlite://", future=True, echo=False, pool_pre_ping=True)
     yield async_engine
 

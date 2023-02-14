@@ -89,6 +89,29 @@ async def change_service(
     )
 
 
+async def test_create_incarnation(change_service: ChangeService, git_repo_template: str, local_hoster: LocalHoster):
+    # GIVEN
+    incarnation_repo_name = "incarnation"
+    await local_hoster.create_repository(incarnation_repo_name)
+
+    # WHEN
+    change = await change_service.create_incarnation(
+        incarnation_repository=incarnation_repo_name,
+        template_repository=git_repo_template,
+        template_repository_version="v1.0.0",
+        template_data={},
+    )
+
+    # THEN
+    assert change.incarnation_id is not None
+    assert change.requested_version == "v1.0.0"
+    assert change.commit_sha is not None
+
+    async with local_hoster.cloned_repository(incarnation_repo_name) as repo:
+        assert (repo.directory / "README.md").read_text() == "Hello, world!"
+        assert await repo.head() == change.commit_sha
+
+
 async def test_initialize_legacy_incarnation(change_service: ChangeService, initialized_legacy_incarnation_id: int):
     # WHEN
     change = await change_service.initialize_legacy_incarnation(initialized_legacy_incarnation_id)

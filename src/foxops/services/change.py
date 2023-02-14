@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import AsyncIterator
+from typing import AsyncIterator, Mapping
 
 import foxops.engine as fengine
 from foxops.database import DAL
@@ -67,6 +67,59 @@ class ChangeService:
         self._incarnation_repository = incarnation_repository
 
         self._log = get_logger("change_service")
+
+    async def create_incarnation(
+        self,
+        incarnation_repository: str,
+        template_repository: str,
+        template_repository_version: str,
+        template_data: dict[str, str],
+        target_directory: str = ".",
+    ) -> Change:
+        incarnation_state = await self._hoster.get_incarnation_state(incarnation_repository, target_directory)
+        if incarnation_state is not None:
+            raise ChangeFailed(f"Cannot create incarnation because it already exists: {incarnation_state}")
+
+        async with (
+            self._hoster.cloned_repository(template_repository, refspec=template_repository_version) as template_git,
+            self._hoster.cloned_repository(incarnation_repository) as incarnation_git,
+        ):
+            await fengine.initialize_incarnation(
+                template_root_dir=template_git.directory,
+                template_repository=template_repository,
+                template_repository_version=template_repository_version,
+                template_data=template_data,
+                incarnation_root_dir=incarnation_git.directory,
+            )
+
+            await incarnation_git.commit_all(
+                f"foxops: initializing incarnation from template {template_repository} "
+                f"@ {template_repository_version}"
+            )
+            commit_sha = await incarnation_git.head()
+
+            change = await self._change_repository.create_incarnation_with_first_change(
+                incarnation_repository=incarnation_repository,
+                target_directory=target_directory,
+                commit_sha=commit_sha,
+                requested_version=template_repository_version,
+                requested_data=json.dumps(template_data),
+            )
+
+            try:
+                await incarnation_git.push()
+            except GitError as e:
+                self._log.exception(
+                    "Failed to push commit to incarnation repository. Removing change from database.",
+                    change_id=change.id,
+                )
+                await self._change_repository.delete_change(change.id)
+
+                raise ChangeFailed from e
+            else:
+                change = await self._change_repository.update_commit_pushed(change.id, True)
+
+        return await self.get_change(change.id)
 
     async def initialize_legacy_incarnation(self, incarnation_id: int) -> Change:
         """
@@ -166,7 +219,7 @@ class ChangeService:
                 requested_data=json.dumps(env.to_data),
             )
 
-            await self._push_change_commit_and_update_database(env, change_in_db.id)
+            await self._push_change_commit_and_update_database(env.incarnation_repository, change_in_db.id)
 
         return await self.get_change(change_in_db.id)
 
@@ -191,7 +244,7 @@ class ChangeService:
                 merge_request_branch_name=env.branch_name,
             )
 
-            await self._push_change_commit_and_update_database(env, change_in_db.id)
+            await self._push_change_commit_and_update_database(env.incarnation_repository, change_in_db.id)
 
         if env.patch_result.has_errors():
             title = f"🚧 - CONFLICT: Update to {env.to_version}"
@@ -275,7 +328,7 @@ class ChangeService:
 
     @asynccontextmanager
     async def _prepared_change_environment(
-        self, incarnation_id: int, requested_version: str | None, requested_data: dict[str, str] | None
+        self, incarnation_id: int, requested_version: str | None, requested_data: Mapping[str, str] | None
     ) -> AsyncIterator[_PreparedChangeEnvironment]:
         """
         This method checks out the incarnation repository, prepares a branch that contains the update and commits.
@@ -286,8 +339,13 @@ class ChangeService:
         incarnation = await self._incarnation_repository.get_incarnation(incarnation_id)
         last_change = await self.get_latest_change_for_incarnation(incarnation_id)
 
-        to_version = requested_version if requested_data is not None else last_change.requested_version
-        to_data = requested_data if requested_data is not None else last_change.requested_data
+        to_version = last_change.requested_version
+        if requested_version is not None:
+            to_version = requested_version
+
+        to_data = last_change.requested_data.copy()
+        if requested_data is not None:
+            to_data.update(requested_data)
 
         incarnation_repo_metadata = await self._hoster.get_repository_metadata(incarnation.incarnation_repository)
 
@@ -339,9 +397,9 @@ class ChangeService:
                 patch_result=patch_result,
             )
 
-    async def _push_change_commit_and_update_database(self, env: _PreparedChangeEnvironment, change_id: int) -> None:
+    async def _push_change_commit_and_update_database(self, incarnation_git: GitRepository, change_id: int) -> None:
         try:
-            await env.incarnation_repository.push()
+            await incarnation_git.push()
         except GitError as e:
             self._log.exception(
                 "Failed to push commit to incarnation repository. Removing change from database.",

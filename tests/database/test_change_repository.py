@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from pytest import fixture
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -61,6 +63,7 @@ async def test_create_change_rejects_double_revision(change_repository: ChangeRe
         revision=1,
         change_type=ChangeType.DIRECT,
         requested_version="v2",
+        requested_data=json.dumps({"foo": "bar"}),
         commit_sha="dummy sha",
         commit_pushed=False,
     )
@@ -72,6 +75,7 @@ async def test_create_change_rejects_double_revision(change_repository: ChangeRe
             revision=1,
             change_type=ChangeType.DIRECT,
             requested_version="v3",
+            requested_data=json.dumps({"foo": "bar"}),
             commit_sha="dummy sha",
             commit_pushed=False,
         )
@@ -93,6 +97,8 @@ async def test_get_latest_change_for_incarnation_succeeds(
         change_type=ChangeType.DIRECT,
         commit_sha="dummy sha",
         commit_pushed=True,
+        requested_version="v1",
+        requested_data=json.dumps({"foo": "bar"}),
     )
     await change_repository.create_change(
         incarnation_id=incarnation.id,
@@ -100,6 +106,8 @@ async def test_get_latest_change_for_incarnation_succeeds(
         change_type=ChangeType.DIRECT,
         commit_sha="dummy sha2",
         commit_pushed=False,
+        requested_version="v2",
+        requested_data=json.dumps({"foo": "bar"}),
     )
 
     # WHEN
@@ -125,6 +133,8 @@ async def test_update_change_commit_pushed_succeeds(change_repository: ChangeRep
         change_type=ChangeType.DIRECT,
         commit_sha="dummy sha",
         commit_pushed=False,
+        requested_version="v1",
+        requested_data=json.dumps({"foo": "bar"}),
     )
 
     # WHEN
@@ -143,6 +153,8 @@ async def test_delete_change_succeeds_in_deleting(change_repository: ChangeRepos
         change_type=ChangeType.DIRECT,
         commit_sha="dummy sha",
         commit_pushed=False,
+        requested_version="v1",
+        requested_data=json.dumps({"foo": "bar"}),
     )
 
     # WHEN
@@ -157,3 +169,43 @@ async def test_delete_change_raises_exception_when_not_found(change_repository: 
     # WHEN
     with pytest.raises(ChangeNotFoundError):
         await change_repository.delete_change(123)
+
+
+async def test_create_incarnation_with_first_change(change_repository: ChangeRepository):
+    # WHEN
+    change = await change_repository.create_incarnation_with_first_change(
+        incarnation_repository="incarnation",
+        target_directory=".",
+        commit_sha="commit_sha",
+        requested_version="v1",
+        requested_data=json.dumps({"foo": "bar"}),
+    )
+
+    # THEN
+    assert change.id is not None
+    assert change.incarnation_id is not None
+    assert change.type == ChangeType.DIRECT
+    assert change.revision == 1
+    assert change.requested_version == "v1"
+    assert json.loads(change.requested_data) == {"foo": "bar"}
+    assert change.commit_sha == "commit_sha"
+    assert change.commit_pushed is False
+
+
+async def test_delete_incarnation_also_deletes_associated_changes(change_repository: ChangeRepository):
+    # GIVEN
+    change = await change_repository.create_incarnation_with_first_change(
+        incarnation_repository="incarnation",
+        target_directory=".",
+        commit_sha="commit_sha",
+        requested_version="v1",
+        requested_data=json.dumps({"foo": "bar"}),
+    )
+    incarnation_id = change.incarnation_id
+
+    # WHEN
+    await change_repository.delete_incarnation(incarnation_id)
+
+    # THEN
+    with pytest.raises(ChangeNotFoundError):
+        await change_repository.get_change(change.id)
