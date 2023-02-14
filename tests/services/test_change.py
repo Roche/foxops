@@ -10,7 +10,7 @@ from foxops.database import DAL
 from foxops.database.repositories.change import ChangeRepository
 from foxops.engine import load_incarnation_state
 from foxops.hosters.local import LocalHoster
-from foxops.models import DesiredIncarnationState, DesiredIncarnationStatePatch
+from foxops.models import DesiredIncarnationState, DesiredIncarnationStatePatch, Incarnation
 from foxops.models.change import Change
 from foxops.reconciliation import initialize_incarnation
 from foxops.services.change import (
@@ -77,6 +77,28 @@ async def initialized_legacy_incarnation_id(
 
 
 @fixture(scope="function")
+async def initialized_incarnation(
+    local_hoster: LocalHoster, git_repo_template: str, change_service: ChangeService
+) -> Incarnation:
+    repo_name = "incarnation_initialized"
+    await local_hoster.create_repository(repo_name)
+
+    change = await change_service.create_incarnation(
+        incarnation_repository=repo_name,
+        template_repository=git_repo_template,
+        template_repository_version="v1.0.0",
+        template_data={},
+    )
+
+    return Incarnation(
+        id=change.incarnation_id,
+        incarnation_repository=repo_name,
+        target_directory=".",
+        commit_sha="dummy",
+    )
+
+
+@fixture(scope="function")
 async def change_service(
     test_async_engine: AsyncEngine, incarnation_repository: DAL, local_hoster: LocalHoster
 ) -> ChangeService:
@@ -112,7 +134,7 @@ async def test_create_incarnation(change_service: ChangeService, git_repo_templa
         assert await repo.head() == change.commit_sha
 
 
-async def test_initialize_legacy_incarnation(change_service: ChangeService, initialized_legacy_incarnation_id: int):
+async def test_initialize_legacy_incarnation_succeeds_when_given_a_legacy_incarnation(change_service: ChangeService, initialized_legacy_incarnation_id: int):
     # WHEN
     change = await change_service.initialize_legacy_incarnation(initialized_legacy_incarnation_id)
 
@@ -160,23 +182,19 @@ async def test_initialize_legacy_incarnation_fails_if_incarnation_has_incomplete
         await change_service.initialize_legacy_incarnation(initialized_legacy_incarnation_id)
 
 
-async def test_create_change_direct(
-    change_service: ChangeService, incarnation_repository: DAL, initialized_legacy_incarnation_id: int
+async def test_create_change_direct_succeeds_when_updating_the_template_version(
+    change_service: ChangeService, incarnation_repository: DAL, initialized_incarnation: Incarnation
 ):
-    # GIVEN
-    incarnation = await incarnation_repository.get_incarnation(initialized_legacy_incarnation_id)
-    await change_service.initialize_legacy_incarnation(initialized_legacy_incarnation_id)
-
     # WHEN
-    change = await change_service.create_change_direct(initialized_legacy_incarnation_id, requested_version="v1.1.0")
+    change = await change_service.create_change_direct(initialized_incarnation.id, requested_version="v1.1.0")
 
     # THEN
-    assert change.incarnation_id == initialized_legacy_incarnation_id
+    assert change.incarnation_id == initialized_incarnation.id
     assert change.revision == 2
     assert change.commit_sha is not None
     assert change.requested_version == "v1.1.0"
 
-    async with change_service._hoster.cloned_repository(incarnation.incarnation_repository) as repo:
+    async with change_service._hoster.cloned_repository(initialized_incarnation.incarnation_repository) as repo:
         assert (repo.directory / "README.md").read_text() == "Hello, world2!"
 
         incarnation_state = load_incarnation_state(repo.directory / ".fengine.yaml")
