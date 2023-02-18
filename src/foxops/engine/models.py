@@ -1,6 +1,7 @@
 import copy
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Mapping
 
 from pydantic import BaseModel, Field
 from ruamel.yaml import YAML
@@ -17,7 +18,7 @@ yaml.default_flow_style = False
 #: Holds the type for all `template_data` dictionary values
 TemplateDataValue = str | int | float
 #: Holds the type for all `template_data` dictionaries
-TemplateData = dict[str, TemplateDataValue]
+TemplateData = Mapping[str, TemplateDataValue]
 
 
 @dataclass(frozen=True)
@@ -142,7 +143,7 @@ def fill_missing_optionals_with_defaults(
 ) -> TemplateData:
     provided_variable_names = set(provided_template_data.keys())
     config_variable_names = set(template_config.variables.keys())
-    template_data_with_defaults = copy.deepcopy(provided_template_data)
+    template_data_with_defaults = dict(copy.deepcopy(provided_template_data))
     optional_vars = template_config.optional_variables_defaults
     if need_default := config_variable_names.difference(provided_variable_names):
         logger.debug(

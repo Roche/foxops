@@ -13,10 +13,12 @@ from foxops.database.repositories.change import (
     ChangeType,
     IncarnationHasNoChangesError,
 )
+from foxops.engine import TemplateData
 from foxops.engine.patching.git_diff_patch import PatchResult
 from foxops.external.git import GitError, GitRepository
 from foxops.hosters import Hoster
 from foxops.hosters.types import MergeRequestStatus
+from foxops.models import IncarnationBasic, IncarnationWithDetails
 from foxops.models.change import Change
 from foxops.reconciliation.utils import generate_foxops_branch_name
 from foxops.utils import get_logger
@@ -78,12 +80,11 @@ class ChangeService:
         incarnation_repository: str,
         template_repository: str,
         template_repository_version: str,
-        template_data: dict[str, str],
+        template_data: TemplateData,
         target_directory: str = ".",
     ) -> Change:
-        incarnation_state = await self._hoster.get_incarnation_state(incarnation_repository, target_directory)
-        if incarnation_state is not None:
-            raise IncarnationAlreadyExists(f"Cannot create incarnation because it already exists: {incarnation_state}")
+        if await self._hoster.get_incarnation_state(incarnation_repository, target_directory) is not None:
+            raise IncarnationAlreadyExists("Cannot create incarnation because it already exists")
 
         async with (
             self._hoster.cloned_repository(template_repository, refspec=template_repository_version) as template_git,
@@ -181,7 +182,7 @@ class ChangeService:
         return await self.get_change(change_in_db.id)
 
     async def create_change_direct(
-        self, incarnation_id: int, requested_version: str | None = None, requested_data: dict[str, str] | None = None
+        self, incarnation_id: int, requested_version: str | None = None, requested_data: TemplateData | None = None
     ) -> Change:
         """
         Perform a DIRECT change on the given incarnation.
@@ -228,6 +229,7 @@ class ChangeService:
             )
 
             await self._push_change_commit_and_update_database(env.incarnation_repository, change_in_db.id)
+            await self._incarnation_repository.update_incarnation(incarnation_id, env.commit_sha, None)
 
         return await self.get_change(change_in_db.id)
 
@@ -235,7 +237,7 @@ class ChangeService:
         self,
         incarnation_id: int,
         requested_version: str | None = None,
-        requested_data: dict[str, str] | None = None,
+        requested_data: TemplateData | None = None,
         automerge: bool = False,
     ):
         # https://youtrack.jetbrains.com/issue/PY-36444
@@ -275,6 +277,7 @@ class ChangeService:
         )
 
         await self._change_repository.update_merge_request_id(change_in_db.id, merge_request_id)
+        await self._incarnation_repository.update_incarnation(incarnation_id, env.commit_sha, merge_request_id)
 
         return await self.get_change(change_in_db.id)
 
@@ -337,6 +340,59 @@ class ChangeService:
 
         last_change = await self._change_repository.get_latest_change_for_incarnation(incarnation_id)
         return await self.get_change(last_change.id)
+
+    async def get_incarnation_basic(self, incarnation_id: int) -> IncarnationBasic:
+        incarnation = await self._incarnation_repository.get_incarnation(incarnation_id)
+
+        merge_request_url: str | None = None
+        if incarnation.merge_request_id:
+            merge_request_url = await self._hoster.get_merge_request_url(
+                incarnation.incarnation_repository, incarnation.merge_request_id
+            )
+
+        return IncarnationBasic(
+            id=incarnation.id,
+            incarnation_repository=incarnation.incarnation_repository,
+            target_directory=incarnation.target_directory,
+            commit_sha=incarnation.commit_sha,
+            commit_url=await self._hoster.get_commit_url(incarnation.incarnation_repository, incarnation.commit_sha),
+            merge_request_id=incarnation.merge_request_id,
+            merge_request_url=merge_request_url,
+        )
+
+    async def get_incarnation_with_details(self, incarnation_id: int) -> IncarnationWithDetails:
+        """
+        Returns an IncarnationWithDetails object for the given incarnation ID.
+        """
+
+        incarnation_basic = await self.get_incarnation_basic(incarnation_id)
+        change = await self.get_latest_change_for_incarnation(incarnation_id)
+
+        status = await self._hoster.get_reconciliation_status(
+            incarnation_repository=incarnation_basic.incarnation_repository,
+            target_directory=incarnation_basic.target_directory,
+            commit_sha=incarnation_basic.commit_sha,
+            merge_request_id=incarnation_basic.merge_request_id,
+            pipeline_timeout=timedelta(seconds=10),
+        )
+        merge_request_status: MergeRequestStatus | None = None
+        if incarnation_basic.merge_request_id is not None:
+            merge_request_status = await self._hoster.get_merge_request_status(
+                incarnation_basic.incarnation_repository, incarnation_basic.merge_request_id
+            )
+        _, incarnation_state = await self._hoster.get_incarnation_state(
+            incarnation_basic.incarnation_repository, incarnation_basic.target_directory
+        )
+
+        return IncarnationWithDetails(
+            **incarnation_basic.dict(),
+            status=status,
+            merge_request_status=merge_request_status,
+            template_repository=incarnation_state.template_repository,
+            template_repository_version=change.requested_version,
+            template_repository_version_hash=change.requested_version_hash,
+            template_data=change.requested_data,
+        )
 
     @asynccontextmanager
     async def _prepared_change_environment(

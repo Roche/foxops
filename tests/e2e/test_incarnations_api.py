@@ -208,7 +208,7 @@ async def should_initialize_incarnation_in_root_of_nonempty_repository_with_fvar
     # THEN
     assert incarnation["incarnation_repository"] == empty_incarnation_gitlab_repository
     assert incarnation["target_directory"] == "."
-    assert incarnation["status"] == "pending"
+    assert incarnation["status"] == "success"
     assert incarnation["commit_url"] == mocker.ANY
     assert incarnation["merge_request_url"] == mocker.ANY
     await assert_file_in_repository(

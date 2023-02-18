@@ -87,9 +87,8 @@ async def test_api_get_incarnations_returns_incarnations_from_inventory(
     ]
 
 
-async def test_api_create_incarnation_returns_details_about_created_incarnation(
+async def test_api_create_incarnation(
     api_client: AsyncClient,
-    mocker: MockFixture,
     app: FastAPI,
     change_service_mock: ChangeService,
 ):
@@ -101,10 +100,7 @@ async def test_api_create_incarnation_returns_details_about_created_incarnation(
         "template_repository_version": "test",
         "template_data": {"foo": "bar"},
     }
-    hoster = mocker.Mock()
-    hoster.get_commit_url = mocker.AsyncMock(return_value="https://nonsense.com/test/-/commit/commit_sha")
-
-    app.dependency_overrides[get_hoster] = lambda: hoster
+    change_service_mock.get_incarnation_with_details.return_value = "dummy-object"
 
     # WHEN
     response = await api_client.post(
@@ -114,21 +110,6 @@ async def test_api_create_incarnation_returns_details_about_created_incarnation(
 
     # THEN
     assert response.status_code == HTTPStatus.CREATED
-    assert response.json() == {
-        "commit_sha": "commit_sha",
-        "commit_url": "https://nonsense.com/test/-/commit/commit_sha",
-        "id": 1,
-        "incarnation_repository": requested_incarnation["incarnation_repository"],
-        "merge_request_id": None,
-        "merge_request_status": None,
-        "merge_request_url": None,
-        "status": "unknown",
-        "target_directory": requested_incarnation["target_directory"],
-        "template_data": requested_incarnation["template_data"],
-        "template_repository": requested_incarnation["template_repository"],
-        "template_repository_version": requested_incarnation["template_repository_version"],
-        "template_repository_version_hash": "template_commit_sha",
-    }
 
 
 async def test_api_create_incarnation_returns_conflict_when_incarnation_already_exists(
@@ -137,7 +118,7 @@ async def test_api_create_incarnation_returns_conflict_when_incarnation_already_
     change_service_mock: ChangeService,
 ):
     # GIVEN
-    change_service_mock.create_incarnation = mocker.AsyncMock(side_effect=IncarnationAlreadyExists)
+    change_service_mock.create_incarnation = mocker.AsyncMock(side_effect=IncarnationAlreadyExists)  # type: ignore
 
     # WHEN
     response = await api_client.post(

@@ -207,7 +207,7 @@ def cmd_update(
         incarnation_state_data=incarnation_state.template_data,
         user_template_data=template_data,
     )
-    merged_template_data = copy.deepcopy(incarnation_state.template_data)
+    merged_template_data = dict(copy.deepcopy(incarnation_state.template_data))
     merged_template_data.update(template_data)
     merged_template_data = {k: v for k, v in merged_template_data.items() if k not in remove_template_data}
 
