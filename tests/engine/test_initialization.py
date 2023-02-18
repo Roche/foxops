@@ -63,6 +63,31 @@ template_repository_version_hash: {repository_head}
     )
 
 
+async def test_initialize_template_at_root_of_incarnation_repository_using_fengine_metadata(tmp_path: Path):
+    # GIVEN
+    template_dir = tmp_path / "template"
+    template_dir.mkdir()
+    (template_dir / "template_repository").write_text("{{ _fengine.template_repository }}")
+    (template_dir / "template_repository_version").write_text("{{ _fengine.template_repository_version }}")
+    await init_repository(tmp_path)
+
+    incarnation_dir = tmp_path / "incarnation"
+    incarnation_dir.mkdir()
+
+    # WHEN
+    await initialize_incarnation(
+        template_root_dir=tmp_path,
+        template_repository="any-repository-url",
+        template_repository_version="any-version",
+        template_data={"author": "John Doe", "three": "3"},
+        incarnation_root_dir=incarnation_dir,
+    )
+
+    # THEN
+    assert (incarnation_dir / "template_repository").read_text() == "any-repository-url"
+    assert (incarnation_dir / "template_repository_version").read_text() == "any-version"
+
+
 async def test_initialize_template_at_root_of_incarnation_repository_with_existing_file(
     tmp_path: Path,
 ):
