@@ -78,10 +78,12 @@ async def _initialize_incarnation(
     # add meta-information to the template data.
     # ... we don't want to include that in the "template_data" section of the `.fengine.yaml` file
     template_data_with_defaults_and_metadata = copy.deepcopy(template_data_with_defaults)
-    template_data_with_defaults_and_metadata.update({
-        "_fengine_template_repository": template_repository,
-        "_fengine_template_repository_version": template_repository_version,
-    })
+    template_data_with_defaults_and_metadata.update(
+        {
+            "_fengine_template_repository": template_repository,
+            "_fengine_template_repository_version": template_repository_version,
+        }
+    )
 
     await render_template(
         template_root_dir / "template",
