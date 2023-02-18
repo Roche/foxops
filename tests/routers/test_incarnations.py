@@ -9,7 +9,7 @@ from pytest_mock import MockFixture
 from sqlalchemy import text
 
 from foxops.database import DAL
-from foxops.dependencies import get_change_service, get_hoster
+from foxops.dependencies import get_change_service
 from foxops.models.change import Change
 from foxops.services.change import ChangeService, IncarnationAlreadyExists
 

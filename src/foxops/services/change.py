@@ -396,7 +396,7 @@ class ChangeService:
 
     @asynccontextmanager
     async def _prepared_change_environment(
-        self, incarnation_id: int, requested_version: str | None, requested_data: Mapping[str, str] | None
+        self, incarnation_id: int, requested_version: str | None, requested_data: TemplateData | None
     ) -> AsyncIterator[_PreparedChangeEnvironment]:
         """
         This method checks out the incarnation repository, prepares a branch that contains the update and commits.
