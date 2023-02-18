@@ -1,4 +1,3 @@
-import copy
 from pathlib import Path
 
 from foxops.engine.fvars import merge_template_data_with_fvars
@@ -90,10 +89,8 @@ async def _initialize_incarnation(
     logger.debug(f"save incarnation state to {incarnation_config_path} after template initialization")
 
     # add meta-information to the template data
-    template_data_with_defaults["_fengine"] = {
-        "template_repository": template_repository,
-        "template_repository_version": template_repository_version,
-    }
+    template_data_with_defaults["_fengine_template_repository"] = template_repository
+    template_data_with_defaults["_fengine_template_repository_version"] = template_repository_version
 
     await render_template(
         template_root_dir / "template",

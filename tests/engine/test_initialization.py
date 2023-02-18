@@ -67,8 +67,8 @@ async def test_initialize_template_at_root_of_incarnation_repository_using_fengi
     # GIVEN
     template_dir = tmp_path / "template"
     template_dir.mkdir()
-    (template_dir / "template_repository").write_text("{{ _fengine.template_repository }}")
-    (template_dir / "template_repository_version").write_text("{{ _fengine.template_repository_version }}")
+    (template_dir / "template_repository").write_text("{{ _fengine_template_repository }}")
+    (template_dir / "template_repository_version").write_text("{{ _fengine_template_repository_version }}")
     await init_repository(tmp_path)
 
     incarnation_dir = tmp_path / "incarnation"
