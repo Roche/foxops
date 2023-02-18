@@ -429,7 +429,12 @@ async def should_create_merge_request_when_file_changed_with_fvars_during_update
     )
 
 
+@pytest.mark.parametrize(
+    "automerge",
+    [True, False],
+)
 async def should_present_conflict_in_merge_request_when_updating(
+    automerge: bool,
     api_client: AsyncClient,
     gitlab_test_client: AsyncClient,
     incarnation_gitlab_repository_in_v1: tuple[str, str],
@@ -457,7 +462,7 @@ async def should_present_conflict_in_merge_request_when_updating(
         json={
             "template_repository_version": "v2.0.0",
             "template_data": {"name": "Jon", "age": 18},
-            "automerge": False,
+            "automerge": automerge,
         },
     )
     response.raise_for_status()
