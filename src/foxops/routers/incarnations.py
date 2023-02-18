@@ -3,9 +3,14 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, Response, status
 
 from foxops.database import DAL
-from foxops.dependencies import get_dal, get_hoster, get_reconciliation
+from foxops.dependencies import (
+    get_change_service,
+    get_dal,
+    get_hoster,
+    get_reconciliation,
+)
 from foxops.errors import IncarnationAlreadyInitializedError, IncarnationNotFoundError
-from foxops.hosters import Hoster
+from foxops.hosters import Hoster, ReconciliationStatus
 from foxops.logger import bind, get_logger
 from foxops.models import (
     DesiredIncarnationState,
@@ -16,6 +21,7 @@ from foxops.models import (
 )
 from foxops.models.errors import ApiError
 from foxops.routers import changes
+from foxops.services.change import ChangeService, IncarnationAlreadyExists
 
 #: Holds the router for the incarnations API endpoints
 router = APIRouter(prefix="/api/incarnations", tags=["incarnations"])
@@ -68,7 +74,7 @@ async def list_incarnations(
 
 
 @router.post(
-    "",
+    "legacy",
     responses={
         status.HTTP_200_OK: {
             "description": "The incarnation is already initialized and was imported to the inventory. "
@@ -94,7 +100,7 @@ async def list_incarnations(
         },
     },
 )
-async def create_incarnation(
+async def create_incarnation_legacy(
     response: Response,
     desired_incarnation_state: DesiredIncarnationState,
     allow_import: bool = False,
@@ -134,6 +140,73 @@ async def create_incarnation(
 
     bind(incarnation_id=incarnation.id)
     return await get_incarnation_with_details(incarnation, hoster)
+
+
+@router.post(
+    "",
+    responses={
+        status.HTTP_201_CREATED: {
+            "description": "The incarnation has been successfully initialized and was added to the inventory.",
+            "model": IncarnationWithDetails,
+        },
+        status.HTTP_409_CONFLICT: {
+            "description": "There is already a foxops incarnation with the same repository and target directory",
+            "model": ApiError,
+        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "description": "The reconciliation failed",
+            "model": ApiError,
+        },
+    },
+)
+async def create_incarnation(
+    response: Response,
+    desired_incarnation_state: DesiredIncarnationState,
+    allow_import: bool = False,
+    hoster: Hoster = Depends(get_hoster),
+    change_service: ChangeService = Depends(get_change_service),
+) -> IncarnationWithDetails | ApiError:
+    """Initializes a new incarnation and adds it to the inventory.
+
+    If the initialization fails, foxops will return the error in a `4xx` or `5xx` status code response.
+    """
+    bind(incarnation_repository=desired_incarnation_state.incarnation_repository)
+    bind(target_directory=desired_incarnation_state.target_directory)
+
+    if allow_import is True:
+        response.status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+        return ApiError(message="The `allow_import` parameter is no longer supported")
+
+    try:
+        change = await change_service.create_incarnation(
+            incarnation_repository=desired_incarnation_state.incarnation_repository,
+            target_directory=desired_incarnation_state.target_directory,
+            template_repository=desired_incarnation_state.template_repository,
+            template_repository_version=desired_incarnation_state.template_repository_version,
+            template_data=desired_incarnation_state.template_data,
+        )
+    except IncarnationAlreadyExists:
+        response.status_code = status.HTTP_409_CONFLICT
+        return ApiError(
+            message=(
+                f"There is already a foxops incarnation at {desired_incarnation_state.incarnation_repository} "
+                f"with target directory {desired_incarnation_state.target_directory}"
+            )
+        )
+
+    response.status_code = status.HTTP_201_CREATED
+    return IncarnationWithDetails(
+        id=change.incarnation_id,
+        incarnation_repository=desired_incarnation_state.incarnation_repository,
+        target_directory=desired_incarnation_state.target_directory,
+        commit_sha=change.commit_sha,
+        commit_url=await hoster.get_commit_url(desired_incarnation_state.incarnation_repository, change.commit_sha),
+        status=ReconciliationStatus.PENDING,
+        template_repository=desired_incarnation_state.template_repository,
+        template_repository_version=change.requested_version,
+        template_repository_version_hash=change.requested_version_hash,
+        template_data=change.requested_data,
+    )
 
 
 @router.get(

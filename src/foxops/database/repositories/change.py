@@ -42,6 +42,7 @@ class ChangeInDB(BaseModel):
     type: ChangeType
     created_at: datetime
 
+    requested_version_hash: str
     requested_version: str
     requested_data: str
 
@@ -60,6 +61,7 @@ class ChangeRepository:
         change_type: ChangeType,
         commit_sha: str,
         commit_pushed: bool,
+        requested_version_hash: str,
         requested_version: str,
         requested_data: str,
         merge_request_id: str | None = None,
@@ -83,6 +85,7 @@ class ChangeRepository:
                     revision=revision,
                     type=change_type.value,
                     created_at=datetime.now(timezone.utc),
+                    requested_version_hash=requested_version_hash,
                     requested_version=requested_version,
                     requested_data=requested_data,
                     commit_sha=commit_sha,
@@ -107,6 +110,7 @@ class ChangeRepository:
         incarnation_repository: str,
         target_directory: str,
         commit_sha: str,
+        requested_version_hash: str,
         requested_version: str,
         requested_data: str,
     ) -> ChangeInDB:
@@ -130,6 +134,7 @@ class ChangeRepository:
                     revision=1,
                     type=ChangeType.DIRECT.value,
                     created_at=datetime.now(timezone.utc),
+                    requested_version_hash=requested_version_hash,
                     requested_version=requested_version,
                     requested_data=requested_data,
                     commit_sha=commit_sha,

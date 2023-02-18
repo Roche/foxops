@@ -12,6 +12,7 @@ class Change(BaseModel):
     revision: int  # highest number is the latest change that was performed
 
     requested_version: str
+    requested_version_hash: str
     requested_data: dict[str, str]
 
     created_at: datetime

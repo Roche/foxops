@@ -32,6 +32,7 @@ change = Table(
     Column("revision", Integer, nullable=False),
     Column("type", String, nullable=False),
     Column("created_at", DateTime, nullable=False),
+    Column("requested_version_hash", String, nullable=False),
     Column("requested_version", String, nullable=False),
     Column("requested_data", String, nullable=False),
     Column("commit_sha", String, nullable=False),

@@ -22,6 +22,10 @@ from foxops.reconciliation.utils import generate_foxops_branch_name
 from foxops.utils import get_logger
 
 
+class IncarnationAlreadyExists(Exception):
+    pass
+
+
 class ChangeRejectedDueToNoChanges(Exception):
     pass
 
@@ -51,6 +55,7 @@ class _PreparedChangeEnvironment:
     incarnation_repository_identifier: str
     incarnation_repository_default_branch: str
 
+    to_version_hash: str
     to_version: str
     to_data: dict[str, str]
     expected_revision: int
@@ -78,18 +83,18 @@ class ChangeService:
     ) -> Change:
         incarnation_state = await self._hoster.get_incarnation_state(incarnation_repository, target_directory)
         if incarnation_state is not None:
-            raise ChangeFailed(f"Cannot create incarnation because it already exists: {incarnation_state}")
+            raise IncarnationAlreadyExists(f"Cannot create incarnation because it already exists: {incarnation_state}")
 
         async with (
             self._hoster.cloned_repository(template_repository, refspec=template_repository_version) as template_git,
             self._hoster.cloned_repository(incarnation_repository) as incarnation_git,
         ):
-            await fengine.initialize_incarnation(
+            incarnation_state = await fengine.initialize_incarnation(
                 template_root_dir=template_git.directory,
                 template_repository=template_repository,
                 template_repository_version=template_repository_version,
                 template_data=template_data,
-                incarnation_root_dir=incarnation_git.directory,
+                incarnation_root_dir=incarnation_git.directory / target_directory,
             )
 
             await incarnation_git.commit_all(
@@ -102,6 +107,7 @@ class ChangeService:
                 incarnation_repository=incarnation_repository,
                 target_directory=target_directory,
                 commit_sha=commit_sha,
+                requested_version_hash=incarnation_state.template_repository_version_hash,
                 requested_version=template_repository_version,
                 requested_data=json.dumps(template_data),
             )
@@ -167,6 +173,7 @@ class ChangeService:
             change_type=ChangeType.DIRECT,
             commit_sha=commit_sha,
             commit_pushed=True,
+            requested_version_hash=incarnation_state.template_repository_version_hash,
             requested_version=incarnation_state.template_repository_version,
             requested_data=json.dumps(incarnation_state.template_data),
         )
@@ -215,6 +222,7 @@ class ChangeService:
                 change_type=ChangeType.DIRECT,
                 commit_sha=env.commit_sha,
                 commit_pushed=False,
+                requested_version_hash=env.to_version_hash,
                 requested_version=env.to_version,
                 requested_data=json.dumps(env.to_data),
             )
@@ -239,6 +247,7 @@ class ChangeService:
                 change_type=ChangeType.MERGE_REQUEST,
                 commit_sha=env.commit_sha,
                 commit_pushed=False,
+                requested_version_hash=env.to_version_hash,
                 requested_version=env.to_version,
                 requested_data=json.dumps(env.to_data),
                 merge_request_branch_name=env.branch_name,
@@ -276,6 +285,8 @@ class ChangeService:
         Either by updating the flag (if the commit exists in Git) or by deleting the change object.
         """
 
+        # FIXME: needs an update to also work with MR changes
+
         change = await self._change_repository.get_change(change_id)
         if change.commit_pushed:
             self._log.debug("Change is already complete (commit_pushed=True). Skipping.", change_id=change_id)
@@ -309,6 +320,7 @@ class ChangeService:
             id=change.id,
             incarnation_id=change.incarnation_id,
             revision=change.revision,
+            requested_version_hash=change.requested_version_hash,
             requested_version=change.requested_version,
             requested_data=json.loads(change.requested_data),
             created_at=change.created_at,
@@ -389,6 +401,7 @@ class ChangeService:
                 incarnation_repository=local_incarnation_repository,
                 incarnation_repository_identifier=incarnation.incarnation_repository,
                 incarnation_repository_default_branch=incarnation_repo_metadata["default_branch"],
+                to_version_hash=await local_template_repository.head(),
                 to_version=to_version,
                 to_data=to_data,
                 expected_revision=last_change.revision + 1,

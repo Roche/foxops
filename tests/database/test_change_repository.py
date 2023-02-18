@@ -2,7 +2,6 @@ import json
 
 import pytest
 from pytest import fixture
-from sqlalchemy.ext.asyncio import AsyncEngine
 
 from foxops.database import DAL
 from foxops.database.repositories.change import (
@@ -13,14 +12,6 @@ from foxops.database.repositories.change import (
     IncarnationHasNoChangesError,
 )
 from foxops.models import DesiredIncarnationState, Incarnation
-
-
-@fixture
-async def change_repository(test_async_engine: AsyncEngine) -> ChangeRepository:
-    dal = DAL(test_async_engine)
-    await dal.initialize_db()
-
-    return ChangeRepository(test_async_engine)
 
 
 @fixture(scope="function")
@@ -46,6 +37,7 @@ async def test_create_change_persists_all_data(change_repository: ChangeReposito
         change_type=ChangeType.DIRECT,
         commit_sha="dummy sha",
         commit_pushed=True,
+        requested_version_hash="dummy template sha",
         requested_version="v99",
         requested_data="dummy data (should be json)",
         merge_request_id="123",
@@ -62,6 +54,7 @@ async def test_create_change_rejects_double_revision(change_repository: ChangeRe
         incarnation_id=incarnation.id,
         revision=1,
         change_type=ChangeType.DIRECT,
+        requested_version_hash="dummy template sha",
         requested_version="v2",
         requested_data=json.dumps({"foo": "bar"}),
         commit_sha="dummy sha",
@@ -74,6 +67,7 @@ async def test_create_change_rejects_double_revision(change_repository: ChangeRe
             incarnation_id=incarnation.id,
             revision=1,
             change_type=ChangeType.DIRECT,
+            requested_version_hash="dummy template sha2",
             requested_version="v3",
             requested_data=json.dumps({"foo": "bar"}),
             commit_sha="dummy sha",
@@ -97,6 +91,7 @@ async def test_get_latest_change_for_incarnation_succeeds(
         change_type=ChangeType.DIRECT,
         commit_sha="dummy sha",
         commit_pushed=True,
+        requested_version_hash="dummy template sha",
         requested_version="v1",
         requested_data=json.dumps({"foo": "bar"}),
     )
@@ -106,6 +101,7 @@ async def test_get_latest_change_for_incarnation_succeeds(
         change_type=ChangeType.DIRECT,
         commit_sha="dummy sha2",
         commit_pushed=False,
+        requested_version_hash="dummy template sha2",
         requested_version="v2",
         requested_data=json.dumps({"foo": "bar"}),
     )
@@ -133,6 +129,7 @@ async def test_update_change_commit_pushed_succeeds(change_repository: ChangeRep
         change_type=ChangeType.DIRECT,
         commit_sha="dummy sha",
         commit_pushed=False,
+        requested_version_hash="dummy template sha",
         requested_version="v1",
         requested_data=json.dumps({"foo": "bar"}),
     )
@@ -153,6 +150,7 @@ async def test_delete_change_succeeds_in_deleting(change_repository: ChangeRepos
         change_type=ChangeType.DIRECT,
         commit_sha="dummy sha",
         commit_pushed=False,
+        requested_version_hash="dummy template sha",
         requested_version="v1",
         requested_data=json.dumps({"foo": "bar"}),
     )
@@ -177,6 +175,7 @@ async def test_create_incarnation_with_first_change(change_repository: ChangeRep
         incarnation_repository="incarnation",
         target_directory=".",
         commit_sha="commit_sha",
+        requested_version_hash="dummy template sha",
         requested_version="v1",
         requested_data=json.dumps({"foo": "bar"}),
     )
@@ -198,6 +197,7 @@ async def test_delete_incarnation_also_deletes_associated_changes(change_reposit
         incarnation_repository="incarnation",
         target_directory=".",
         commit_sha="commit_sha",
+        requested_version_hash="dummy template sha",
         requested_version="v1",
         requested_data=json.dumps({"foo": "bar"}),
     )

@@ -10,12 +10,17 @@ from foxops.database import DAL
 from foxops.database.repositories.change import ChangeRepository
 from foxops.engine import load_incarnation_state
 from foxops.hosters.local import LocalHoster
-from foxops.models import DesiredIncarnationState, DesiredIncarnationStatePatch, Incarnation
+from foxops.models import (
+    DesiredIncarnationState,
+    DesiredIncarnationStatePatch,
+    Incarnation,
+)
 from foxops.models.change import Change
 from foxops.reconciliation import initialize_incarnation
 from foxops.services.change import (
     ChangeFailed,
     ChangeService,
+    IncarnationAlreadyExists,
     _construct_merge_request_conflict_description,
 )
 
@@ -111,7 +116,9 @@ async def change_service(
     )
 
 
-async def test_create_incarnation(change_service: ChangeService, git_repo_template: str, local_hoster: LocalHoster):
+async def test_create_incarnation_succeeds_when_creating_incarnation_in_root_folder(
+    change_service: ChangeService, git_repo_template: str, local_hoster: LocalHoster
+):
     # GIVEN
     incarnation_repo_name = "incarnation"
     await local_hoster.create_repository(incarnation_repo_name)
@@ -119,6 +126,7 @@ async def test_create_incarnation(change_service: ChangeService, git_repo_templa
     # WHEN
     change = await change_service.create_incarnation(
         incarnation_repository=incarnation_repo_name,
+        target_directory=".",
         template_repository=git_repo_template,
         template_repository_version="v1.0.0",
         template_data={},
@@ -134,7 +142,58 @@ async def test_create_incarnation(change_service: ChangeService, git_repo_templa
         assert await repo.head() == change.commit_sha
 
 
-async def test_initialize_legacy_incarnation_succeeds_when_given_a_legacy_incarnation(change_service: ChangeService, initialized_legacy_incarnation_id: int):
+async def test_create_incarnation_succeeds_when_creating_incarnation_in_subfolder(
+    change_service: ChangeService, git_repo_template: str, local_hoster: LocalHoster
+):
+    # GIVEN
+    incarnation_repo_name = "incarnation"
+    await local_hoster.create_repository(incarnation_repo_name)
+
+    # WHEN
+    change = await change_service.create_incarnation(
+        incarnation_repository=incarnation_repo_name,
+        target_directory="subdir",
+        template_repository=git_repo_template,
+        template_repository_version="v1.0.0",
+        template_data={},
+    )
+
+    # THEN
+    assert change.incarnation_id is not None
+    assert change.requested_version == "v1.0.0"
+    assert change.commit_sha is not None
+
+    async with local_hoster.cloned_repository(incarnation_repo_name) as repo:
+        assert (repo.directory / "subdir" / "README.md").read_text() == "Hello, world!"
+        assert await repo.head() == change.commit_sha
+
+
+async def test_create_incarnation_fails_if_there_is_already_one_at_the_target(
+    change_service: ChangeService, git_repo_template: str, local_hoster: LocalHoster
+):
+    # GIVEN
+    incarnation_repo_name = "incarnation"
+    await local_hoster.create_repository(incarnation_repo_name)
+    await change_service.create_incarnation(
+        incarnation_repository=incarnation_repo_name,
+        template_repository=git_repo_template,
+        template_repository_version="v1.0.0",
+        template_data={},
+    )
+
+    # THEN
+    with pytest.raises(IncarnationAlreadyExists):
+        await change_service.create_incarnation(
+            incarnation_repository=incarnation_repo_name,
+            template_repository=git_repo_template,
+            template_repository_version="v1.1.0",
+            template_data={},
+        )
+
+
+async def test_initialize_legacy_incarnation_succeeds_when_given_a_legacy_incarnation(
+    change_service: ChangeService, initialized_legacy_incarnation_id: int
+):
     # WHEN
     change = await change_service.initialize_legacy_incarnation(initialized_legacy_incarnation_id)
 

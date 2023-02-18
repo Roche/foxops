@@ -6,6 +6,7 @@ from starlette.responses import FileResponse
 from foxops import __version__
 from foxops.dependencies import (
     get_dal,
+    get_database_engine,
     get_database_settings,
     get_hoster,
     get_hoster_settings,
@@ -40,7 +41,7 @@ def create_app():
         await hoster.validate()
 
         # initialize database
-        dal = get_dal(get_database_settings())
+        dal = get_dal(get_database_engine(get_database_settings()))
         await dal.initialize_db()
 
         setup_logging(level=settings.log_level)
