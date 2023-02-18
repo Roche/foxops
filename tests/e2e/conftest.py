@@ -86,6 +86,27 @@ async def create_empty_incarnation_gitlab_repository(gitlab_test_client: AsyncCl
         (await gitlab_test_client.delete(f"/projects/{project['id']}")).raise_for_status()
 
 
+@pytest.fixture(name="legacy_incarnation_gitlab_repository_in_v1")
+async def create_legacy_incarnation_gitlab_repository_in_v1(
+    api_client: AsyncClient,
+    empty_incarnation_gitlab_repository: str,
+    template_repository: str,
+):
+    response = await api_client.post(
+        "/incarnations/legacy",
+        json={
+            "incarnation_repository": empty_incarnation_gitlab_repository,
+            "template_repository": template_repository,
+            "template_repository_version": "v1.0.0",
+            "template_data": {"name": "Jon", "age": 18},
+        },
+    )
+    response.raise_for_status()
+    incarnation = response.json()
+
+    return empty_incarnation_gitlab_repository, str(incarnation["id"])
+
+
 @pytest.fixture(name="incarnation_gitlab_repository_in_v1")
 async def create_incarnation_gitlab_repository_in_v1(
     api_client: AsyncClient,

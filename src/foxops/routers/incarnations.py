@@ -76,7 +76,7 @@ async def list_incarnations(
 
 
 @router.post(
-    "legacy",
+    "/legacy",
     responses={
         status.HTTP_200_OK: {
             "description": "The incarnation is already initialized and was imported to the inventory. "
@@ -142,6 +142,22 @@ async def create_incarnation_legacy(
 
     bind(incarnation_id=incarnation.id)
     return await get_incarnation_with_details(incarnation, hoster)
+
+
+@router.post(
+    "/{incarnation_id}/upgrade",
+)
+async def upgrade_incarnation(
+    incarnation_id: int,
+    response: Response,
+    change_service: ChangeService = Depends(get_change_service),
+) -> None:
+    """
+    Upgrade a legacy incarnation to the new datamodel with "changes"
+    """
+
+    await change_service.initialize_legacy_incarnation(incarnation_id)
+    response.status_code = status.HTTP_204_NO_CONTENT
 
 
 @router.post(

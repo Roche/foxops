@@ -28,6 +28,10 @@ class IncarnationAlreadyExists(Exception):
     pass
 
 
+class IncarnationAlreadyUpgraded(Exception):
+    pass
+
+
 class ChangeRejectedDueToNoChanges(Exception):
     pass
 
@@ -142,7 +146,7 @@ class ChangeService:
         except IncarnationHasNoChangesError:
             pass
         else:
-            raise ChangeFailed("Incarnation was already initialized for the changes datamodel")
+            raise IncarnationAlreadyUpgraded("Incarnation was already initialized for the changes datamodel")
 
         # verify there are no changes pending currently
         incarnation = await self._incarnation_repository.get_incarnation(incarnation_id)
@@ -240,6 +244,8 @@ class ChangeService:
         requested_data: TemplateData | None = None,
         automerge: bool = False,
     ):
+        await self._upgrade_incarnation_if_possible(incarnation_id)
+        
         # https://youtrack.jetbrains.com/issue/PY-36444
         env: _PreparedChangeEnvironment
         async with self._prepared_change_environment(incarnation_id, requested_version, requested_data) as env:
@@ -393,6 +399,12 @@ class ChangeService:
             template_repository_version_hash=change.requested_version_hash,
             template_data=change.requested_data,
         )
+
+    async def _upgrade_incarnation_if_possible(self, incarnation_id: int):
+        try:
+            await self.initialize_legacy_incarnation(incarnation_id)
+        except IncarnationAlreadyUpgraded:
+            pass
 
     @asynccontextmanager
     async def _prepared_change_environment(
