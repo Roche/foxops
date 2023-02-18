@@ -245,7 +245,7 @@ class ChangeService:
         automerge: bool = False,
     ):
         await self._upgrade_incarnation_if_possible(incarnation_id)
-        
+
         # https://youtrack.jetbrains.com/issue/PY-36444
         env: _PreparedChangeEnvironment
         async with self._prepared_change_environment(incarnation_id, requested_version, requested_data) as env:

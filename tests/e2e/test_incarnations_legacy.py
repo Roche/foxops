@@ -1,4 +1,3 @@
-import pytest
 from httpx import AsyncClient
 from pytest_mock import MockFixture
 
