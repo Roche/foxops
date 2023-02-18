@@ -90,6 +90,7 @@ async def test_api_get_incarnations_returns_incarnations_from_inventory(
 async def test_api_create_incarnation(
     api_client: AsyncClient,
     app: FastAPI,
+    mocker: MockFixture,
     change_service_mock: ChangeService,
 ):
     # GIVEN
@@ -100,7 +101,7 @@ async def test_api_create_incarnation(
         "template_repository_version": "test",
         "template_data": {"foo": "bar"},
     }
-    change_service_mock.get_incarnation_with_details.return_value = "dummy-object"
+    change_service_mock.get_incarnation_with_details = mocker.AsyncMock(return_value="dummy-object")  # type: ignore
 
     # WHEN
     response = await api_client.post(

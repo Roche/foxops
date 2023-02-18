@@ -350,7 +350,8 @@ async def get_incarnation_with_details(incarnation: Incarnation, hoster: Hoster)
         response.template_repository = state.template_repository
         response.template_repository_version = state.template_repository_version
         response.template_repository_version_hash = state.template_repository_version_hash
-        response.template_data = state.template_data
+        if state.template_data is not None:
+            response.template_data = dict(state.template_data)
 
     return response
 

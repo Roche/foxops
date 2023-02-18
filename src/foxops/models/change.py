@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+from foxops.engine import TemplateData
 from foxops.hosters.types import MergeRequestStatus
 
 
@@ -13,7 +14,7 @@ class Change(BaseModel):
 
     requested_version: str
     requested_version_hash: str
-    requested_data: dict[str, str]
+    requested_data: TemplateData
 
     created_at: datetime
     commit_sha: str

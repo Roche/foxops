@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import AsyncIterator, Mapping
+from typing import AsyncIterator
 
 import foxops.engine as fengine
 from foxops.database import DAL
@@ -59,7 +59,7 @@ class _PreparedChangeEnvironment:
 
     to_version_hash: str
     to_version: str
-    to_data: dict[str, str]
+    to_data: TemplateData
     expected_revision: int
 
     branch_name: str
@@ -380,7 +380,7 @@ class ChangeService:
             merge_request_status = await self._hoster.get_merge_request_status(
                 incarnation_basic.incarnation_repository, incarnation_basic.merge_request_id
             )
-        _, incarnation_state = await self._hoster.get_incarnation_state(
+        incarnation_state = await self._hoster.get_incarnation_state(
             incarnation_basic.incarnation_repository, incarnation_basic.target_directory
         )
 
@@ -388,7 +388,7 @@ class ChangeService:
             **incarnation_basic.dict(),
             status=status,
             merge_request_status=merge_request_status,
-            template_repository=incarnation_state.template_repository,
+            template_repository=incarnation_state[1].template_repository if incarnation_state is not None else None,
             template_repository_version=change.requested_version,
             template_repository_version_hash=change.requested_version_hash,
             template_data=change.requested_data,
@@ -411,7 +411,7 @@ class ChangeService:
         if requested_version is not None:
             to_version = requested_version
 
-        to_data = last_change.requested_data.copy()
+        to_data = dict(last_change.requested_data)
         if requested_data is not None:
             to_data.update(requested_data)
 
