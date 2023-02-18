@@ -1,3 +1,4 @@
+import copy
 from pathlib import Path
 
 from foxops.engine.fvars import merge_template_data_with_fvars
@@ -74,8 +75,21 @@ async def _initialize_incarnation(
         template_config=template_config,
     )
 
-    # save the incarnation state. We do that before adding the metadata to the template data
-    # so that the metadata is not included in the .fengine.yaml file
+    # add meta-information to the template data.
+    # ... we don't want to include that in the "template_data" section of the `.fengine.yaml` file
+    template_data_with_defaults_and_metadata = copy.deepcopy(template_data_with_defaults)
+    template_data_with_defaults_and_metadata.update({
+        "_fengine_template_repository": template_repository,
+        "_fengine_template_repository_version": template_repository_version,
+    })
+
+    await render_template(
+        template_root_dir / "template",
+        incarnation_root_dir,
+        template_data_with_defaults_and_metadata,
+        rendering_filename_exclude_patterns=template_config.rendering.excluded_files,
+    )
+
     template_repository_version_hash = await GitRepository(template_root_dir).head()
     incarnation_state = IncarnationState(
         template_repository=template_repository,
@@ -87,15 +101,4 @@ async def _initialize_incarnation(
     incarnation_config_path = Path(incarnation_root_dir, ".fengine.yaml")
     save_incarnation_state(incarnation_config_path, incarnation_state)
     logger.debug(f"save incarnation state to {incarnation_config_path} after template initialization")
-
-    # add meta-information to the template data
-    template_data_with_defaults["_fengine_template_repository"] = template_repository
-    template_data_with_defaults["_fengine_template_repository_version"] = template_repository_version
-
-    await render_template(
-        template_root_dir / "template",
-        incarnation_root_dir,
-        template_data_with_defaults,
-        rendering_filename_exclude_patterns=template_config.rendering.excluded_files,
-    )
     return incarnation_state
