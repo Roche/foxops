@@ -7,7 +7,6 @@ from tests.e2e.assertions import (
     assert_update_merge_request_exists,
 )
 
-
 pytestmark = [pytest.mark.e2e, pytest.mark.api]
 
 

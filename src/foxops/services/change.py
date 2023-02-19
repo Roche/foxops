@@ -19,7 +19,7 @@ from foxops.external.git import GitError, GitRepository
 from foxops.hosters import Hoster
 from foxops.hosters.types import MergeRequestStatus
 from foxops.models import IncarnationBasic, IncarnationWithDetails
-from foxops.models.change import Change
+from foxops.models.change import Change, ChangeWithMergeRequest
 from foxops.reconciliation.utils import generate_foxops_branch_name
 from foxops.utils import get_logger
 
@@ -201,7 +201,7 @@ class ChangeService:
             # because we want to apply the change without an MR
             # ... let's merge the change directly into the default branch
             await env.incarnation_repository.checkout_branch(env.incarnation_repository_default_branch)
-            await env.incarnation_repository.merge_ff_only(env.branch_name)
+            await env.incarnation_repository.merge(env.branch_name, ff_only=True)
 
             # now comes the tricky part:
             # Making the following logic resilient to failures at any stage (crashes, DB connection failures, ...)
@@ -243,7 +243,7 @@ class ChangeService:
         requested_version: str | None = None,
         requested_data: TemplateData | None = None,
         automerge: bool = False,
-    ):
+    ) -> ChangeWithMergeRequest:
         await self._upgrade_incarnation_if_possible(incarnation_id)
 
         # https://youtrack.jetbrains.com/issue/PY-36444
@@ -285,7 +285,7 @@ class ChangeService:
         await self._change_repository.update_merge_request_id(change_in_db.id, merge_request_id)
         await self._incarnation_repository.update_incarnation(incarnation_id, env.commit_sha, merge_request_id)
 
-        return await self.get_change(change_in_db.id)
+        return await self.get_change_with_merge_request(change_in_db.id)
 
     async def update_incomplete_change(self, change_id: int) -> None:
         """
@@ -336,6 +336,28 @@ class ChangeService:
             commit_sha=change.commit_sha,
         )
 
+    async def get_change_with_merge_request(self, change_id: int) -> ChangeWithMergeRequest:
+        change_basic = await self.get_change(change_id)
+
+        change_in_db = await self._change_repository.get_change(change_id)
+        incarnation_in_db = await self._incarnation_repository.get_incarnation(change_in_db.incarnation_id)
+
+        if change_in_db.type != ChangeType.MERGE_REQUEST:
+            raise ValueError(f"Change {change_id} is not a merge request change.")
+        assert change_in_db.merge_request_id is not None
+
+        status = await self._hoster.get_merge_request_status(
+            incarnation_repository=incarnation_in_db.incarnation_repository,
+            merge_request_id=change_in_db.merge_request_id,
+        )
+
+        return ChangeWithMergeRequest(
+            **change_basic.dict(),
+            merge_request_id=change_in_db.merge_request_id,
+            merge_request_branch_name=change_in_db.merge_request_branch_name,
+            merge_request_status=status,
+        )
+
     async def get_latest_change_for_incarnation(self, incarnation_id: int) -> Change:
         """
         Returns the latest change (the highest revision) for the given incarnation.
@@ -372,6 +394,8 @@ class ChangeService:
         """
 
         incarnation_basic = await self.get_incarnation_basic(incarnation_id)
+
+        await self._upgrade_incarnation_if_possible(incarnation_id)
         change = await self.get_latest_change_for_incarnation(incarnation_id)
 
         status = await self._hoster.get_reconciliation_status(
@@ -413,9 +437,6 @@ class ChangeService:
         """
         This method checks out the incarnation repository, prepares a branch that contains the update and commits.
         """
-        if requested_version is None and requested_data is None:
-            raise ChangeRejectedDueToNoChanges("Either requested_version or requested_data must be set.")
-
         incarnation = await self._incarnation_repository.get_incarnation(incarnation_id)
         last_change = await self.get_latest_change_for_incarnation(incarnation_id)
 

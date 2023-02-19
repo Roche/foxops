@@ -9,7 +9,9 @@ from foxops import reconciliation
 from foxops.database import DAL
 from foxops.database.repositories.change import ChangeRepository
 from foxops.engine import load_incarnation_state
+from foxops.hosters import ReconciliationStatus
 from foxops.hosters.local import LocalHoster
+from foxops.hosters.types import MergeRequestStatus
 from foxops.models import (
     DesiredIncarnationState,
     DesiredIncarnationStatePatch,
@@ -21,7 +23,8 @@ from foxops.services.change import (
     ChangeFailed,
     ChangeService,
     IncarnationAlreadyExists,
-    _construct_merge_request_conflict_description, IncarnationAlreadyUpgraded,
+    IncarnationAlreadyUpgraded,
+    _construct_merge_request_conflict_description,
 )
 
 
@@ -62,7 +65,7 @@ async def git_repo_template(local_hoster: LocalHoster) -> str:
 async def initialized_legacy_incarnation_id(
     local_hoster: LocalHoster, incarnation_repository: DAL, git_repo_template: str
 ) -> int:
-    repo_name = "incarnation_initialized"
+    repo_name = "incarnation_initialized_legacy"
     await local_hoster.create_repository(repo_name)
 
     desired_incarnation_state = DesiredIncarnationState(
@@ -260,6 +263,83 @@ async def test_create_change_direct_succeeds_when_updating_the_template_version(
         assert incarnation_state.template_repository_version == "v1.1.0"
 
 
+async def test_create_change_direct_succeeds_when_updating_to_the_same_branch_name(
+    change_service: ChangeService,
+    incarnation_repository: DAL,
+    local_hoster: LocalHoster,
+    initialized_incarnation: Incarnation,
+    git_repo_template: str,
+):
+    # GIVEN
+    initial_change = await change_service.create_change_direct(initialized_incarnation.id, requested_version="main")
+    async with local_hoster.cloned_repository(git_repo_template) as repo:
+        (repo.directory / "template" / "README.md").write_text("Hello, world3!")
+        await repo.commit_all("update2")
+        await repo.push()
+
+    # WHEN
+    new_change = await change_service.create_change_direct(initialized_incarnation.id)
+
+    # THEN
+    assert new_change.revision > initial_change.revision
+    assert new_change.commit_sha != initial_change.commit_sha
+    assert new_change.requested_version == "main"
+
+    async with change_service._hoster.cloned_repository(initialized_incarnation.incarnation_repository) as repo:
+        assert (repo.directory / "README.md").read_text() == "Hello, world3!"
+
+        incarnation_state = load_incarnation_state(repo.directory / ".fengine.yaml")
+        assert incarnation_state.template_repository_version == "main"
+
+
+async def test_create_change_merge_request_succeeds_when_updating_the_template_version_without_automerge(
+    change_service: ChangeService, incarnation_repository: DAL, initialized_incarnation: Incarnation
+):
+    # WHEN
+    change = await change_service.create_change_merge_request(
+        initialized_incarnation.id, requested_version="v1.1.0", automerge=False
+    )
+
+    # THEN
+    assert change.incarnation_id == initialized_incarnation.id
+    assert change.revision == 2
+    assert change.commit_sha is not None
+    assert change.requested_version == "v1.1.0"
+    assert change.merge_request_id is not None
+    assert change.merge_request_status == MergeRequestStatus.OPEN
+
+    async with change_service._hoster.cloned_repository(
+        initialized_incarnation.incarnation_repository, refspec=change.merge_request_branch_name
+    ) as repo:
+        assert (repo.directory / "README.md").read_text() == "Hello, world2!"
+
+        incarnation_state = load_incarnation_state(repo.directory / ".fengine.yaml")
+        assert incarnation_state.template_repository_version == "v1.1.0"
+
+
+async def test_create_change_merge_request_succeeds_when_updating_the_template_version_with_automerge(
+    change_service: ChangeService, incarnation_repository: DAL, initialized_incarnation: Incarnation
+):
+    # WHEN
+    change = await change_service.create_change_merge_request(
+        initialized_incarnation.id, requested_version="v1.1.0", automerge=True
+    )
+
+    # THEN
+    assert change.incarnation_id == initialized_incarnation.id
+    assert change.revision == 2
+    assert change.commit_sha is not None
+    assert change.requested_version == "v1.1.0"
+    assert change.merge_request_id is not None
+    assert change.merge_request_status == MergeRequestStatus.MERGED
+
+    async with change_service._hoster.cloned_repository(initialized_incarnation.incarnation_repository) as repo:
+        assert (repo.directory / "README.md").read_text() == "Hello, world2!"
+
+        incarnation_state = load_incarnation_state(repo.directory / ".fengine.yaml")
+        assert incarnation_state.template_repository_version == "v1.1.0"
+
+
 async def test_construct_merge_request_conflict_description_with_conflicts():
     # GIVEN
     conflict_files = [Path("README.md")]
@@ -304,3 +384,24 @@ async def test_construct_merge_request_conflict_description_with_conflicts_and_d
     - CONTRIBUTING.md
     """
     )
+
+
+async def test_get_incarnation_with_details_succeeds_for_legacy_incarnation(
+    change_service: ChangeService, initialized_legacy_incarnation_id: int
+):
+    # WHEN
+    incarnation = await change_service.get_incarnation_with_details(initialized_legacy_incarnation_id)
+
+    # THEN
+    assert incarnation.id == initialized_legacy_incarnation_id
+    assert incarnation.incarnation_repository == "incarnation_initialized_legacy"
+    assert incarnation.target_directory == "."
+    assert incarnation.commit_sha is not None
+    assert incarnation.commit_url.endswith(incarnation.commit_sha)
+    assert incarnation.merge_request_id is None
+    assert incarnation.merge_request_url is None
+    assert incarnation.merge_request_status is None
+    assert incarnation.status == ReconciliationStatus.SUCCESS
+    assert incarnation.template_repository == "template"
+    assert incarnation.template_repository_version == "v1.0.0"
+    assert incarnation.template_data == {}

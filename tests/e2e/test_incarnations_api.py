@@ -543,3 +543,28 @@ async def should_err_initialize_incarnation_if_template_repository_version_does_
     # THEN
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert "Revision 'vNon-existing' not found" in response.json()["message"]
+
+
+async def test_delete_incarnation_succeeds_when_there_are_changes(
+    api_client: AsyncClient,
+    gitlab_test_client: AsyncClient,
+    incarnation_gitlab_repository_in_v1: tuple[str, str],
+):
+    # GIVEN
+    incarnation_repository, incarnation_id = incarnation_gitlab_repository_in_v1
+    response = await api_client.put(
+        f"/incarnations/{incarnation_id}",
+        json={
+            "template_repository_version": "v2.0.0",
+            "template_data": {"name": "Jon", "age": 18},
+            "automerge": True,
+        },
+    )
+    response.raise_for_status()
+
+    # WHEN
+    response = await api_client.delete(f"/incarnations/{incarnation_id}")
+    response.raise_for_status()
+
+    # THEN
+    assert response.status_code == HTTPStatus.NO_CONTENT

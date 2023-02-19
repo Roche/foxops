@@ -129,8 +129,9 @@ class GitRepository:
 
         return (await proc.stdout.read()).strip().decode()
 
-    async def merge_ff_only(self, branch: str):
-        await self._run("merge", "--ff-only", branch)
+    async def merge(self, branch: str, ff_only: bool = False):
+        ff_only_args = ["--ff-only"] if ff_only else []
+        await self._run("merge", *ff_only_args, branch)
 
     async def push(self, tags: bool = False) -> str:
         current_branch = await self.current_branch()

@@ -46,6 +46,9 @@ class ChangeInDB(BaseModel):
     requested_version: str
     requested_data: str
 
+    merge_request_id: str | None
+    merge_request_branch_name: str | None
+
     class Config:
         orm_mode = True
 
