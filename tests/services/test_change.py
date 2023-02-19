@@ -21,7 +21,7 @@ from foxops.services.change import (
     ChangeFailed,
     ChangeService,
     IncarnationAlreadyExists,
-    _construct_merge_request_conflict_description,
+    _construct_merge_request_conflict_description, IncarnationAlreadyUpgraded,
 )
 
 
@@ -211,7 +211,7 @@ async def test_initialize_legacy_incarnation_fails_if_already_initialized(
     await change_service.initialize_legacy_incarnation(initialized_legacy_incarnation_id)
 
     # WHEN
-    with pytest.raises(ChangeFailed, match="already initialized"):
+    with pytest.raises(IncarnationAlreadyUpgraded):
         await change_service.initialize_legacy_incarnation(initialized_legacy_incarnation_id)
 
 

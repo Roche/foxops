@@ -1,3 +1,4 @@
+import pytest
 from httpx import AsyncClient
 from pytest_mock import MockFixture
 
@@ -5,6 +6,9 @@ from tests.e2e.assertions import (
     assert_file_in_repository,
     assert_update_merge_request_exists,
 )
+
+
+pytestmark = [pytest.mark.e2e, pytest.mark.api]
 
 
 async def test_can_update_legacy_incarnation_without_automerge(
