@@ -166,6 +166,43 @@ async def test_merge_request_returns_commit_id_of_source_branch(local_hoster):
     assert await local_hoster.get_merge_request_status(repo_name, mr_id) == MergeRequestStatus.OPEN
 
 
+async def test_merge_request_supports_automerge(local_hoster):
+    # GIVEN
+    repo_name = "test-repository"
+    change_branch = "dummy-branch"
+
+    await local_hoster.create_repository(repo_name)
+    async with local_hoster.cloned_repository(repo_name) as repo:
+        (repo.directory / "README.md").write_text("Hello, world!")
+        await repo.commit_all("Initial commit")
+        await repo.push()
+
+        await repo.create_and_checkout_branch(change_branch)
+        (repo.directory / "README.md").write_text("Hello, world - modified!")
+        await repo.commit_all("Modified README")
+        await repo.push()
+
+        commit_sha = await repo.head()
+
+    # WHEN
+    mr_commit_sha, mr_id = await local_hoster.merge_request(
+        incarnation_repository=repo_name,
+        source_branch=change_branch,
+        title="Dummy title",
+        description="Dummy description",
+        with_automerge=True,
+    )
+
+    # THEN
+    assert mr_commit_sha == commit_sha
+    assert mr_id == "0"
+
+    assert await local_hoster.get_merge_request_status(repo_name, mr_id) == MergeRequestStatus.MERGED
+    async with local_hoster.cloned_repository(repo_name) as repo:
+        assert (repo.directory / "README.md").read_text() == "Hello, world - modified!"
+        assert await repo.head() == commit_sha
+
+
 async def test_merge_request_fails_if_source_branch_does_not_exist(local_hoster):
     # GIVEN
     repo_name = "test-repository"

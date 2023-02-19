@@ -66,9 +66,6 @@ class LocalHoster(Hoster):
     async def merge_request(
         self, *, incarnation_repository: str, source_branch: str, title: str, description: str, with_automerge=False
     ) -> tuple[GitSha, MergeRequestId]:
-        if with_automerge:
-            raise NotImplementedError("Automerge is not supported by the local hoster")
-
         existing_merge_requests = self._merge_requests[incarnation_repository]
 
         new_merge_request = MergeRequest(
@@ -86,6 +83,13 @@ class LocalHoster(Hoster):
 
         existing_merge_requests.append(new_merge_request)
 
+        if with_automerge:
+            async with self.cloned_repository(incarnation_repository) as repo:
+                await repo.fetch(source_branch)
+                await repo.merge(f"origin/{source_branch}", ff_only=False)
+                await repo.push()
+            new_merge_request.status = MergeRequestStatus.MERGED
+
         return commit_id, str(new_merge_request.id)
 
     @asynccontextmanager
@@ -98,9 +102,10 @@ class LocalHoster(Hoster):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             if refspec is None:
+                depth_args = ["--bare"] if bare else ["--depth=1", "--no-single-branch"]
                 await git_exec(
                     "clone",
-                    "--bare" if bare else "--depth=1",
+                    *depth_args,
                     repo_path,
                     ".",
                     cwd=tmpdir,
@@ -151,7 +156,7 @@ class LocalHoster(Hoster):
         merge_request_id: str | None,
         pipeline_timeout: timedelta | None = None,
     ) -> ReconciliationStatus:
-        raise NotImplementedError
+        return ReconciliationStatus.SUCCESS
 
     async def does_commit_exist(self, incarnation_repository: str, commit_sha: GitSha) -> bool:
         try:
