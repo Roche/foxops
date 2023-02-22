@@ -36,6 +36,10 @@ class ChangeRejectedDueToNoChanges(Exception):
     pass
 
 
+class ChangeRejectedDueToPreviousUnfinishedChange(Exception):
+    pass
+
+
 class ChangeRejectedDueToConflicts(Exception):
     def __init__(self, conflicting_paths: list[Path], deleted_paths: list[Path]):
         self.conflicting_paths = conflicting_paths
@@ -142,7 +146,7 @@ class ChangeService:
 
         # prevent from initializing an incarnation that already has a change history
         try:
-            await self.get_latest_change_for_incarnation(incarnation_id)
+            await self.get_latest_change_id_for_incarnation(incarnation_id)
         except IncarnationHasNoChangesError:
             pass
         else:
@@ -193,6 +197,9 @@ class ChangeService:
 
         Direct changes are changes that are not performed via a merge request, but instead, directly
         pushed to the default branch.
+
+        Initiating a change via this method guarantees that there are no commits pushed to the incarnation repository
+        that are not recorded in the foxops database.
         """
 
         # https://youtrack.jetbrains.com/issue/PY-36444
@@ -202,21 +209,6 @@ class ChangeService:
             # ... let's merge the change directly into the default branch
             await env.incarnation_repository.checkout_branch(env.incarnation_repository_default_branch)
             await env.incarnation_repository.merge(env.branch_name, ff_only=True)
-
-            # now comes the tricky part:
-            # Making the following logic resilient to failures at any stage (crashes, DB connection failures, ...)
-            # 1. We will create the change object in the database with commit_pushed=False
-            # 2. We will push the commit to the incarnation repository
-            # 3. We will update the change object in the database with commit_pushed=True
-            #
-            # This will guarantee, that we never push a commit to the incarnation repository, that is not
-            # referenced in the database.
-            #
-            # Records in the database with commit_pushed=False are in an "invalid intermediate state"
-            # and can be cleaned:
-            # - they can be removed, if the referenced commit is not present in the incarnation repository
-            # - they can be updated to commit_pushed=True,
-            #   if the referenced commit is present in the incarnation repository
 
             # We also explicitly set the revision number here which we are expecting.
             # This serves as a locking mechanism, because a parallel change would result in a unique constraint
@@ -232,6 +224,8 @@ class ChangeService:
                 requested_data=json.dumps(env.to_data),
             )
 
+            # if some failure happens after this point, the database object can be cleaned
+            # by the update_incomplete_change() method.
             await self._push_change_commit_and_update_database(env.incarnation_repository, change_in_db.id)
             await self._incarnation_repository.update_incarnation(incarnation_id, env.commit_sha, None)
 
@@ -244,6 +238,12 @@ class ChangeService:
         requested_data: TemplateData | None = None,
         automerge: bool = False,
     ) -> ChangeWithMergeRequest:
+        """
+        Perform a MERGE_REQUEST change on the given incarnation.
+
+        Such a change will result in a merge request being created on the incarnation repository. The merge request
+        can be merged manually or automatically (if the `automerge` parameter is set to `True`).
+        """
         await self._upgrade_incarnation_if_possible(incarnation_id)
 
         # https://youtrack.jetbrains.com/issue/PY-36444
@@ -313,6 +313,10 @@ class ChangeService:
         else:
             await self._change_repository.delete_change(change_id)
 
+    async def get_change_type(self, change_id: int) -> ChangeType:
+        change = await self._change_repository.get_change(change_id)
+        return change.type
+
     async def get_change(self, change_id: int) -> Change:
         """
         Returns a change object for the given change ID.
@@ -358,7 +362,7 @@ class ChangeService:
             merge_request_status=status,
         )
 
-    async def get_latest_change_for_incarnation(self, incarnation_id: int) -> Change:
+    async def get_latest_change_id_for_incarnation(self, incarnation_id: int) -> int:
         """
         Returns the latest change (the highest revision) for the given incarnation.
 
@@ -367,7 +371,7 @@ class ChangeService:
         """
 
         last_change = await self._change_repository.get_latest_change_for_incarnation(incarnation_id)
-        return await self.get_change(last_change.id)
+        return last_change.id
 
     async def get_incarnation_basic(self, incarnation_id: int) -> IncarnationBasic:
         incarnation = await self._incarnation_repository.get_incarnation(incarnation_id)
@@ -396,7 +400,8 @@ class ChangeService:
         incarnation_basic = await self.get_incarnation_basic(incarnation_id)
 
         await self._upgrade_incarnation_if_possible(incarnation_id)
-        change = await self.get_latest_change_for_incarnation(incarnation_id)
+        change_id = await self.get_latest_change_id_for_incarnation(incarnation_id)
+        change = await self.get_change(change_id)
 
         status = await self._hoster.get_reconciliation_status(
             incarnation_repository=incarnation_basic.incarnation_repository,
@@ -438,7 +443,19 @@ class ChangeService:
         This method checks out the incarnation repository, prepares a branch that contains the update and commits.
         """
         incarnation = await self._incarnation_repository.get_incarnation(incarnation_id)
-        last_change = await self.get_latest_change_for_incarnation(incarnation_id)
+        last_change_id = await self.get_latest_change_id_for_incarnation(incarnation_id)
+
+        # if the previous change was of type merge request and is still open, we dont want to continue
+        last_change: ChangeWithMergeRequest | Change
+        match await self.get_change_type(last_change_id):
+            case ChangeType.MERGE_REQUEST:
+                last_change = await self.get_change_with_merge_request(last_change_id)
+                if last_change.merge_request_status == MergeRequestStatus.OPEN:
+                    raise ChangeRejectedDueToPreviousUnfinishedChange(
+                        "There is still an open MR for the previous change. Please close it first."
+                    )
+            case _:
+                last_change = await self.get_change(last_change_id)
 
         to_version = last_change.requested_version
         if requested_version is not None:

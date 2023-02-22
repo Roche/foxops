@@ -21,7 +21,11 @@ from foxops.models import (
 )
 from foxops.models.errors import ApiError
 from foxops.routers import changes
-from foxops.services.change import ChangeService, IncarnationAlreadyExists
+from foxops.services.change import (
+    ChangeRejectedDueToPreviousUnfinishedChange,
+    ChangeService,
+    IncarnationAlreadyExists,
+)
 
 #: Holds the router for the incarnations API endpoints
 router = APIRouter(prefix="/api/incarnations", tags=["incarnations"])
@@ -295,6 +299,9 @@ async def update_incarnation(
     except IncarnationNotFoundError as exc:
         response.status_code = status.HTTP_404_NOT_FOUND
         return ApiError(message=str(exc))
+    except ChangeRejectedDueToPreviousUnfinishedChange:
+        response.status_code = status.HTTP_409_CONFLICT
+        return ApiError(message="There is a previous change that is still open. Please merge/close it first.")
 
     return await change_service.get_incarnation_with_details(incarnation_id)
 

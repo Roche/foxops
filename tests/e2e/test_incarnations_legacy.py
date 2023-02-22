@@ -1,3 +1,5 @@
+from http import HTTPStatus
+
 import pytest
 from httpx import AsyncClient
 from pytest_mock import MockFixture
@@ -86,3 +88,19 @@ async def test_can_update_legacy_incarnation_with_automerge(
         "README.md",
         "Hello Jon, age: 18",
     )
+
+
+async def test_delete_incarnation_succeeds_on_legacy_incarnation(
+    api_client: AsyncClient,
+    gitlab_test_client: AsyncClient,
+    legacy_incarnation_gitlab_repository_in_v1: tuple[str, str],
+):
+    # GIVEN
+    incarnation_repository, incarnation_id = legacy_incarnation_gitlab_repository_in_v1
+
+    # WHEN
+    response = await api_client.delete(f"/incarnations/{incarnation_id}")
+    response.raise_for_status()
+
+    # THEN
+    assert response.status_code == HTTPStatus.NO_CONTENT
