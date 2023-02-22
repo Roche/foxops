@@ -5,9 +5,6 @@ from starlette.responses import FileResponse
 
 from foxops import __version__
 from foxops.dependencies import (
-    get_dal,
-    get_database_engine,
-    get_database_settings,
     get_hoster,
     get_hoster_settings,
     get_settings,
