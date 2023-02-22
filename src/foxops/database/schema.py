@@ -31,7 +31,7 @@ change = Table(
     Column("incarnation_id", Integer, ForeignKey("incarnation.id", ondelete="CASCADE"), nullable=False),
     Column("revision", Integer, nullable=False),
     Column("type", String, nullable=False),
-    Column("created_at", DateTime, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
     Column("requested_version_hash", String, nullable=False),
     Column("requested_version", String, nullable=False),
     Column("requested_data", String, nullable=False),
