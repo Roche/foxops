@@ -35,14 +35,9 @@ def create_app():
 
     @app.on_event("startup")
     async def startup():
-
         # validate hoster
         hoster = get_hoster(get_hoster_settings())
         await hoster.validate()
-
-        # initialize database
-        dal = get_dal(get_database_engine(get_database_settings()))
-        await dal.initialize_db()
 
         setup_logging(level=settings.log_level)
 
