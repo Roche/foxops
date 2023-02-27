@@ -15,6 +15,7 @@ from foxops.database.repositories.change import (
 )
 from foxops.engine import TemplateData
 from foxops.engine.patching.git_diff_patch import PatchResult
+from foxops.errors import IncarnationRepositoryNotFound
 from foxops.external.git import GitError, GitRepository
 from foxops.hosters import Hoster
 from foxops.hosters.types import MergeRequestStatus
@@ -29,6 +30,10 @@ class IncarnationAlreadyExists(Exception):
 
 
 class IncarnationAlreadyUpgraded(Exception):
+    pass
+
+
+class IncarnationUpgradeFailedAsNoIncarnationStateExists(Exception):
     pass
 
 
@@ -171,9 +176,9 @@ class ChangeService:
             incarnation.incarnation_repository, incarnation.target_directory
         )
         if get_incarnation_state_result is None:
-            raise ChangeFailed(
+            raise IncarnationUpgradeFailedAsNoIncarnationStateExists(
                 f"Cannot initialize legacy incarnation {incarnation_id} because it does not have a .fengine.yaml file. "
-                f"This is NOT expected at this stage. Please investigate."
+                f"This could happen if it is a subdirectory incarnation, where the subdirectory was already deleted."
             )
         commit_sha, incarnation_state = get_incarnation_state_result
 
@@ -194,16 +199,33 @@ class ChangeService:
 
         return await self.get_change(change_in_db.id)
 
-    async def upgrade_all_incarnations(self):
+    async def upgrade_all_incarnations(self, delete_nonexisting: bool = False):
         failed_upgrades = []
         successful_upgrades = []
+        deleted_incarnations = []
 
         async for incarnation in self._incarnation_repository.get_incarnations():
             try:
                 await self.initialize_legacy_incarnation(incarnation.id)
             except IncarnationAlreadyUpgraded:
                 continue
+            except (IncarnationRepositoryNotFound, IncarnationUpgradeFailedAsNoIncarnationStateExists):
+                if delete_nonexisting:
+                    await self._incarnation_repository.delete_incarnation(incarnation.id)
+                    deleted_incarnations.append(
+                        (incarnation.id, incarnation.incarnation_repository, incarnation.target_directory)
+                    )
+                else:
+                    failed_upgrades.append(
+                        (
+                            incarnation.id,
+                            incarnation.incarnation_repository,
+                            incarnation.target_directory,
+                            "repository not found",
+                        )
+                    )
             except Exception as e:
+                self._log.exception("Failed to upgrade incarnation", incarnation_id=incarnation.id)
                 failed_upgrades.append(
                     (incarnation.id, incarnation.incarnation_repository, incarnation.target_directory, str(e))
                 )
@@ -212,7 +234,7 @@ class ChangeService:
                     (incarnation.id, incarnation.incarnation_repository, incarnation.target_directory)
                 )
 
-        return failed_upgrades, successful_upgrades
+        return failed_upgrades, successful_upgrades, deleted_incarnations
 
     async def create_change_direct(
         self, incarnation_id: int, requested_version: str | None = None, requested_data: TemplateData | None = None
@@ -469,6 +491,10 @@ class ChangeService:
         """
         incarnation = await self._incarnation_repository.get_incarnation(incarnation_id)
         last_change_id = await self.get_latest_change_id_for_incarnation(incarnation_id)
+
+        await self._upgrade_incarnation_if_possible(incarnation_id)
+        if incarnation.template_repository is None:
+            raise Exception("upgrade failed. Should not happen.")
 
         # if the previous change was of type merge request and is still open, we dont want to continue
         last_change: ChangeWithMergeRequest | Change

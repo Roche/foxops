@@ -156,7 +156,7 @@ async def test_upgrade_all_incarnations(
     response.raise_for_status()
     run_1 = response.json()
 
-    response = await api_client.post("/incarnations/upgrade-all")
+    response = await api_client.post("/incarnations/upgrade-all", params={"delete_nonexisting": "true"})
     response.raise_for_status()
 
     run_2 = response.json()
@@ -168,6 +168,7 @@ async def test_upgrade_all_incarnations(
     assert set([incarnation[0] for incarnation in run_1["successful_upgrades"]]) == set(incarnation_ids[1:])
 
     # the previously failed upgrade should still fail. otherwise, nothing should be done anymore
-    assert len(run_2["failed_upgrades"]) == 1
+    assert len(run_2["failed_upgrades"]) == 0
     assert run_2["failed_upgrades"][0][0] == incarnation_ids[0]
     assert len(run_2["successful_upgrades"]) == 0
+    assert len(run_2["deleted_incarnations"]) == 0

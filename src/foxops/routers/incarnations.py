@@ -81,12 +81,16 @@ async def list_incarnations(
 
 @router.post("/upgrade-all")
 async def upgrade_all_incarnations(
+    delete_nonexisting: bool = False,
     change_service: ChangeService = Depends(get_change_service),
 ):
-    failed_upgrades, successful_upgrades = await change_service.upgrade_all_incarnations()
+    failed_upgrades, successful_upgrades, deleted_incarnations = await change_service.upgrade_all_incarnations(
+        delete_nonexisting=delete_nonexisting,
+    )
     return {
         "failed_upgrades": failed_upgrades,
         "successful_upgrades": successful_upgrades,
+        "deleted_incarnations": deleted_incarnations,
     }
 
 

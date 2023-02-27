@@ -415,6 +415,8 @@ class GitLab(Hoster):
         response = await self.client.get(
             f"/projects/{quote_plus(incarnation_repository)}/merge_requests/{merge_request_id}"
         )
+        if response.status_code == 404 and not await self.__project_exists(incarnation_repository):
+            raise IncarnationRepositoryNotFound(incarnation_repository)
         response.raise_for_status()
 
         merge_request: MergeRequest = response.json()
