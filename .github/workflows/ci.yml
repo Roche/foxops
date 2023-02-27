@@ -66,7 +66,7 @@ jobs:
           python -m poetry install
 
       - name: mypy
-        run: python -m mypy .
+        run: python -m mypy src tests
 
 
   unit-tests:
