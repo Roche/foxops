@@ -9,11 +9,13 @@ from typing import AsyncGenerator
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
+from sqlalchemy import Engine, event
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from foxops.__main__ import FRONTEND_SUBDIRS, create_app
 from foxops.database import DAL
-from foxops.dependencies import get_dal
+from foxops.database.repositories.change import ChangeRepository
+from foxops.dependencies import get_change_repository, get_dal
 from foxops.logger import setup_logging
 
 
@@ -47,6 +49,14 @@ def use_testing_gitconfig():
 
 @pytest.fixture(name="test_async_engine")
 async def test_async_engine() -> AsyncGenerator[AsyncEngine, None]:
+    # enforce foreign key constraints on SQLite:
+    # https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#foreign-key-support
+    @event.listens_for(Engine, "connect")
+    def set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
     async_engine = create_async_engine("sqlite+aiosqlite://", future=True, echo=False, pool_pre_ping=True)
     yield async_engine
 
@@ -82,17 +92,22 @@ async def create_dal(test_async_engine: AsyncEngine) -> AsyncGenerator[DAL, None
     yield dal
 
 
+@pytest.fixture
+async def change_repository(test_async_engine: AsyncEngine, dal: DAL) -> ChangeRepository:
+    return ChangeRepository(test_async_engine)
+
+
 @pytest.fixture(name="static_api_token", scope="session")
 def get_static_api_token() -> str:
     return "test-token"
 
 
 @pytest.fixture(name="unauthenticated_client")
-async def create_unauthenticated_client(dal: DAL, app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
-    def _test_get_dal() -> DAL:
-        return dal
-
-    app.dependency_overrides[get_dal] = _test_get_dal
+async def create_unauthenticated_client(
+    dal: DAL, app: FastAPI, change_repository: ChangeRepository
+) -> AsyncGenerator[AsyncClient, None]:
+    app.dependency_overrides[get_dal] = lambda: dal
+    app.dependency_overrides[get_change_repository] = lambda: change_repository
 
     async with AsyncClient(
         app=app,

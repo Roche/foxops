@@ -9,7 +9,7 @@ version: '3'
 
 services:
   gitlab-ce:
-    image: gitlab/gitlab-ce:${GITLAB_CE_VERSION:-15.7.0-ce.0}
+    image: gitlab/gitlab-ce:${GITLAB_CE_VERSION:-15.8.3-ce.0}
     restart: always
     ports:
       - ${GITLAB_PORT:-5002}:80

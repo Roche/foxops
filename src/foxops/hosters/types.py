@@ -71,6 +71,9 @@ class Hoster(Protocol):
     ) -> ReconciliationStatus:
         ...
 
+    async def does_commit_exist(self, incarnation_repository: str, commit_sha: GitSha) -> bool:
+        ...
+
     async def get_commit_url(self, incarnation_repository: str, commit_sha: GitSha) -> str:
         ...
 

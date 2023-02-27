@@ -84,7 +84,9 @@ line-length = 120
 profile = "black"
 
 [tool.pytest.ini_options]
-addopts = '--cov=foxops'
+addopts = [
+    '--cov=foxops',
+]
 filterwarnings = [
     'ignore:directory "/var/run/secrets/foxops" does not exist'
 ]

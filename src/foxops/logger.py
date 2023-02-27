@@ -40,8 +40,12 @@ formatter = structlog.stdlib.ProcessorFormatter(
 )
 
 
-def configure_sa_logging():
+def configure_sqlalchemy_logging():
     logging.getLogger("sqlalchemy.engine.Engine").handlers.clear()
+
+    # set aiosqlite logs to WARNING. They are very noisy otherwise.
+    aiosqlite_logger = logging.getLogger("aiosqlite")
+    aiosqlite_logger.setLevel(logging.WARNING)
 
 
 def configure_uvicorn_logging():
@@ -59,7 +63,7 @@ def configure_uvicorn_logging():
 
 
 def setup_logging(level: int | str) -> None:
-    configure_sa_logging()
+    configure_sqlalchemy_logging()
     configure_uvicorn_logging()
 
     handler = logging.StreamHandler()

@@ -81,7 +81,9 @@ class DAL:
             await conn.commit()
             return Incarnation.from_orm(row)
 
-    async def update_incarnation(self, id: int, commit_sha: GitSha, merge_request_id: MergeRequestId) -> Incarnation:
+    async def update_incarnation(
+        self, id: int, commit_sha: GitSha, merge_request_id: MergeRequestId | None
+    ) -> Incarnation:
         async with self.connection() as conn:
             query = await conn.execute(
                 text(

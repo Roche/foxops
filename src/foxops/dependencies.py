@@ -7,8 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 import foxops.reconciliation as reconciliation
 from foxops.database import DAL
+from foxops.database.repositories.change import ChangeRepository
 from foxops.hosters import Hoster, HosterSettings
 from foxops.hosters.gitlab import GitLab, GitLabSettings, get_gitlab_settings
+from foxops.services.change import ChangeService
 from foxops.settings import DatabaseSettings, Settings
 
 # NOTE: Yes, you may absolutely use proper dependency injection at some point.
@@ -32,13 +34,21 @@ def get_hoster_settings() -> HosterSettings:
     return GitLabSettings()  # type: ignore
 
 
-def get_dal(settings: DatabaseSettings = Depends(get_database_settings)) -> DAL:
+def get_database_engine(settings: DatabaseSettings = Depends(get_database_settings)) -> AsyncEngine:
     global async_engine
 
     if async_engine is None:
         async_engine = create_async_engine(settings.url.get_secret_value(), future=True, echo=False, pool_pre_ping=True)
 
-    return DAL(async_engine)
+    return async_engine
+
+
+def get_dal(database_engine: AsyncEngine = Depends(get_database_engine)) -> DAL:
+    return DAL(database_engine)
+
+
+def get_change_repository(database_engine: AsyncEngine = Depends(get_database_engine)) -> ChangeRepository:
+    return ChangeRepository(database_engine)
 
 
 def get_hoster(settings: HosterSettings = Depends(get_gitlab_settings)) -> Hoster:
@@ -47,6 +57,16 @@ def get_hoster(settings: HosterSettings = Depends(get_gitlab_settings)) -> Hoste
     return GitLab(
         address=settings.address,
         token=settings.token.get_secret_value(),
+    )
+
+
+def get_change_service(
+    hoster: Hoster = Depends(get_hoster),
+    change_repository: ChangeRepository = Depends(get_change_repository),
+    incarnation_repository: DAL = Depends(get_dal),
+) -> ChangeService:
+    return ChangeService(
+        hoster=hoster, incarnation_repository=incarnation_repository, change_repository=change_repository
     )
 
 

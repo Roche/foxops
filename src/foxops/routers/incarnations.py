@@ -3,7 +3,12 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, Response, status
 
 from foxops.database import DAL
-from foxops.dependencies import get_dal, get_hoster, get_reconciliation
+from foxops.dependencies import (
+    get_change_service,
+    get_dal,
+    get_hoster,
+    get_reconciliation,
+)
 from foxops.errors import IncarnationAlreadyInitializedError, IncarnationNotFoundError
 from foxops.hosters import Hoster
 from foxops.logger import bind, get_logger
@@ -15,9 +20,16 @@ from foxops.models import (
     IncarnationWithDetails,
 )
 from foxops.models.errors import ApiError
+from foxops.routers import changes
+from foxops.services.change import (
+    ChangeRejectedDueToPreviousUnfinishedChange,
+    ChangeService,
+    IncarnationAlreadyExists,
+)
 
 #: Holds the router for the incarnations API endpoints
 router = APIRouter(prefix="/api/incarnations", tags=["incarnations"])
+router.include_router(changes.router, prefix="/{incarnation_id}/changes", tags=["changes"])
 
 #: Holds the logger for these routes
 logger = get_logger(__name__)
@@ -45,7 +57,7 @@ async def list_incarnations(
     incarnation_repository: str | None = None,
     target_directory: str = ".",
     dal: DAL = Depends(get_dal),
-    hoster: Hoster = Depends(get_hoster),
+    change_service: ChangeService = Depends(get_change_service),
 ) -> list[IncarnationBasic] | ApiError:
     """Returns a list of all known incarnations.
 
@@ -53,20 +65,22 @@ async def list_incarnations(
 
     TODO: implement pagination
     """
-    if incarnation_repository is not None:
+    if incarnation_repository is None:
+        incarnation_ids = [i.id async for i in dal.get_incarnations()]
+    else:
         async with dal.connection() as conn:
             incarnation = await dal.get_incarnation_by_identity(incarnation_repository, target_directory, conn)
             if incarnation is None:
                 response.status_code = status.HTTP_404_NOT_FOUND
                 return ApiError(message="No incarnation found for the given repository and target directory")
 
-            return [await get_incarnation_basic(incarnation, hoster)]
+        incarnation_ids = [incarnation.id]
 
-    return [await get_incarnation_basic(i, hoster) async for i in dal.get_incarnations()]
+    return [await change_service.get_incarnation_basic(i) for i in incarnation_ids]
 
 
 @router.post(
-    "",
+    "/legacy",
     responses={
         status.HTTP_200_OK: {
             "description": "The incarnation is already initialized and was imported to the inventory. "
@@ -92,7 +106,7 @@ async def list_incarnations(
         },
     },
 )
-async def create_incarnation(
+async def create_incarnation_legacy(
     response: Response,
     desired_incarnation_state: DesiredIncarnationState,
     allow_import: bool = False,
@@ -134,6 +148,79 @@ async def create_incarnation(
     return await get_incarnation_with_details(incarnation, hoster)
 
 
+@router.post(
+    "/{incarnation_id}/upgrade",
+)
+async def upgrade_incarnation(
+    incarnation_id: int,
+    response: Response,
+    change_service: ChangeService = Depends(get_change_service),
+) -> None:
+    """
+    Upgrade a legacy incarnation to the new datamodel with "changes"
+    """
+
+    await change_service.initialize_legacy_incarnation(incarnation_id)
+    response.status_code = status.HTTP_204_NO_CONTENT
+
+
+@router.post(
+    "",
+    responses={
+        status.HTTP_201_CREATED: {
+            "description": "The incarnation has been successfully initialized and was added to the inventory.",
+            "model": IncarnationWithDetails,
+        },
+        status.HTTP_409_CONFLICT: {
+            "description": "There is already a foxops incarnation with the same repository and target directory",
+            "model": ApiError,
+        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "description": "The reconciliation failed",
+            "model": ApiError,
+        },
+    },
+)
+async def create_incarnation(
+    response: Response,
+    desired_incarnation_state: DesiredIncarnationState,
+    allow_import: bool = False,
+    change_service: ChangeService = Depends(get_change_service),
+) -> IncarnationWithDetails | ApiError:
+    """Initializes a new incarnation and adds it to the inventory.
+
+    If the initialization fails, foxops will return the error in a `4xx` or `5xx` status code response.
+    """
+    bind(incarnation_repository=desired_incarnation_state.incarnation_repository)
+    bind(target_directory=desired_incarnation_state.target_directory)
+
+    if allow_import is True:
+        response.status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+        return ApiError(message="The `allow_import` parameter is no longer supported")
+
+    template_data = desired_incarnation_state.template_data or {}
+
+    try:
+        change = await change_service.create_incarnation(
+            incarnation_repository=desired_incarnation_state.incarnation_repository,
+            target_directory=desired_incarnation_state.target_directory,
+            template_repository=desired_incarnation_state.template_repository,
+            template_repository_version=desired_incarnation_state.template_repository_version,
+            template_data=template_data,
+        )
+    except IncarnationAlreadyExists:
+        response.status_code = status.HTTP_409_CONFLICT
+        return ApiError(
+            message=(
+                f"There is already a foxops incarnation at {desired_incarnation_state.incarnation_repository} "
+                f"with target directory {desired_incarnation_state.target_directory}"
+            )
+        )
+
+    response.status_code = status.HTTP_201_CREATED
+    return await change_service.get_incarnation_with_details(change.incarnation_id)
+
+
 @router.get(
     "/{incarnation_id}",
     responses={
@@ -150,17 +237,14 @@ async def create_incarnation(
 async def read_incarnation(
     response: Response,
     incarnation_id: int,
-    dal: DAL = Depends(get_dal),
-    hoster: Hoster = Depends(get_hoster),
+    change_service: ChangeService = Depends(get_change_service),
 ) -> IncarnationWithDetails | ApiError:
     """Returns the details of the incarnation from the inventory."""
     try:
-        incarnation = await dal.get_incarnation(incarnation_id)
+        return await change_service.get_incarnation_with_details(incarnation_id)
     except IncarnationNotFoundError as exc:
         response.status_code = status.HTTP_404_NOT_FOUND
         return ApiError(message=str(exc))
-
-    return await get_incarnation_with_details(incarnation, hoster)
 
 
 @router.put(
@@ -192,9 +276,7 @@ async def update_incarnation(
     response: Response,
     incarnation_id: int,
     desired_incarnation_state_patch: DesiredIncarnationStatePatch,
-    dal: DAL = Depends(get_dal),
-    hoster: Hoster = Depends(get_hoster),
-    reconciliation=Depends(get_reconciliation),
+    change_service: ChangeService = Depends(get_change_service),
 ) -> IncarnationWithDetails | ApiError:
     """Reconciles the incarnation.
 
@@ -206,18 +288,22 @@ async def update_incarnation(
     persisted *actual state* and perform a reconciliation. This is seldomly useful, but can be used
     to update when a moving Git revision (e.g. a branch) is used.
     """
+
     try:
-        incarnation = await dal.get_incarnation(incarnation_id)
+        await change_service.create_change_merge_request(
+            incarnation_id=incarnation_id,
+            requested_version=desired_incarnation_state_patch.template_repository_version,
+            requested_data=desired_incarnation_state_patch.template_data,
+            automerge=desired_incarnation_state_patch.automerge,
+        )
     except IncarnationNotFoundError as exc:
         response.status_code = status.HTTP_404_NOT_FOUND
         return ApiError(message=str(exc))
+    except ChangeRejectedDueToPreviousUnfinishedChange:
+        response.status_code = status.HTTP_409_CONFLICT
+        return ApiError(message="There is a previous change that is still open. Please merge/close it first.")
 
-    update = await reconciliation.update_incarnation(hoster, incarnation, desired_incarnation_state_patch)
-
-    if update is not None:
-        incarnation = await dal.update_incarnation(incarnation.id, commit_sha=update[0], merge_request_id=update[1])
-
-    return await get_incarnation_with_details(incarnation, hoster)
+    return await change_service.get_incarnation_with_details(incarnation_id)
 
 
 @router.delete(
@@ -287,7 +373,8 @@ async def get_incarnation_with_details(incarnation: Incarnation, hoster: Hoster)
         response.template_repository = state.template_repository
         response.template_repository_version = state.template_repository_version
         response.template_repository_version_hash = state.template_repository_version_hash
-        response.template_data = state.template_data
+        if state.template_data is not None:
+            response.template_data = dict(state.template_data)
 
     return response
 

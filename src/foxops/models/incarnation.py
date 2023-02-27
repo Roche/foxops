@@ -1,3 +1,5 @@
+from typing import Mapping
+
 from pydantic import BaseModel, Field
 
 from foxops.engine.models import TemplateDataValue
@@ -40,7 +42,7 @@ class IncarnationWithDetails(IncarnationBasic):
     template_repository: str | None
     template_repository_version: str | None
     template_repository_version_hash: str | None
-    template_data: dict[str, TemplateDataValue] | None
+    template_data: Mapping[str, TemplateDataValue] | None
 
     class Config:
         orm_mode = True
