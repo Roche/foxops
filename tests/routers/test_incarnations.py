@@ -66,7 +66,11 @@ async def test_api_get_incarnations_returns_incarnations_from_inventory(
 ):
     # GIVEN
     async with dal.connection() as conn:
-        await conn.execute(text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'commit_sha', 'merge_request_id')"))
+        await conn.execute(
+            text(
+                "INSERT INTO incarnation VALUES (1, 'test', 'test', 'template_repo', 'commit_sha', 'merge_request_id')"
+            )
+        )
         await conn.commit()
 
     # WHEN
@@ -163,7 +167,11 @@ async def test_api_delete_incarnation_removes_incarnation_from_inventory(
 ):
     # GIVEN
     async with dal.connection() as conn:
-        await conn.execute(text("INSERT INTO incarnation VALUES (1, 'test', 'test', 'commit_sha', 'merge_request_id')"))
+        await conn.execute(
+            text(
+                "INSERT INTO incarnation VALUES (1, 'test', 'test', 'template_repo', 'commit_sha', 'merge_request_id')"
+            )
+        )
         await conn.commit()
 
     # WHEN

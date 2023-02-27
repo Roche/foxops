@@ -115,6 +115,7 @@ class ChangeService:
             change = await self._change_repository.create_incarnation_with_first_change(
                 incarnation_repository=incarnation_repository,
                 target_directory=target_directory,
+                template_repository=template_repository,
                 commit_sha=commit_sha,
                 requested_version_hash=incarnation_state.template_repository_version_hash,
                 requested_version=template_repository_version,

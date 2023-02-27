@@ -102,6 +102,7 @@ async def initialized_incarnation(
         id=change.incarnation_id,
         incarnation_repository=repo_name,
         target_directory=".",
+        template_repository=git_repo_template,
         commit_sha="dummy",
     )
 

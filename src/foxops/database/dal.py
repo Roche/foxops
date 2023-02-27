@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
-from sqlalchemy import select, text
+from sqlalchemy import insert, select, text
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
@@ -59,25 +59,20 @@ class DAL:
             ):
                 return incarnation
 
-            query = await conn.execute(
-                text(
-                    """
-                    INSERT INTO incarnation
-                        (incarnation_repository, target_directory, commit_sha, merge_request_id)
-                    VALUES
-                        (:incarnation_repository, :target_directory, :commit_sha, :merge_request_id)
-                    RETURNING *
-                    """
-                ),
-                {
-                    "incarnation_repository": desired_incarnation_state.incarnation_repository,
-                    "target_directory": desired_incarnation_state.target_directory,
-                    "commit_sha": commit_sha,
-                    "merge_request_id": merge_request_id,
-                },
+            query = (
+                insert(incarnations)
+                .values(
+                    incarnation_repository=desired_incarnation_state.incarnation_repository,
+                    target_directory=desired_incarnation_state.target_directory,
+                    template_repository=desired_incarnation_state.template_repository,
+                    commit_sha=commit_sha,
+                    merge_request_id=merge_request_id,
+                )
+                .returning(*incarnations.columns)
             )
+            result = await conn.execute(query)
 
-            row = query.one()
+            row = result.one()
             await conn.commit()
             return Incarnation.from_orm(row)
 

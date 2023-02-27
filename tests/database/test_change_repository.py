@@ -174,6 +174,7 @@ async def test_create_incarnation_with_first_change(change_repository: ChangeRep
     change = await change_repository.create_incarnation_with_first_change(
         incarnation_repository="incarnation",
         target_directory=".",
+        template_repository="template",
         commit_sha="commit_sha",
         requested_version_hash="dummy template sha",
         requested_version="v1",
@@ -196,6 +197,7 @@ async def test_delete_incarnation_also_deletes_associated_changes(change_reposit
     change = await change_repository.create_incarnation_with_first_change(
         incarnation_repository="incarnation",
         target_directory=".",
+        template_repository="template",
         commit_sha="commit_sha",
         requested_version_hash="dummy template sha",
         requested_version="v1",
