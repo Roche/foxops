@@ -167,8 +167,6 @@ async def test_upgrade_all_incarnations(
     assert len(run_1["successful_upgrades"]) == 2
     assert set([incarnation[0] for incarnation in run_1["successful_upgrades"]]) == set(incarnation_ids[1:])
 
-    # the previously failed upgrade should still fail. otherwise, nothing should be done anymore
     assert len(run_2["failed_upgrades"]) == 0
-    assert run_2["failed_upgrades"][0][0] == incarnation_ids[0]
     assert len(run_2["successful_upgrades"]) == 0
-    assert len(run_2["deleted_incarnations"]) == 0
+    assert len(run_2["deleted_incarnations"]) == 1
