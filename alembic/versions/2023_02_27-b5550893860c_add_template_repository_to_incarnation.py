@@ -18,7 +18,7 @@ depends_on = None
 
 def upgrade() -> None:
     with op.batch_alter_table("incarnation") as batch_op:
-        batch_op.add_column(sa.Column("template_repository", sa.String(), nullable=False))
+        batch_op.add_column(sa.Column("template_repository", sa.String(), nullable=True))
         batch_op.alter_column("incarnation_repository", nullable=False)
         batch_op.alter_column("target_directory", nullable=False)
 

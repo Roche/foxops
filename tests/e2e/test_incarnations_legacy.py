@@ -104,3 +104,70 @@ async def test_delete_incarnation_succeeds_on_legacy_incarnation(
 
     # THEN
     assert response.status_code == HTTPStatus.NO_CONTENT
+
+
+async def test_upgrade_all_incarnations(
+    api_client: AsyncClient,
+    gitlab_project_factory,
+    gitlab_test_client: AsyncClient,
+    template_repository: str,
+):
+    # GIVEN
+    # 3 legacy incarnations, of which one is no longer existing on Gitlab
+    # 1 incarnation that is already upgraded
+
+    incarnation_ids = []
+    for i in range(3):
+        project = await gitlab_project_factory(f"incarnation-{i}")
+        response = await api_client.post(
+            "/incarnations/legacy",
+            json={
+                "incarnation_repository": project["path_with_namespace"],
+                "template_repository": template_repository,
+                "template_repository_version": "v1.0.0",
+                "template_data": {"name": "Jon", "age": 18},
+            },
+        )
+        response.raise_for_status()
+        incarnation = response.json()
+
+        incarnation_ids.append(incarnation["id"])
+
+        # if this is the first incarnation we created, let's delete the corresponding gitlab project
+        if i == 0:
+            response = await gitlab_test_client.delete(f"/projects/{project['id']}")
+            response.raise_for_status()
+
+    # create one new-style incarnation
+    project = await gitlab_project_factory("incarnation-new")
+    await api_client.post(
+        "/incarnations",
+        json={
+            "incarnation_repository": project["path_with_namespace"],
+            "target_directory": "subdir1",
+            "template_repository": template_repository,
+            "template_repository_version": "v1.0.0",
+            "template_data": {"name": "Jon", "age": 18},
+        },
+    )
+
+    # WHEN
+    response = await api_client.post("/incarnations/upgrade-all")
+    response.raise_for_status()
+    run_1 = response.json()
+
+    response = await api_client.post("/incarnations/upgrade-all")
+    response.raise_for_status()
+
+    run_2 = response.json()
+
+    # THEN
+    assert len(run_1["failed_upgrades"]) == 1
+    assert run_1["failed_upgrades"][0][0] == incarnation_ids[0]
+    assert len(run_1["successful_upgrades"]) == 2
+    assert set([incarnation[0] for incarnation in run_1["successful_upgrades"]]) == set(incarnation_ids[1:])
+
+    # the previously failed upgrade should still fail. otherwise, nothing should be done anymore
+    assert len(run_2["failed_upgrades"]) == 1
+    assert run_2["failed_upgrades"][0][0] == incarnation_ids[0]
+    assert len(run_2["successful_upgrades"]) == 0

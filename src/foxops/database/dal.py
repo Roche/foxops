@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
-from sqlalchemy import insert, select, text
+from sqlalchemy import insert, select, update
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
@@ -76,26 +76,35 @@ class DAL:
             await conn.commit()
             return Incarnation.from_orm(row)
 
+    async def update_incarnation_template_repository(
+        self, incarnation_id: int, template_repository: str
+    ) -> Incarnation:
+        query = (
+            update(incarnations)
+            .where(incarnations.c.id == incarnation_id)
+            .values(template_repository=template_repository)
+            .returning(*incarnations.columns)
+        )
+        async with self.connection() as conn:
+            result = await conn.execute(query)
+
+            row = result.one()
+            await conn.commit()
+            return Incarnation.from_orm(row)
+
     async def update_incarnation(
         self, id: int, commit_sha: GitSha, merge_request_id: MergeRequestId | None
     ) -> Incarnation:
+        query = (
+            update(incarnations)
+            .where(incarnations.c.id == id)
+            .values(commit_sha=commit_sha, merge_request_id=merge_request_id)
+            .returning(*incarnations.columns)
+        )
         async with self.connection() as conn:
-            query = await conn.execute(
-                text(
-                    """
-                    UPDATE incarnation
-                    SET
-                        commit_sha = :commit_sha,
-                        merge_request_id = :merge_request_id
-                    WHERE
-                        id = :id
-                    RETURNING *
-                    """
-                ),
-                {"id": id, "commit_sha": commit_sha, "merge_request_id": merge_request_id},
-            )
+            result = await conn.execute(query)
 
-            row = query.one()
+            row = result.one()
             await conn.commit()
             return Incarnation.from_orm(row)
 

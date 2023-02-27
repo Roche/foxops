@@ -177,6 +177,10 @@ class ChangeService:
             )
         commit_sha, incarnation_state = get_incarnation_state_result
 
+        await self._incarnation_repository.update_incarnation_template_repository(
+            incarnation_id, incarnation_state.template_repository
+        )
+
         change_in_db = await self._change_repository.create_change(
             incarnation_id=incarnation_id,
             revision=1,
@@ -189,6 +193,26 @@ class ChangeService:
         )
 
         return await self.get_change(change_in_db.id)
+
+    async def upgrade_all_incarnations(self):
+        failed_upgrades = []
+        successful_upgrades = []
+
+        async for incarnation in self._incarnation_repository.get_incarnations():
+            try:
+                await self.initialize_legacy_incarnation(incarnation.id)
+            except IncarnationAlreadyUpgraded:
+                continue
+            except Exception as e:
+                failed_upgrades.append(
+                    (incarnation.id, incarnation.incarnation_repository, incarnation.target_directory, str(e))
+                )
+            else:
+                successful_upgrades.append(
+                    (incarnation.id, incarnation.incarnation_repository, incarnation.target_directory)
+                )
+
+        return failed_upgrades, successful_upgrades
 
     async def create_change_direct(
         self, incarnation_id: int, requested_version: str | None = None, requested_data: TemplateData | None = None
@@ -468,18 +492,9 @@ class ChangeService:
 
         incarnation_repo_metadata = await self._hoster.get_repository_metadata(incarnation.incarnation_repository)
 
-        # Fetch the template repository
-        # NOTE (ahg, 01/2023): Ideally, in the future we can just read this from the DB
-        async with self._hoster.cloned_repository(incarnation.incarnation_repository) as local_incarnation_repository:
-            incarnation_state = fengine.load_incarnation_state(
-                local_incarnation_repository.directory / incarnation.target_directory / ".fengine.yaml"
-            )
-
         async with (
             self._hoster.cloned_repository(incarnation.incarnation_repository) as local_incarnation_repository,
-            self._hoster.cloned_repository(
-                incarnation_state.template_repository, bare=True
-            ) as local_template_repository,
+            self._hoster.cloned_repository(incarnation.template_repository, bare=True) as local_template_repository,
         ):
             branch_name = generate_foxops_branch_name(
                 prefix="update-to",
