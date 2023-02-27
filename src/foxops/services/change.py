@@ -164,7 +164,7 @@ class ChangeService:
             mr_status = await self._hoster.get_merge_request_status(
                 incarnation.incarnation_repository, incarnation.merge_request_id
             )
-            if mr_status != MergeRequestStatus.MERGED:
+            if mr_status not in (MergeRequestStatus.MERGED, MergeRequestStatus.CLOSED):
                 raise ChangeFailed(
                     f"Cannot initialize legacy incarnation {incarnation_id} because it has "
                     f"a pending merge request: {incarnation.merge_request_id}. "
