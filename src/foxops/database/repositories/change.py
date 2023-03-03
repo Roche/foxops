@@ -112,6 +112,7 @@ class ChangeRepository:
         self,
         incarnation_repository: str,
         target_directory: str,
+        template_repository: str,
         commit_sha: str,
         requested_version_hash: str,
         requested_version: str,
@@ -123,6 +124,7 @@ class ChangeRepository:
                 .values(
                     incarnation_repository=incarnation_repository,
                     target_directory=target_directory,
+                    template_repository=template_repository,
                     commit_sha=commit_sha,
                 )
                 .returning(incarnations.c.id)

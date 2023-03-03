@@ -15,6 +15,7 @@ from foxops.database.repositories.change import (
 )
 from foxops.engine import TemplateData
 from foxops.engine.patching.git_diff_patch import PatchResult
+from foxops.errors import IncarnationRepositoryNotFound
 from foxops.external.git import GitError, GitRepository
 from foxops.hosters import Hoster
 from foxops.hosters.types import MergeRequestStatus
@@ -29,6 +30,10 @@ class IncarnationAlreadyExists(Exception):
 
 
 class IncarnationAlreadyUpgraded(Exception):
+    pass
+
+
+class IncarnationUpgradeFailedAsNoIncarnationStateExists(Exception):
     pass
 
 
@@ -115,6 +120,7 @@ class ChangeService:
             change = await self._change_repository.create_incarnation_with_first_change(
                 incarnation_repository=incarnation_repository,
                 target_directory=target_directory,
+                template_repository=template_repository,
                 commit_sha=commit_sha,
                 requested_version_hash=incarnation_state.template_repository_version_hash,
                 requested_version=template_repository_version,
@@ -158,7 +164,7 @@ class ChangeService:
             mr_status = await self._hoster.get_merge_request_status(
                 incarnation.incarnation_repository, incarnation.merge_request_id
             )
-            if mr_status != MergeRequestStatus.MERGED:
+            if mr_status not in (MergeRequestStatus.MERGED, MergeRequestStatus.CLOSED):
                 raise ChangeFailed(
                     f"Cannot initialize legacy incarnation {incarnation_id} because it has "
                     f"a pending merge request: {incarnation.merge_request_id}. "
@@ -170,11 +176,15 @@ class ChangeService:
             incarnation.incarnation_repository, incarnation.target_directory
         )
         if get_incarnation_state_result is None:
-            raise ChangeFailed(
+            raise IncarnationUpgradeFailedAsNoIncarnationStateExists(
                 f"Cannot initialize legacy incarnation {incarnation_id} because it does not have a .fengine.yaml file. "
-                f"This is NOT expected at this stage. Please investigate."
+                f"This could happen if it is a subdirectory incarnation, where the subdirectory was already deleted."
             )
         commit_sha, incarnation_state = get_incarnation_state_result
+
+        await self._incarnation_repository.update_incarnation_template_repository(
+            incarnation_id, incarnation_state.template_repository
+        )
 
         change_in_db = await self._change_repository.create_change(
             incarnation_id=incarnation_id,
@@ -188,6 +198,43 @@ class ChangeService:
         )
 
         return await self.get_change(change_in_db.id)
+
+    async def upgrade_all_incarnations(self, delete_nonexisting: bool = False):
+        failed_upgrades = []
+        successful_upgrades = []
+        deleted_incarnations = []
+
+        async for incarnation in self._incarnation_repository.get_incarnations():
+            try:
+                await self.initialize_legacy_incarnation(incarnation.id)
+            except IncarnationAlreadyUpgraded:
+                continue
+            except (IncarnationRepositoryNotFound, IncarnationUpgradeFailedAsNoIncarnationStateExists):
+                if delete_nonexisting:
+                    await self._incarnation_repository.delete_incarnation(incarnation.id)
+                    deleted_incarnations.append(
+                        (incarnation.id, incarnation.incarnation_repository, incarnation.target_directory)
+                    )
+                else:
+                    failed_upgrades.append(
+                        (
+                            incarnation.id,
+                            incarnation.incarnation_repository,
+                            incarnation.target_directory,
+                            "repository not found",
+                        )
+                    )
+            except Exception as e:
+                self._log.exception("Failed to upgrade incarnation", incarnation_id=incarnation.id)
+                failed_upgrades.append(
+                    (incarnation.id, incarnation.incarnation_repository, incarnation.target_directory, str(e))
+                )
+            else:
+                successful_upgrades.append(
+                    (incarnation.id, incarnation.incarnation_repository, incarnation.target_directory)
+                )
+
+        return failed_upgrades, successful_upgrades, deleted_incarnations
 
     async def create_change_direct(
         self, incarnation_id: int, requested_version: str | None = None, requested_data: TemplateData | None = None
@@ -445,6 +492,10 @@ class ChangeService:
         incarnation = await self._incarnation_repository.get_incarnation(incarnation_id)
         last_change_id = await self.get_latest_change_id_for_incarnation(incarnation_id)
 
+        await self._upgrade_incarnation_if_possible(incarnation_id)
+        if incarnation.template_repository is None:
+            raise Exception("upgrade failed. Should not happen.")
+
         # if the previous change was of type merge request and is still open, we dont want to continue
         last_change: ChangeWithMergeRequest | Change
         match await self.get_change_type(last_change_id):
@@ -467,18 +518,9 @@ class ChangeService:
 
         incarnation_repo_metadata = await self._hoster.get_repository_metadata(incarnation.incarnation_repository)
 
-        # Fetch the template repository
-        # NOTE (ahg, 01/2023): Ideally, in the future we can just read this from the DB
-        async with self._hoster.cloned_repository(incarnation.incarnation_repository) as local_incarnation_repository:
-            incarnation_state = fengine.load_incarnation_state(
-                local_incarnation_repository.directory / incarnation.target_directory / ".fengine.yaml"
-            )
-
         async with (
             self._hoster.cloned_repository(incarnation.incarnation_repository) as local_incarnation_repository,
-            self._hoster.cloned_repository(
-                incarnation_state.template_repository, bare=True
-            ) as local_template_repository,
+            self._hoster.cloned_repository(incarnation.template_repository, bare=True) as local_template_repository,
         ):
             branch_name = generate_foxops_branch_name(
                 prefix="update-to",

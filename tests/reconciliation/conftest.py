@@ -88,6 +88,7 @@ async def create_test_initialized_incarnation(
         id=1,
         incarnation_repository=test_dis.incarnation_repository,
         target_directory=test_dis.target_directory,
+        template_repository=test_dis.template_repository,
         commit_sha="any-commit-sha",
         merge_request_id="any-merge-request-id",
     )

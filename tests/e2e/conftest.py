@@ -3,6 +3,7 @@ import os
 import uuid
 from urllib.parse import quote_plus
 
+import httpx
 import pytest
 from httpx import AsyncClient, Client, Timeout
 
@@ -71,6 +72,31 @@ async def create_test_gitlab_client(gitlab_test_address: str, gitlab_test_user_t
     return AsyncClient(
         base_url=gitlab_test_address, headers={"PRIVATE-TOKEN": gitlab_test_user_token}, timeout=Timeout(120)
     )
+
+
+@pytest.fixture(scope="function")
+async def gitlab_project_factory(gitlab_test_client: AsyncClient):
+    async def _factory(name: str):
+        response = await gitlab_test_client.post("/projects", json={"name": name})
+        response.raise_for_status()
+        project = response.json()
+
+        created_project_ids.append(project["id"])
+
+        return project
+
+    created_project_ids: list[int] = []
+
+    yield _factory
+
+    # cleanup all projects that were created during the test, ignoring those that were already remove in the test
+    for project_id in created_project_ids:
+        response = await gitlab_test_client.delete(f"/projects/{project_id}")
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code != 404:
+                raise
 
 
 @pytest.fixture(name="empty_incarnation_gitlab_repository")

@@ -13,6 +13,7 @@ class Incarnation(BaseModel):
     id: int
     incarnation_repository: str
     target_directory: str
+    template_repository: str | None
     commit_sha: str
     merge_request_id: str | None
 

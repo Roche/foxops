@@ -79,6 +79,21 @@ async def list_incarnations(
     return [await change_service.get_incarnation_basic(i) for i in incarnation_ids]
 
 
+@router.post("/upgrade-all")
+async def upgrade_all_incarnations(
+    delete_nonexisting: bool = False,
+    change_service: ChangeService = Depends(get_change_service),
+):
+    failed_upgrades, successful_upgrades, deleted_incarnations = await change_service.upgrade_all_incarnations(
+        delete_nonexisting=delete_nonexisting,
+    )
+    return {
+        "failed_upgrades": failed_upgrades,
+        "successful_upgrades": successful_upgrades,
+        "deleted_incarnations": deleted_incarnations,
+    }
+
+
 @router.post(
     "/legacy",
     responses={
