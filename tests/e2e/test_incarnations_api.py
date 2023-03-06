@@ -605,18 +605,16 @@ async def test_reset_incarnation_succeeds(
 ):
     # GIVEN
     incarnation_repository, incarnation_id = incarnation_gitlab_repository_in_v1
-    response = (
-        await gitlab_test_client.put(
-            f"/projects/{quote_plus(incarnation_repository)}/repository/files/{quote_plus('README.md')}",
-            json={
-                "encoding": "base64",
-                "content": base64.b64encode(
-                    b"test",
-                ).decode("utf-8"),
-                "commit_message": "adding a custom file",
-                "branch": "main",
-            },
-        )
+    response = await gitlab_test_client.put(
+        f"/projects/{quote_plus(incarnation_repository)}/repository/files/{quote_plus('README.md')}",
+        json={
+            "encoding": "base64",
+            "content": base64.b64encode(
+                b"test",
+            ).decode("utf-8"),
+            "commit_message": "adding a custom file",
+            "branch": "main",
+        },
     )
     response.raise_for_status()
 
@@ -632,5 +630,7 @@ async def test_reset_incarnation_succeeds(
     assert response_data["merge_request_id"] is not None
     assert response_data["merge_request_url"].startswith("http")
 
-    response = await gitlab_test_client.get(f"/projects/{quote_plus(incarnation_repository)}/merge_requests/{response_data['merge_request_id']}")
+    response = await gitlab_test_client.get(
+        f"/projects/{quote_plus(incarnation_repository)}/merge_requests/{response_data['merge_request_id']}"
+    )
     response.raise_for_status()

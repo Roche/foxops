@@ -304,9 +304,7 @@ async def reset_incarnation(
     to_data = request.override_template_data if request else None
 
     try:
-        merge_request_id = await change_service.reset_incarnation(
-            incarnation_id, to_version, to_data
-        )
+        merge_request_id = await change_service.reset_incarnation(incarnation_id, to_version, to_data)
     except IncarnationNotFoundError:
         response.status_code = status.HTTP_404_NOT_FOUND
         return ApiError(message="The incarnation was not found in the inventory")
