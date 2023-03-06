@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, Response, status
+from pydantic import BaseModel
 
 from foxops.database import DAL
 from foxops.dependencies import (
@@ -9,6 +10,7 @@ from foxops.dependencies import (
     get_hoster,
     get_reconciliation,
 )
+from foxops.engine import TemplateData
 from foxops.errors import IncarnationAlreadyInitializedError, IncarnationNotFoundError
 from foxops.hosters import Hoster
 from foxops.logger import bind, get_logger
@@ -22,6 +24,7 @@ from foxops.models import (
 from foxops.models.errors import ApiError
 from foxops.routers import changes
 from foxops.services.change import (
+    ChangeRejectedDueToNoChanges,
     ChangeRejectedDueToPreviousUnfinishedChange,
     ChangeService,
     IncarnationAlreadyExists,
@@ -260,6 +263,61 @@ async def read_incarnation(
     except IncarnationNotFoundError as exc:
         response.status_code = status.HTTP_404_NOT_FOUND
         return ApiError(message=str(exc))
+
+
+class IncarnationResetRequest(BaseModel):
+    override_version: str | None = None
+    override_template_data: TemplateData | None = None
+
+
+class IncarnationResetResponse(BaseModel):
+    incarnation_id: int
+    merge_request_id: str
+    merge_request_url: str
+
+
+@router.post(
+    "/{incarnation_id}/reset",
+    responses={
+        status.HTTP_200_OK: {
+            "description": "The incarnation was successfully reset",
+            "model": IncarnationResetResponse,
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "The incarnation was not found in the inventory",
+            "model": ApiError,
+        },
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {
+            "description": "The incarnation does not have any customizations and there is nothing to reset",
+            "model": ApiError,
+        },
+    },
+)
+async def reset_incarnation(
+    incarnation_id: int,
+    response: Response,
+    request: IncarnationResetRequest | None = None,
+    change_service: ChangeService = Depends(get_change_service),
+    hoster: Hoster = Depends(get_hoster),
+) -> IncarnationResetResponse | ApiError:
+    to_version = request.override_version if request else None
+    to_data = request.override_template_data if request else None
+
+    try:
+        merge_request_id = await change_service.reset_incarnation(incarnation_id, to_version, to_data)
+    except IncarnationNotFoundError:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return ApiError(message="The incarnation was not found in the inventory")
+    except ChangeRejectedDueToNoChanges:
+        response.status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+        return ApiError(message="The incarnation does not have any customizations. Nothing to reset.")
+
+    incarnation = await change_service.get_incarnation_basic(incarnation_id)
+    return IncarnationResetResponse(
+        incarnation_id=incarnation_id,
+        merge_request_id=merge_request_id,
+        merge_request_url=await hoster.get_merge_request_url(incarnation.incarnation_repository, merge_request_id),
+    )
 
 
 @router.put(

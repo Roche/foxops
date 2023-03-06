@@ -9,6 +9,7 @@ from foxops import reconciliation
 from foxops.database import DAL
 from foxops.database.repositories.change import ChangeRepository
 from foxops.engine import load_incarnation_state
+from foxops.errors import IncarnationNotFoundError
 from foxops.hosters import ReconciliationStatus
 from foxops.hosters.local import LocalHoster
 from foxops.hosters.types import MergeRequestStatus
@@ -21,10 +22,12 @@ from foxops.models.change import Change
 from foxops.reconciliation import initialize_incarnation
 from foxops.services.change import (
     ChangeFailed,
+    ChangeRejectedDueToNoChanges,
     ChangeService,
     IncarnationAlreadyExists,
     IncarnationAlreadyUpgraded,
     _construct_merge_request_conflict_description,
+    delete_all_files_in_local_git_repository,
 )
 
 
@@ -105,6 +108,19 @@ async def initialized_incarnation(
         template_repository=git_repo_template,
         commit_sha="dummy",
     )
+
+
+@fixture(scope="function")
+async def initialized_incarnation_with_customizations(
+    local_hoster: LocalHoster, initialized_incarnation: Incarnation
+) -> Incarnation:
+    async with local_hoster.cloned_repository(initialized_incarnation.incarnation_repository) as repo:
+        (repo.directory / "README.md").write_text("Hello, world customized!")
+        (repo.directory / "CONTRIBUTING.md").write_text("more files with content")
+        await repo.commit_all("some customizations")
+        await repo.push()
+
+    return initialized_incarnation
 
 
 @fixture(scope="function")
@@ -406,3 +422,114 @@ async def test_get_incarnation_with_details_succeeds_for_legacy_incarnation(
     assert incarnation.template_repository == "template"
     assert incarnation.template_repository_version == "v1.0.0"
     assert incarnation.template_data == {}
+
+
+async def test_reset_incarnation_returns_merge_request_id_and_does_not_modify_main_branch(
+    local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation_with_customizations: Incarnation
+):
+    # WHEN
+    merge_request_id = await change_service.reset_incarnation(initialized_incarnation_with_customizations.id)
+
+    # THEN
+    assert (
+        await local_hoster.get_merge_request_status(
+            initialized_incarnation_with_customizations.incarnation_repository, merge_request_id
+        )
+        == MergeRequestStatus.OPEN
+    )
+
+    async with change_service._hoster.cloned_repository(
+        initialized_incarnation_with_customizations.incarnation_repository
+    ) as repo:
+        assert (repo.directory / "README.md").read_text() == "Hello, world customized!"
+        assert (repo.directory / "CONTRIBUTING.md").read_text() == "more files with content"
+
+
+async def test_reset_incarnation_succeeds_and_removes_customizations_on_merge_request_branch(
+    local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation_with_customizations: Incarnation
+):
+    # WHEN
+    merge_request_id = await change_service.reset_incarnation(initialized_incarnation_with_customizations.id)
+
+    # THEN
+    merge_request = local_hoster.get_merge_request(
+        initialized_incarnation_with_customizations.incarnation_repository, merge_request_id
+    )
+
+    async with change_service._hoster.cloned_repository(
+        initialized_incarnation_with_customizations.incarnation_repository,
+        refspec=merge_request.source_branch,
+    ) as repo:
+        assert (repo.directory / "README.md").read_text() == "Hello, world!"
+        assert not (repo.directory / "CONTRIBUTING.md").exists()
+
+
+async def test_reset_incarnation_succeeds_when_overriding_version_and_data(
+    local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation_with_customizations: Incarnation
+):
+    # WHEN
+    merge_request_id = await change_service.reset_incarnation(
+        initialized_incarnation_with_customizations.id, override_version="v1.1.0", override_data={"foo": "bar"}
+    )
+
+    # THEN
+    merge_request = local_hoster.get_merge_request(
+        initialized_incarnation_with_customizations.incarnation_repository, merge_request_id
+    )
+
+    async with change_service._hoster.cloned_repository(
+        initialized_incarnation_with_customizations.incarnation_repository,
+        refspec=merge_request.source_branch,
+    ) as repo:
+        assert (repo.directory / "README.md").read_text() == "Hello, world2!"
+        assert not (repo.directory / "CONTRIBUTING.md").exists()
+
+        incarnation_state = load_incarnation_state(repo.directory / ".fengine.yaml")
+        assert incarnation_state.template_repository_version == "v1.1.0"
+        assert incarnation_state.template_data == {"foo": "bar"}
+
+
+async def test_reset_incarnation_fails_when_no_customizations_were_made(
+    change_service: ChangeService, initialized_incarnation: Incarnation
+):
+    # THEN
+    with pytest.raises(ChangeRejectedDueToNoChanges):
+        await change_service.reset_incarnation(initialized_incarnation.id)
+
+
+async def test_reset_incarnation_fails_when_incarnation_does_not_exist(change_service: ChangeService):
+    # WHEN
+    with pytest.raises(IncarnationNotFoundError):
+        await change_service.reset_incarnation(123456789)
+
+
+def test_delete_all_files_in_local_git_repository_removes_hidden_directories_and_files(tmp_path):
+    # GIVEN
+    (tmp_path / ".dummy_folder").mkdir()
+    (tmp_path / "dummy_folder2").mkdir()
+    (tmp_path / "dummy_folder2" / ".myfile").write_text("Hello, world!")
+    (tmp_path / ".config").write_text("Hello, world!")
+
+    # WHEN
+    delete_all_files_in_local_git_repository(tmp_path)
+
+    # THEN
+    assert not (tmp_path / ".dummy_folder").exists()
+    assert not (tmp_path / "dummy_folder2" / ".myfile").exists()
+    assert not (tmp_path / ".config").exists()
+
+
+def test_delete_all_files_in_local_git_repository_does_not_delete_git_directory_in_root_folder(tmp_path):
+    # GIVEN
+    (tmp_path / ".git").mkdir()
+    (tmp_path / "subfolder").mkdir()
+    (tmp_path / "subfolder" / ".git").mkdir()
+    (tmp_path / "README.md").write_text("Hello, world!")
+
+    # WHEN
+    delete_all_files_in_local_git_repository(tmp_path)
+
+    # THEN
+    assert (tmp_path / ".git").exists()
+    assert not (tmp_path / "subfolder" / ".git").exists()
+    assert not (tmp_path / "README.md").exists()

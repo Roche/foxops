@@ -1,5 +1,7 @@
 import inspect
 import json
+import shutil
+import uuid
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -198,6 +200,70 @@ class ChangeService:
         )
 
         return await self.get_change(change_in_db.id)
+
+    async def reset_incarnation(
+        self, incarnation_id: int, override_version: str | None = None, override_data: TemplateData | None = None
+    ) -> str:
+        """
+        Resets an incarnation by removing all customizations that were done to it
+        ... and bring it back to a pristine state as if it was just created freshly from the template.
+
+        By default, the target version and data is taken from the last change that was successfully applied
+        to the incarnation, but they can be overridden. For the data, partial overrides are also allowed.
+
+        Returns the merge request ID that was created.
+        """
+
+        incarnation = await self._incarnation_repository.get_incarnation(incarnation_id)
+        change = await self.get_latest_change_for_incarnation_if_completed(incarnation_id)
+        if incarnation.template_repository is None:
+            raise ValueError("template_repository is None. That should not happen.")
+
+        reset_branch_name = f"foxops-reset-{str(uuid.uuid4())[:8]}"
+
+        to_version = change.requested_version
+        if override_version is not None:
+            to_version = override_version
+        to_data = dict(change.requested_data)
+        if override_data is not None:
+            to_data.update(override_data)
+
+        async with (
+            self._hoster.cloned_repository(incarnation.template_repository, refspec=to_version) as template_git,
+            self._hoster.cloned_repository(incarnation.incarnation_repository) as incarnation_git,
+        ):
+            await incarnation_git.create_and_checkout_branch(reset_branch_name)
+            delete_all_files_in_local_git_repository(incarnation_git.directory / incarnation.target_directory)
+
+            await fengine.initialize_incarnation(
+                template_root_dir=template_git.directory,
+                template_repository=incarnation.template_repository,
+                template_repository_version=to_version,
+                template_data=to_data,
+                incarnation_root_dir=incarnation_git.directory / incarnation.target_directory,
+            )
+
+            if not await incarnation_git.has_uncommitted_changes():
+                raise ChangeRejectedDueToNoChanges("No changes were made to the incarnation. Nothing to reset.")
+
+            await incarnation_git.commit_all(f"foxops: resetting incarnation to version {to_version}")
+            await incarnation_git.push()
+
+            title = f"↩️ - RESET: To version {to_version}"
+            description = (
+                "This MR helps to bring back the incarnation to a 'pristine' state, as if it was "
+                "just created. Feel free to edit the branch to remove the changes and customizations "
+                "which you want to keep before merging!"
+            )
+            _, merge_request_id = await self._hoster.merge_request(
+                incarnation_repository=incarnation.incarnation_repository,
+                source_branch=reset_branch_name,
+                title=title,
+                description=description,
+                with_automerge=False,
+            )
+
+        return merge_request_id
 
     async def upgrade_all_incarnations(self, delete_nonexisting: bool = False):
         failed_upgrades = []
@@ -420,6 +486,25 @@ class ChangeService:
         last_change = await self._change_repository.get_latest_change_for_incarnation(incarnation_id)
         return last_change.id
 
+    async def get_latest_change_for_incarnation_if_completed(
+        self, incarnation_id: int
+    ) -> Change | ChangeWithMergeRequest:
+        change_id = await self.get_latest_change_id_for_incarnation(incarnation_id)
+
+        change_type = await self.get_change_type(change_id)
+        if change_type == ChangeType.MERGE_REQUEST:
+            change = await self.get_change_with_merge_request(change_id)
+            if change.merge_request_status not in (MergeRequestStatus.CLOSED, MergeRequestStatus.MERGED):
+                raise ChangeRejectedDueToPreviousUnfinishedChange(
+                    "There is still an open MR for the previous change. Please close it first."
+                )
+
+            return change
+        elif change_type == ChangeType.DIRECT:
+            return await self.get_change(change_id)
+
+        raise ValueError(f"Unknown change type {change_type}")
+
     async def get_incarnation_basic(self, incarnation_id: int) -> IncarnationBasic:
         incarnation = await self._incarnation_repository.get_incarnation(incarnation_id)
 
@@ -490,23 +575,13 @@ class ChangeService:
         This method checks out the incarnation repository, prepares a branch that contains the update and commits.
         """
         incarnation = await self._incarnation_repository.get_incarnation(incarnation_id)
-        last_change_id = await self.get_latest_change_id_for_incarnation(incarnation_id)
 
         await self._upgrade_incarnation_if_possible(incarnation_id)
         if incarnation.template_repository is None:
             raise Exception("upgrade failed. Should not happen.")
 
         # if the previous change was of type merge request and is still open, we dont want to continue
-        last_change: ChangeWithMergeRequest | Change
-        match await self.get_change_type(last_change_id):
-            case ChangeType.MERGE_REQUEST:
-                last_change = await self.get_change_with_merge_request(last_change_id)
-                if last_change.merge_request_status == MergeRequestStatus.OPEN:
-                    raise ChangeRejectedDueToPreviousUnfinishedChange(
-                        "There is still an open MR for the previous change. Please close it first."
-                    )
-            case _:
-                last_change = await self.get_change(last_change_id)
+        last_change = await self.get_latest_change_for_incarnation_if_completed(incarnation_id)
 
         to_version = last_change.requested_version
         if requested_version is not None:
@@ -605,3 +680,14 @@ def _construct_merge_request_conflict_description(
         )
 
     return "\n\n".join(description_paragraphs)
+
+
+def delete_all_files_in_local_git_repository(directory: Path) -> None:
+    for file in directory.glob("*"):
+        if file.name == ".git":
+            continue
+
+        if file.is_dir():
+            shutil.rmtree(file)
+        else:
+            file.unlink()

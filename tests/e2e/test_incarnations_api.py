@@ -596,3 +596,41 @@ async def test_delete_incarnation_succeeds_when_there_are_changes(
 
     # THEN
     assert response.status_code == HTTPStatus.NO_CONTENT
+
+
+async def test_reset_incarnation_succeeds(
+    api_client: AsyncClient,
+    gitlab_test_client: AsyncClient,
+    incarnation_gitlab_repository_in_v1: tuple[str, str],
+):
+    # GIVEN
+    incarnation_repository, incarnation_id = incarnation_gitlab_repository_in_v1
+    response = await gitlab_test_client.put(
+        f"/projects/{quote_plus(incarnation_repository)}/repository/files/{quote_plus('README.md')}",
+        json={
+            "encoding": "base64",
+            "content": base64.b64encode(
+                b"test",
+            ).decode("utf-8"),
+            "commit_message": "adding a custom file",
+            "branch": "main",
+        },
+    )
+    response.raise_for_status()
+
+    # WHEN
+    response = await api_client.post(f"/incarnations/{incarnation_id}/reset")
+    response.raise_for_status()
+
+    response_data = response.json()
+
+    # THEN
+    assert response.status_code == HTTPStatus.OK
+    assert str(response_data["incarnation_id"]) == incarnation_id
+    assert response_data["merge_request_id"] is not None
+    assert response_data["merge_request_url"].startswith("http")
+
+    response = await gitlab_test_client.get(
+        f"/projects/{quote_plus(incarnation_repository)}/merge_requests/{response_data['merge_request_id']}"
+    )
+    response.raise_for_status()

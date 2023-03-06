@@ -97,6 +97,12 @@ class GitRepository:
             else:
                 raise
 
+    async def has_uncommitted_changes(self) -> bool:
+        result = await self._run("status", "--porcelain")
+        stdout = await result.stdout.read() if result.stdout is not None else b""
+
+        return len(stdout.strip()) > 0
+
     async def commit_all(self, message: str):
         await self._run("add", ".")
         return await self._run("commit", "-m", message)
