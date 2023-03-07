@@ -59,6 +59,10 @@ async def git_repo_template(local_hoster: LocalHoster) -> str:
         await repo.commit_all("update")
         await repo.tag("v1.1.0")
 
+        (repo.directory / "template" / "README.md").write_text("Hello, world3!")
+        await repo.commit_all("update")
+        await repo.tag("v1.2.0")
+
         await repo.push(tags=True)
 
     return repo_name
@@ -290,7 +294,7 @@ async def test_create_change_direct_succeeds_when_updating_to_the_same_branch_na
     # GIVEN
     initial_change = await change_service.create_change_direct(initialized_incarnation.id, requested_version="main")
     async with local_hoster.cloned_repository(git_repo_template) as repo:
-        (repo.directory / "template" / "README.md").write_text("Hello, world3!")
+        (repo.directory / "template" / "README.md").write_text("Hello, world - even more!")
         await repo.commit_all("update2")
         await repo.push()
 
@@ -303,10 +307,32 @@ async def test_create_change_direct_succeeds_when_updating_to_the_same_branch_na
     assert new_change.requested_version == "main"
 
     async with change_service._hoster.cloned_repository(initialized_incarnation.incarnation_repository) as repo:
-        assert (repo.directory / "README.md").read_text() == "Hello, world3!"
+        assert (repo.directory / "README.md").read_text() == "Hello, world - even more!"
 
         incarnation_state = load_incarnation_state(repo.directory / ".fengine.yaml")
         assert incarnation_state.template_repository_version == "main"
+
+
+async def test_create_change_direct_succeeds_when_the_previous_change_was_not_merged(
+    change_service: ChangeService,
+    initialized_incarnation: Incarnation,
+    local_hoster: LocalHoster,
+):
+    # GIVEN
+    unmerged_change = await change_service.create_change_merge_request(
+        incarnation_id=initialized_incarnation.id,
+        requested_version="v1.1.0",
+        automerge=False,
+    )
+    async with local_hoster.cloned_repository(initialized_incarnation.incarnation_repository) as repo:
+        previous_commit_sha = await repo.head()
+
+    # WHEN
+    local_hoster.close_merge_request(initialized_incarnation.incarnation_repository, unmerged_change.merge_request_id)
+    change = await change_service.create_change_direct(initialized_incarnation.id, requested_version="v1.2.0")
+
+    # THEN
+    assert change.commit_sha != previous_commit_sha
 
 
 async def test_create_change_merge_request_succeeds_when_updating_the_template_version_without_automerge(

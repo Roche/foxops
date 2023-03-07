@@ -84,15 +84,19 @@ class LocalHoster(Hoster):
         existing_merge_requests.append(new_merge_request)
 
         if with_automerge:
-            await self.merge_merge_request(incarnation_repository, new_merge_request.id)
+            await self.merge_merge_request(incarnation_repository, str(new_merge_request.id))
 
         return commit_id, str(new_merge_request.id)
 
     def get_merge_request(self, incarnation_repository: str, merge_request_id: str) -> MergeRequest:
         return self._merge_requests[incarnation_repository][int(merge_request_id)]
 
-    async def merge_merge_request(self, incarnation_repository: str, merge_request_id: int):
-        mr = self._merge_requests[incarnation_repository][merge_request_id]
+    def close_merge_request(self, incarnation_repository: str, merge_request_id: str) -> None:
+        mr = self.get_merge_request(incarnation_repository, merge_request_id)
+        mr.status = MergeRequestStatus.CLOSED
+
+    async def merge_merge_request(self, incarnation_repository: str, merge_request_id: str):
+        mr = self.get_merge_request(incarnation_repository, merge_request_id)
 
         async with self.cloned_repository(incarnation_repository) as repo:
             await repo.fetch(mr.source_branch)
