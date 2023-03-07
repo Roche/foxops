@@ -375,6 +375,13 @@ async def update_incarnation(
     except ChangeRejectedDueToPreviousUnfinishedChange:
         response.status_code = status.HTTP_409_CONFLICT
         return ApiError(message="There is a previous change that is still open. Please merge/close it first.")
+    except ChangeRejectedDueToNoChanges:
+        logger.info(
+            "A change was requested, but there were no changes to apply",
+            incarnation_id=incarnation_id,
+            requested_version=desired_incarnation_state_patch.template_repository_version,
+            requested_data=desired_incarnation_state_patch.template_data,
+        )
 
     return await change_service.get_incarnation_with_details(incarnation_id)
 
