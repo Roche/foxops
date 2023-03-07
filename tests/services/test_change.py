@@ -18,7 +18,7 @@ from foxops.models import (
     DesiredIncarnationStatePatch,
     Incarnation,
 )
-from foxops.models.change import Change
+from foxops.models.change import Change, ChangeWithMergeRequest
 from foxops.reconciliation import initialize_incarnation
 from foxops.services.change import (
     ChangeFailed,
@@ -450,19 +450,16 @@ async def test_get_incarnation_with_details_succeeds_for_legacy_incarnation(
     assert incarnation.template_data == {}
 
 
-async def test_reset_incarnation_returns_merge_request_id_and_does_not_modify_main_branch(
+async def test_reset_incarnation_returns_change_and_does_not_modify_main_branch(
     local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation_with_customizations: Incarnation
 ):
     # WHEN
-    merge_request_id = await change_service.reset_incarnation(initialized_incarnation_with_customizations.id)
+    change = await change_service.reset_incarnation(initialized_incarnation_with_customizations.id)
 
     # THEN
-    assert (
-        await local_hoster.get_merge_request_status(
-            initialized_incarnation_with_customizations.incarnation_repository, merge_request_id
-        )
-        == MergeRequestStatus.OPEN
-    )
+    assert change.merge_request_status == MergeRequestStatus.OPEN
+    assert change.id > 1
+    assert change.requested_version == "v1.0.0"
 
     async with change_service._hoster.cloned_repository(
         initialized_incarnation_with_customizations.incarnation_repository
@@ -475,16 +472,15 @@ async def test_reset_incarnation_succeeds_and_removes_customizations_on_merge_re
     local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation_with_customizations: Incarnation
 ):
     # WHEN
-    merge_request_id = await change_service.reset_incarnation(initialized_incarnation_with_customizations.id)
+    change = await change_service.reset_incarnation(initialized_incarnation_with_customizations.id)
 
     # THEN
-    merge_request = local_hoster.get_merge_request(
-        initialized_incarnation_with_customizations.incarnation_repository, merge_request_id
-    )
+    assert change.revision > 1
+    assert isinstance(change, ChangeWithMergeRequest)
 
     async with change_service._hoster.cloned_repository(
         initialized_incarnation_with_customizations.incarnation_repository,
-        refspec=merge_request.source_branch,
+        refspec=change.merge_request_branch_name,
     ) as repo:
         assert (repo.directory / "README.md").read_text() == "Hello, world!"
         assert not (repo.directory / "CONTRIBUTING.md").exists()
@@ -494,13 +490,13 @@ async def test_reset_incarnation_succeeds_when_overriding_version_and_data(
     local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation_with_customizations: Incarnation
 ):
     # WHEN
-    merge_request_id = await change_service.reset_incarnation(
+    change = await change_service.reset_incarnation(
         initialized_incarnation_with_customizations.id, override_version="v1.1.0", override_data={"foo": "bar"}
     )
 
     # THEN
     merge_request = local_hoster.get_merge_request(
-        initialized_incarnation_with_customizations.incarnation_repository, merge_request_id
+        initialized_incarnation_with_customizations.incarnation_repository, change.merge_request_id
     )
 
     async with change_service._hoster.cloned_repository(

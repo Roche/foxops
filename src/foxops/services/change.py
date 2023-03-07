@@ -203,7 +203,7 @@ class ChangeService:
 
     async def reset_incarnation(
         self, incarnation_id: int, override_version: str | None = None, override_data: TemplateData | None = None
-    ) -> str:
+    ) -> ChangeWithMergeRequest:
         """
         Resets an incarnation by removing all customizations that were done to it
         ... and bring it back to a pristine state as if it was just created freshly from the template.
@@ -215,16 +215,16 @@ class ChangeService:
         """
 
         incarnation = await self._incarnation_repository.get_incarnation(incarnation_id)
-        change = await self.get_latest_change_for_incarnation_if_completed(incarnation_id)
+        last_change = await self.get_latest_change_for_incarnation_if_completed(incarnation_id)
         if incarnation.template_repository is None:
             raise ValueError("template_repository is None. That should not happen.")
 
         reset_branch_name = f"foxops-reset-{str(uuid.uuid4())[:8]}"
 
-        to_version = change.requested_version
+        to_version = last_change.requested_version
         if override_version is not None:
             to_version = override_version
-        to_data = dict(change.requested_data)
+        to_data = dict(last_change.requested_data)
         if override_data is not None:
             to_data.update(override_data)
 
@@ -235,7 +235,7 @@ class ChangeService:
             await incarnation_git.create_and_checkout_branch(reset_branch_name)
             delete_all_files_in_local_git_repository(incarnation_git.directory / incarnation.target_directory)
 
-            await fengine.initialize_incarnation(
+            incarnation_state = await fengine.initialize_incarnation(
                 template_root_dir=template_git.directory,
                 template_repository=incarnation.template_repository,
                 template_repository_version=to_version,
@@ -247,23 +247,40 @@ class ChangeService:
                 raise ChangeRejectedDueToNoChanges("No changes were made to the incarnation. Nothing to reset.")
 
             await incarnation_git.commit_all(f"foxops: resetting incarnation to version {to_version}")
-            await incarnation_git.push()
+            commit_sha = await incarnation_git.head()
 
-            title = f"↩️ - RESET: To version {to_version}"
-            description = (
-                "This MR helps to bring back the incarnation to a 'pristine' state, as if it was "
-                "just created. Feel free to edit the branch to remove the changes and customizations "
-                "which you want to keep before merging!"
-            )
-            _, merge_request_id = await self._hoster.merge_request(
-                incarnation_repository=incarnation.incarnation_repository,
-                source_branch=reset_branch_name,
-                title=title,
-                description=description,
-                with_automerge=False,
+            change_in_db = await self._change_repository.create_change(
+                incarnation_id=incarnation_id,
+                revision=last_change.revision + 1,
+                change_type=ChangeType.MERGE_REQUEST,
+                commit_sha=commit_sha,
+                commit_pushed=False,
+                requested_version_hash=incarnation_state.template_repository_version_hash,
+                requested_version=incarnation_state.template_repository_version,
+                requested_data=json.dumps(incarnation_state.template_data),
+                merge_request_branch_name=reset_branch_name,
             )
 
-        return merge_request_id
+            await self._push_change_commit_and_update_database(incarnation_git, change_in_db.id)
+
+        title = f"↩️ - RESET: To version {to_version}"
+        description = (
+            "This MR helps to bring back the incarnation to a 'pristine' state, as if it was "
+            "just created. Feel free to edit the branch to remove the changes and customizations "
+            "which you want to keep before merging!"
+        )
+        _, merge_request_id = await self._hoster.merge_request(
+            incarnation_repository=incarnation.incarnation_repository,
+            source_branch=reset_branch_name,
+            title=title,
+            description=description,
+            with_automerge=False,
+        )
+
+        await self._change_repository.update_merge_request_id(change_in_db.id, merge_request_id)
+        await self._incarnation_repository.update_incarnation(incarnation_id, commit_sha, merge_request_id)
+
+        return await self.get_change_with_merge_request(change_in_db.id)
 
     async def upgrade_all_incarnations(self, delete_nonexisting: bool = False):
         failed_upgrades = []
