@@ -61,7 +61,7 @@ async def list_incarnations(
     target_directory: str = ".",
     dal: DAL = Depends(get_dal),
     change_service: ChangeService = Depends(get_change_service),
-) -> list[IncarnationBasic] | ApiError:
+):
     """Returns a list of all known incarnations.
 
     The list is sorted by creation date, with the oldest incarnation first.
@@ -131,7 +131,7 @@ async def create_incarnation_legacy(
     dal: DAL = Depends(get_dal),
     hoster: Hoster = Depends(get_hoster),
     reconciliation=Depends(get_reconciliation),
-) -> IncarnationWithDetails | ApiError:
+):
     """Initializes a new incarnation and adds it to the inventory.
 
     If the incarnation Git repository does not yet exist, a `400 BAD REQUEST` error is returned.
@@ -204,7 +204,7 @@ async def create_incarnation(
     desired_incarnation_state: DesiredIncarnationState,
     allow_import: bool = False,
     change_service: ChangeService = Depends(get_change_service),
-) -> IncarnationWithDetails | ApiError:
+):
     """Initializes a new incarnation and adds it to the inventory.
 
     If the initialization fails, foxops will return the error in a `4xx` or `5xx` status code response.
@@ -256,7 +256,7 @@ async def read_incarnation(
     response: Response,
     incarnation_id: int,
     change_service: ChangeService = Depends(get_change_service),
-) -> IncarnationWithDetails | ApiError:
+):
     """Returns the details of the incarnation from the inventory."""
     try:
         return await change_service.get_incarnation_with_details(incarnation_id)
@@ -299,7 +299,7 @@ async def reset_incarnation(
     request: IncarnationResetRequest | None = None,
     change_service: ChangeService = Depends(get_change_service),
     hoster: Hoster = Depends(get_hoster),
-) -> IncarnationResetResponse | ApiError:
+):
     to_version = request.override_version if request else None
     to_data = request.override_template_data if request else None
 
@@ -352,7 +352,7 @@ async def update_incarnation(
     incarnation_id: int,
     desired_incarnation_state_patch: DesiredIncarnationStatePatch,
     change_service: ChangeService = Depends(get_change_service),
-) -> IncarnationWithDetails | ApiError:
+):
     """Reconciles the incarnation.
 
     If the reconciliation fails, foxops will return the error in a `4xx` or `5xx` status code response.

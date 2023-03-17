@@ -1,8 +1,9 @@
 import enum
 from datetime import datetime, timezone
+from typing import AsyncIterator
 
 from pydantic import BaseModel
-from sqlalchemy import delete, insert, select, update
+from sqlalchemy import and_, delete, insert, select, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -48,6 +49,26 @@ class ChangeInDB(BaseModel):
 
     merge_request_id: str | None
     merge_request_branch_name: str | None
+
+    class Config:
+        orm_mode = True
+
+
+class IncarnationWithChangesSummary(BaseModel):
+    """Represents an incarnation combined with information about its latest change."""
+
+    id: int
+
+    incarnation_repository: str
+    target_directory: str
+    template_repository: str
+
+    revision: int
+    type: ChangeType
+    commit_sha: str
+    requested_version: str
+    merge_request_id: str | None
+    created_at: datetime
 
     class Config:
         orm_mode = True
@@ -184,6 +205,43 @@ class ChangeRepository:
                 raise IncarnationHasNoChangesError(incarnation_id)
             else:
                 return ChangeInDB.from_orm(row)
+
+    async def list_incarnations_with_changes_summary(self) -> AsyncIterator[IncarnationWithChangesSummary]:
+        alias_change = change.alias("change")
+        alias_change_newer = change.alias("change_newer")
+        query = (
+            select(
+                incarnations.c.id,
+                incarnations.c.incarnation_repository,
+                incarnations.c.target_directory,
+                incarnations.c.template_repository,
+                alias_change.c.revision,
+                alias_change.c.type,
+                alias_change.c.requested_version,
+                alias_change.c.commit_sha,
+                alias_change.c.merge_request_id,
+                alias_change.c.created_at,
+            )
+            .select_from(incarnations)
+            # join incarnations with the corresponding latest change
+            .join(alias_change, alias_change.c.incarnation_id == incarnations.c.id)
+            .join(
+                alias_change_newer,
+                and_(
+                    alias_change_newer.c.incarnation_id == incarnations.c.id,
+                    alias_change.c.revision < alias_change_newer.c.revision,
+                ),
+                isouter=True,
+            )
+            # filter out all combinations where a newer change exists - to only leave those
+            # where the joined `change` is already the latest one
+            .where(alias_change_newer.c.id.is_(None))
+            .order_by(incarnations.c.id)
+        )
+
+        async with self.engine.connect() as conn:
+            for row in await conn.execute(query):
+                yield IncarnationWithChangesSummary.from_orm(row)
 
     async def delete_change(self, id_: int) -> None:
         async with self.engine.connect() as conn:

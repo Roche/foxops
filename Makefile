@@ -9,3 +9,5 @@ lint:
 
 typecheck:
 	poetry run dmypy run -- src tests
+
+pre-commit: fmt lint typecheck

@@ -121,6 +121,60 @@ async def test_get_latest_change_for_incarnation_throws_exception_when_no_change
         await change_repository.get_latest_change_for_incarnation(incarnation.id)
 
 
+async def test_list_incarnations_with_change_summary_returns_all_incarnations_with_latest_change_data(
+    change_repository: ChangeRepository,
+):
+    # GIVEN
+    incarnation1_change1 = await change_repository.create_incarnation_with_first_change(
+        incarnation_repository="test",
+        target_directory="test",
+        template_repository="test-template",
+        commit_sha="dummy sha",
+        requested_version_hash="dummy template sha",
+        requested_version="v1",
+        requested_data=json.dumps({"foo": "bar"}),
+    )
+    incarnation1_change2 = await change_repository.create_change(
+        incarnation_id=incarnation1_change1.id,
+        revision=2,
+        change_type=ChangeType.MERGE_REQUEST,
+        commit_sha="dummy sha2",
+        commit_pushed=True,
+        requested_version_hash="dummy template sha2",
+        requested_version="v2",
+        requested_data=json.dumps({"foo": "bar"}),
+        merge_request_id="123",
+        merge_request_branch_name="mybranch",
+    )
+
+    incarnation2_change1 = await change_repository.create_incarnation_with_first_change(
+        incarnation_repository="test2",
+        target_directory="test",
+        template_repository="test-template",
+        commit_sha="dummy sha",
+        requested_version_hash="dummy template sha",
+        requested_version="v1",
+        requested_data=json.dumps({"foo": "bar"}),
+    )
+
+    # WHEN
+    incarnations = [x async for x in change_repository.list_incarnations_with_changes_summary()]
+
+    # THEN
+    assert len(incarnations) == 2
+    assert incarnations[0].id == incarnation1_change1.incarnation_id
+    assert incarnations[0].revision == 2
+    assert incarnations[0].commit_sha == incarnation1_change2.commit_sha
+    assert incarnations[0].requested_version == incarnation1_change2.requested_version
+    assert incarnations[0].type == incarnation1_change2.type
+    assert incarnations[0].merge_request_id == incarnation1_change2.merge_request_id
+
+    assert incarnations[1].id == incarnation2_change1.incarnation_id
+    assert incarnations[1].revision == 1
+    assert incarnations[1].type == incarnation2_change1.type
+    assert incarnations[1].commit_sha == incarnation2_change1.commit_sha
+
+
 async def test_update_change_commit_pushed_succeeds(change_repository: ChangeRepository, incarnation: Incarnation):
     # GIVEN
     change = await change_repository.create_change(
