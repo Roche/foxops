@@ -139,7 +139,7 @@ class ChangeRepository:
         requested_version: str,
         requested_data: str,
     ) -> ChangeInDB:
-        async with self.engine.connect() as conn:
+        async with self.engine.begin() as conn:
             query_insert_incarnation = (
                 insert(incarnations)
                 .values(

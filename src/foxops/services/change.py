@@ -17,7 +17,7 @@ from foxops.database.repositories.change import (
 )
 from foxops.engine import TemplateData
 from foxops.engine.patching.git_diff_patch import PatchResult
-from foxops.errors import IncarnationRepositoryNotFound
+from foxops.errors import IncarnationRepositoryNotFound, RetryableError
 from foxops.external.git import GitError, GitRepository
 from foxops.hosters import Hoster
 from foxops.hosters.types import MergeRequestStatus
@@ -130,17 +130,10 @@ class ChangeService:
             )
 
             try:
-                await incarnation_git.push()
-            except GitError as e:
-                self._log.exception(
-                    "Failed to push commit to incarnation repository. Removing change from database.",
-                    change_id=change.id,
-                )
-                await self._change_repository.delete_change(change.id)
-
-                raise ChangeFailed from e
-            else:
-                change = await self._change_repository.update_commit_pushed(change.id, True)
+                await self._push_change_commit_and_update_database(incarnation_git, change.id)
+            except ChangeFailed:
+                await self._change_repository.delete_incarnation(change.incarnation_id)
+                raise
 
         return await self.get_change(change.id)
 
@@ -651,18 +644,37 @@ class ChangeService:
             )
 
     async def _push_change_commit_and_update_database(self, incarnation_git: GitRepository, change_id: int) -> None:
-        try:
-            await incarnation_git.push()
-        except GitError as e:
-            self._log.exception(
-                "Failed to push commit to incarnation repository. Removing change from database.",
-                change_id=change_id,
-            )
-            await self._change_repository.delete_change(change_id)
+        # the push might fail when other changes are pushed in the meantime. We need to rebase/retry in that case
+        last_exception = None
+        for i in range(10):
+            try:
+                await incarnation_git.push()
+            except RetryableError as e:
+                self._log.info(
+                    "Failed to push commit to incarnation repository. "
+                    "But a retry is possible (possibly someone else pushed in the meantime).",
+                    change_id=change_id,
+                    attempt=i,
+                )
+                last_exception = e
 
-            raise ChangeFailed from e
-        else:
+                await incarnation_git.pull(rebase=True)
+                continue
+            except GitError as e:
+                self._log.exception(
+                    "Failed to push commit to incarnation repository. Removing change from database.",
+                    change_id=change_id,
+                )
+                await self._change_repository.delete_change(change_id)
+
+                raise ChangeFailed from e
+
             await self._change_repository.update_commit_pushed(change_id, True)
+            return
+        else:
+            if last_exception:
+                self._log.error("last exception", last_exception=last_exception)
+            raise ChangeFailed("Failed to push commit to incarnation repository. Retries exceeded.")
 
 
 def _construct_merge_request_conflict_description(

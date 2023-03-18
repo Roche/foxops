@@ -27,10 +27,11 @@ class MergeRequest(BaseModel):
 
 
 class LocalHoster(Hoster):
-    def __init__(self, directory: Path):
+    def __init__(self, directory: Path, push_delay_seconds: int = 0):
         self.directory = directory
 
         self._merge_requests: dict[str, list[MergeRequest]] = defaultdict(list)
+        self.push_delay_seconds = push_delay_seconds
 
     async def validate(self) -> None:
         if not self.directory.exists():
@@ -133,7 +134,7 @@ class LocalHoster(Hoster):
             await git_exec("config", "user.name", "foxops", cwd=tmpdir)
             await git_exec("config", "user.email", "noreply@foxops.io", cwd=tmpdir)
 
-            yield GitRepository(Path(tmpdir))
+            yield GitRepository(Path(tmpdir), push_delay_seconds=self.push_delay_seconds)
 
     async def has_pending_incarnation_branch(self, project_identifier: str, branch: str) -> GitSha | None:
         try:

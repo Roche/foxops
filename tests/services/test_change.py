@@ -1,3 +1,4 @@
+import asyncio
 import inspect
 from pathlib import Path
 
@@ -42,6 +43,11 @@ async def incarnation_repository(test_async_engine: AsyncEngine) -> DAL:
 @fixture(scope="function")
 def local_hoster(tmp_path) -> LocalHoster:
     return LocalHoster(Path(tmp_path))
+
+
+@fixture(scope="function")
+def local_hoster_with_delay(tmp_path) -> LocalHoster:
+    return LocalHoster(Path(tmp_path), push_delay_seconds=5)
 
 
 @fixture(scope="function")
@@ -140,6 +146,19 @@ async def change_service(
     )
 
 
+@fixture(scope="function")
+async def change_service_with_delay(
+    test_async_engine: AsyncEngine, incarnation_repository: DAL, local_hoster_with_delay: LocalHoster
+) -> ChangeService:
+    change_repository = ChangeRepository(test_async_engine)
+
+    return ChangeService(
+        hoster=local_hoster_with_delay,
+        incarnation_repository=incarnation_repository,
+        change_repository=change_repository,
+    )
+
+
 async def test_create_incarnation_succeeds_when_creating_incarnation_in_root_folder(
     change_service: ChangeService, git_repo_template: str, local_hoster: LocalHoster
 ):
@@ -190,6 +209,44 @@ async def test_create_incarnation_succeeds_when_creating_incarnation_in_subfolde
     async with local_hoster.cloned_repository(incarnation_repo_name) as repo:
         assert (repo.directory / "subdir" / "README.md").read_text() == "Hello, world!"
         assert await repo.head() == change.commit_sha
+
+
+async def test_create_incarnation_succeeds_with_internal_retries_when_the_first_push_is_rejected(
+    change_service_with_delay: ChangeService, local_hoster_with_delay: LocalHoster, git_repo_template: str
+):
+    # GIVEN
+    repo_name = "incarnation_initialized"
+    await local_hoster_with_delay.create_repository(repo_name)
+
+    async def _delayed_creation():
+        await asyncio.sleep(1)
+        return await change_service_with_delay.create_incarnation(
+            incarnation_repository=repo_name,
+            target_directory="inc1",
+            template_repository=git_repo_template,
+            template_repository_version="v1.0.0",
+            template_data={},
+        )
+
+    # WHEN
+    result = await asyncio.gather(
+        _delayed_creation(),
+        change_service_with_delay.create_incarnation(
+            incarnation_repository=repo_name,
+            target_directory="inc2",
+            template_repository=git_repo_template,
+            template_repository_version="v1.0.0",
+            template_data={},
+        ),
+    )
+
+    # THEN
+    # check if all commits of all changes exist in the incarnation repo
+    async with local_hoster_with_delay.cloned_repository(repo_name) as repo:
+        for change in result:
+            assert change.incarnation_id is not None
+            assert change.requested_version == "v1.0.0"
+            assert repo.has_commit(change.commit_sha)
 
 
 async def test_create_incarnation_fails_if_there_is_already_one_at_the_target(
