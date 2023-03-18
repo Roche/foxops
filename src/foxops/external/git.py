@@ -4,7 +4,10 @@ from pathlib import Path
 from urllib.parse import quote, urlparse, urlunparse
 
 from foxops.errors import FoxopsError, FoxopsUserError, RetryableError
+from foxops.logger import get_logger
 from foxops.utils import CalledProcessError, check_call
+
+logger = get_logger("git")
 
 
 class GitError(FoxopsError):
@@ -33,6 +36,7 @@ GIT_ERROR_ORACLE = {
     re.compile(
         rb"hint: Updates were rejected because the remote contains work that you do\nhint: not have locally."
     ): RebaseRequiredError,
+    re.compile(rb"hint: Updates were rejected because the tip of your current branch is behind"): RebaseRequiredError,
     re.compile(rb"error: cannot lock ref '.*': is at [a-f0-9]+ but expected [a-f0-9]+"): RebaseRequiredError,
     re.compile(rb"fatal: couldn't find remote ref (?P<ref>.*?)\n"): RevisionNotFoundError,
 }
@@ -68,16 +72,31 @@ def add_authentication_to_git_clone_url(source: str, username: str, password: st
 
 
 class GitRepository:
-    def __init__(self, directory: Path):
+    def __init__(self, directory: Path, push_delay_seconds: int = 0):
+        """
+        :param directory: the path to the git repository
+        :param push_delay_seconds: the number of seconds to wait before pushing changes to the remote. This is
+            especially useful for testing the behavior of foxops when two incarnations in one repo are modified
+            concurrently.
+        """
+
         if not directory.exists():
             raise ValueError("the given path doesn't exist")
         if not directory.is_dir():
             raise ValueError("the given path is not a directory")
 
         self.directory = directory
+        self.push_delay_seconds = push_delay_seconds
 
     async def _run(self, *args, timeout: int | float | None = 30, **kwargs) -> asyncio.subprocess.Process:
         return await git_exec(*args, cwd=self.directory, timeout=timeout, **kwargs)
+
+    async def has_commit(self, commit_sha: str) -> bool:
+        try:
+            await self._run("cat-file", "-e", commit_sha)
+            return True
+        except GitError:
+            return False
 
     async def has_any_commits(self) -> bool:
         result = await self._run("rev-list", "-n", "1", "--all")
@@ -128,6 +147,20 @@ class GitRepository:
 
         return stdout.decode()
 
+    async def origin_default_branch(self) -> str | None:
+        """Returns "main" if the remote repo is empty."""
+        try:
+            proc = await self._run("symbolic-ref", "refs/remotes/origin/HEAD", "--short")
+        except GitError as e:
+            if e.message.startswith("fatal: ref refs/remotes/origin/HEAD is not a symbolic ref"):
+                return None
+            raise
+
+        if proc.stdout is None:
+            raise GitError("unable to determine the default git branch")
+
+        return (await proc.stdout.read()).strip().decode()
+
     async def current_branch(self) -> str:
         proc = await self._run("branch", "--show-current")
         if proc.stdout is None:
@@ -140,6 +173,9 @@ class GitRepository:
         await self._run("merge", *ff_only_args, branch)
 
     async def push(self, tags: bool = False) -> str:
+        if self.push_delay_seconds > 0:
+            await asyncio.sleep(self.push_delay_seconds)
+
         current_branch = await self.current_branch()
 
         additional_args = []
@@ -159,14 +195,31 @@ class GitRepository:
 
         return await self.head()
 
+    async def pull(self, rebase: bool = True):
+        if rebase:
+            await self._run("pull", "--rebase")
+        else:
+            await self._run("pull")
+
     async def head(self) -> str:
         proc = await self._run("rev-parse", "HEAD")
         if proc.stdout is None:
             raise GitError("unable to determine the current git HEAD")
         return (await proc.stdout.read()).decode().strip()
 
-    async def fetch(self, refspec: str) -> None:
-        await self._run("fetch", "origin", refspec)
+    async def fetch(self, refspec: str | None = None) -> None:
+        args = []
+        if refspec is not None:
+            args.append(refspec)
+
+        await self._run("fetch", "origin", *args)
+
+    async def rebase(self, branch: str | None = None) -> None:
+        if branch is None:
+            branch = await self.origin_default_branch()
+
+        logger.debug("rebasing", current_branch=await self.current_branch(), onto_branch=branch)
+        await self._run("rebase", branch)
 
     async def tag(self, tag: str):
         await self._run("tag", tag)
