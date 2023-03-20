@@ -8,12 +8,15 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import AsyncIterator
 
+from pydantic import BaseModel
+
 import foxops.engine as fengine
 from foxops.database import DAL
 from foxops.database.repositories.change import (
     ChangeRepository,
     ChangeType,
     IncarnationHasNoChangesError,
+    IncarnationWithChangesSummary,
 )
 from foxops.engine import TemplateData
 from foxops.engine.patching.git_diff_patch import PatchResult
@@ -53,6 +56,24 @@ class ChangeRejectedDueToConflicts(Exception):
         self.deleted_paths = deleted_paths
 
 
+class IncarnationWithLatestChangeDetails(BaseModel):
+    id: int
+    incarnation_repository: str
+    target_directory: str
+    template_repository: str
+
+    revision: int
+    type: ChangeType
+    requested_version: str
+    created_at: datetime
+
+    commit_sha: str
+    commit_url: str
+
+    merge_request_id: str | None
+    merge_request_url: str | None
+
+
 class ChangeFailed(Exception):
     pass
 
@@ -89,6 +110,43 @@ class ChangeService:
         self._incarnation_repository = incarnation_repository
 
         self._log = get_logger("change_service")
+
+    async def _incarnation_with_latest_change_details_from_dbobj(
+        self, dbobj: IncarnationWithChangesSummary
+    ) -> IncarnationWithLatestChangeDetails:
+        merge_request_url = None
+        if dbobj.merge_request_id is not None:
+            merge_request_url = await self._hoster.get_merge_request_url(
+                dbobj.incarnation_repository, dbobj.merge_request_id
+            )
+
+        return IncarnationWithLatestChangeDetails(
+            id=dbobj.id,
+            incarnation_repository=dbobj.incarnation_repository,
+            target_directory=dbobj.target_directory,
+            template_repository=dbobj.template_repository,
+            revision=dbobj.revision,
+            type=dbobj.type,
+            requested_version=dbobj.requested_version,
+            created_at=dbobj.created_at,
+            commit_sha=dbobj.commit_sha,
+            commit_url=await self._hoster.get_commit_url(dbobj.incarnation_repository, dbobj.commit_sha),
+            merge_request_id=dbobj.merge_request_id,
+            merge_request_url=merge_request_url,
+        )
+
+    async def list_incarnations(self) -> list[IncarnationWithLatestChangeDetails]:
+        return [
+            await self._incarnation_with_latest_change_details_from_dbobj(inc)
+            async for inc in self._change_repository.list_incarnations_with_changes_summary()
+        ]
+
+    async def get_incarnation_by_repo_and_target_directory(
+        self, repo: str, target_directory: str
+    ) -> IncarnationWithLatestChangeDetails:
+        return await self._incarnation_with_latest_change_details_from_dbobj(
+            await self._change_repository.get_incarnation_by_repo_and_target_dir(repo, target_directory)
+        )
 
     async def create_incarnation(
         self,

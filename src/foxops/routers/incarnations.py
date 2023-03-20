@@ -59,27 +59,24 @@ async def list_incarnations(
     response: Response,
     incarnation_repository: str | None = None,
     target_directory: str = ".",
-    dal: DAL = Depends(get_dal),
     change_service: ChangeService = Depends(get_change_service),
 ):
     """Returns a list of all known incarnations.
 
-    The list is sorted by creation date, with the oldest incarnation first.
+    The list is sorted by incarnartion ID, with the oldest incarnation first.
 
     TODO: implement pagination
     """
     if incarnation_repository is None:
-        incarnation_ids = [i.id async for i in dal.get_incarnations()]
-    else:
-        async with dal.connection() as conn:
-            incarnation = await dal.get_incarnation_by_identity(incarnation_repository, target_directory, conn)
-            if incarnation is None:
-                response.status_code = status.HTTP_404_NOT_FOUND
-                return ApiError(message="No incarnation found for the given repository and target directory")
+        return await change_service.list_incarnations()
 
-        incarnation_ids = [incarnation.id]
-
-    return [await change_service.get_incarnation_basic(i) for i in incarnation_ids]
+    try:
+        return [
+            await change_service.get_incarnation_by_repo_and_target_directory(incarnation_repository, target_directory)
+        ]
+    except IncarnationNotFoundError:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return ApiError(message="No incarnation found for the given repository and target directory")
 
 
 @router.post("/upgrade-all")

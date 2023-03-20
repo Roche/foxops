@@ -545,6 +545,99 @@ async def should_err_initialize_incarnation_if_template_repository_version_does_
     assert "Revision 'vNon-existing' not found" in response.json()["message"]
 
 
+async def test_list_incarnations_should_return_all_incarnations(
+    api_client: AsyncClient,
+    empty_incarnation_gitlab_repository: str,
+    template_repository: str,
+):
+    # GIVEN
+    for i in range(2):
+        response = await api_client.post(
+            "/incarnations",
+            json={
+                "incarnation_repository": empty_incarnation_gitlab_repository,
+                "target_directory": f"subdir{i}",
+                "template_repository": template_repository,
+                "template_repository_version": "v1.0.0",
+                "template_data": {"name": "Jon", "age": 18},
+            },
+        )
+        response.raise_for_status()
+
+    # WHEN
+    response = await api_client.get("/incarnations")
+    response.raise_for_status()
+    incarnations = response.json()
+
+    # THEN
+    assert len(incarnations) == 2
+
+    inc0 = [inc for inc in incarnations if inc["target_directory"] == "subdir0"][0]
+    inc1 = [inc for inc in incarnations if inc["target_directory"] == "subdir1"][0]
+
+    assert inc0["id"] is not None
+    assert inc0["incarnation_repository"] == empty_incarnation_gitlab_repository
+    assert inc0["target_directory"] == "subdir0"
+
+    assert inc0["revision"] == 1
+    assert inc0["type"] == "direct"
+    assert inc0["requested_version"] == "v1.0.0"
+    assert inc0["created_at"] is not None
+
+    assert inc0["commit_sha"] is not None
+    assert inc0["commit_url"].startswith("http")
+    assert inc0["merge_request_id"] is None
+    assert inc0["merge_request_url"] is None
+
+    assert inc1
+
+
+async def test_list_incarnations_returns_single_incarnation_when_queried(
+    api_client: AsyncClient,
+    empty_incarnation_gitlab_repository: str,
+    template_repository: str,
+):
+    # GIVEN
+    for i in range(2):
+        response = await api_client.post(
+            "/incarnations",
+            json={
+                "incarnation_repository": empty_incarnation_gitlab_repository,
+                "target_directory": f"subdir{i}",
+                "template_repository": template_repository,
+                "template_repository_version": "v1.0.0",
+                "template_data": {"name": "Jon", "age": 18},
+            },
+        )
+        response.raise_for_status()
+
+    # WHEN
+    response = await api_client.get(
+        "/incarnations",
+        params={"incarnation_repository": empty_incarnation_gitlab_repository, "target_directory": "subdir1"},
+    )
+    response.raise_for_status()
+
+    incarnations = response.json()
+
+    # THEN
+    assert len(incarnations) == 1
+    assert incarnations[0]["target_directory"] == "subdir1"
+
+
+async def test_list_incarnations_returns_not_found_if_given_incarnation_does_not_exist(
+    api_client: AsyncClient,
+):
+    # GIVEN
+    incarnation_repo = "non-existing"
+
+    # WHEN
+    response = await api_client.get("/incarnations", params={"incarnation_repository": incarnation_repo})
+
+    # THEN
+    assert response.status_code == HTTPStatus.NOT_FOUND
+
+
 async def test_update_incarnation_should_fail_if_the_previous_one_has_not_been_merged(
     api_client: AsyncClient,
     incarnation_gitlab_repository_in_v1: tuple[str, str],

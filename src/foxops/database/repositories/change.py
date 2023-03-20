@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from foxops.database.schema import change, incarnations
-from foxops.errors import FoxopsError
+from foxops.errors import FoxopsError, IncarnationNotFoundError
 
 
 class ChangeConflictError(FoxopsError):
@@ -206,42 +206,67 @@ class ChangeRepository:
             else:
                 return ChangeInDB.from_orm(row)
 
-    async def list_incarnations_with_changes_summary(self) -> AsyncIterator[IncarnationWithChangesSummary]:
+    def _incarnations_with_changes_summary_query(self):
         alias_change = change.alias("change")
         alias_change_newer = change.alias("change_newer")
-        query = (
-            select(
-                incarnations.c.id,
-                incarnations.c.incarnation_repository,
-                incarnations.c.target_directory,
-                incarnations.c.template_repository,
-                alias_change.c.revision,
-                alias_change.c.type,
-                alias_change.c.requested_version,
-                alias_change.c.commit_sha,
-                alias_change.c.merge_request_id,
-                alias_change.c.created_at,
-            )
-            .select_from(incarnations)
-            # join incarnations with the corresponding latest change
-            .join(alias_change, alias_change.c.incarnation_id == incarnations.c.id)
-            .join(
-                alias_change_newer,
-                and_(
-                    alias_change_newer.c.incarnation_id == incarnations.c.id,
-                    alias_change.c.revision < alias_change_newer.c.revision,
-                ),
-                isouter=True,
-            )
-            # filter out all combinations where a newer change exists - to only leave those
-            # where the joined `change` is already the latest one
-            .where(alias_change_newer.c.id.is_(None))
-            .order_by(incarnations.c.id)
+
+        return (
+            incarnations.c,
+            alias_change.c,
+            (
+                select(
+                    incarnations.c.id,
+                    incarnations.c.incarnation_repository,
+                    incarnations.c.target_directory,
+                    incarnations.c.template_repository,
+                    alias_change.c.revision,
+                    alias_change.c.type,
+                    alias_change.c.requested_version,
+                    alias_change.c.commit_sha,
+                    alias_change.c.merge_request_id,
+                    alias_change.c.created_at,
+                )
+                .select_from(incarnations)
+                # join incarnations with the corresponding latest change
+                .join(alias_change, alias_change.c.incarnation_id == incarnations.c.id)
+                .join(
+                    alias_change_newer,
+                    and_(
+                        alias_change_newer.c.incarnation_id == incarnations.c.id,
+                        alias_change.c.revision < alias_change_newer.c.revision,
+                    ),
+                    isouter=True,
+                )
+                # filter out all combinations where a newer change exists - to only leave those
+                # where the joined `change` is already the latest one
+                .where(alias_change_newer.c.id.is_(None))
+                .order_by(incarnations.c.id)
+            ),
         )
+
+    async def list_incarnations_with_changes_summary(self) -> AsyncIterator[IncarnationWithChangesSummary]:
+        _, _, query = self._incarnations_with_changes_summary_query()
 
         async with self.engine.connect() as conn:
             for row in await conn.execute(query):
                 yield IncarnationWithChangesSummary.from_orm(row)
+
+    async def get_incarnation_by_repo_and_target_dir(
+        self, incarnation_repository: str, target_directory: str
+    ) -> IncarnationWithChangesSummary:
+        incarnation_c, _, query = self._incarnations_with_changes_summary_query()
+        query = query.where(incarnation_c.incarnation_repository == incarnation_repository).where(
+            incarnation_c.target_directory == target_directory
+        )
+
+        async with self.engine.connect() as conn:
+            result = await conn.execute(query)
+            try:
+                row = result.one()
+            except NoResultFound:
+                raise IncarnationNotFoundError(0)
+
+        return IncarnationWithChangesSummary.from_orm(row)
 
     async def delete_change(self, id_: int) -> None:
         async with self.engine.connect() as conn:
