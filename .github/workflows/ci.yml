@@ -37,6 +37,7 @@ jobs:
           poetry self add "poetry-dynamic-versioning[plugin]"
           python -VV
           python -m site
+          poetry install
 
       - name: black
         run: python -m black --check --diff .
