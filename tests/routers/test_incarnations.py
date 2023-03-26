@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from http import HTTPStatus
 from unittest.mock import Mock
@@ -9,6 +10,7 @@ from pytest_mock import MockFixture
 from sqlalchemy import text
 
 from foxops.database import DAL
+from foxops.database.repositories.change import ChangeRepository
 from foxops.dependencies import get_change_service
 from foxops.models.change import Change
 from foxops.services.change import ChangeService, IncarnationAlreadyExists
@@ -62,16 +64,19 @@ async def test_api_get_incarnations_returns_empty_list_for_empty_incarnation_inv
 
 async def test_api_get_incarnations_returns_incarnations_from_inventory(
     api_client: AsyncClient,
-    dal: DAL,
+    change_repository: ChangeRepository,
+    mocker: MockFixture,
 ):
     # GIVEN
-    async with dal.connection() as conn:
-        await conn.execute(
-            text(
-                "INSERT INTO incarnation VALUES (1, 'test', 'test', 'template_repo', 'commit_sha', 'merge_request_id')"
-            )
-        )
-        await conn.commit()
+    await change_repository.create_incarnation_with_first_change(
+        incarnation_repository="test",
+        target_directory="test",
+        template_repository="template",
+        commit_sha="commit_sha",
+        requested_version="v1.0",
+        requested_version_hash="template_commit_sha",
+        requested_data=json.dumps({"foo": "bar"}),
+    )
 
     # WHEN
     response = await api_client.get("/incarnations")
@@ -85,8 +90,13 @@ async def test_api_get_incarnations_returns_incarnations_from_inventory(
             "target_directory": "test",
             "commit_sha": "commit_sha",
             "commit_url": "https://nonsense.com/test/-/commit/commit_sha",
-            "merge_request_id": "merge_request_id",
-            "merge_request_url": "https://nonsense.com/test/-/merge_requests/merge_request_id",
+            "merge_request_id": None,
+            "merge_request_url": None,
+            "created_at": mocker.ANY,
+            "template_repository": "template",
+            "requested_version": "v1.0",
+            "revision": 1,
+            "type": "direct",
         }
     ]
 
