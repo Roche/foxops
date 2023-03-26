@@ -72,7 +72,7 @@ sphinx-design = "^0.3.0"
 sphinx-autobuild = "^2021.3.14"
 sphinxcontrib-mermaid = "^0.8"
 myst-parser = "^0.18.0"
-furo = "^2022.9.15"
+furo = "^2023.3.23"
 pytest-alembic = "^0.10.0"
 
 [tool.poetry.group.dev.dependencies]
