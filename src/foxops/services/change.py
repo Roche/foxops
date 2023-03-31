@@ -740,29 +740,29 @@ def _construct_merge_request_conflict_description(
 ) -> str:
     description_paragraphs = ["Foxops couldn't automatically apply the changes from the template in this incarnation"]
 
-    if conflict_files is not None:
+    if conflict_files:
         conflict_files_text = "\n".join([f"- {f}" for f in conflict_files])
         description_paragraphs.append(
             inspect.cleandoc(
                 f"""
-            The following files were updated in the template repository - and at the same time - also
-            **modified** in the incarnation repository. Please resolve the conflicts manually:
+                The following files were updated in the template repository - and at the same time - also
+                **modified** in the incarnation repository. Please resolve the conflicts manually:
 
-            {conflict_files_text}
-            """
+                {conflict_files_text}
+                """
             )
         )
 
-    if deleted_files is not None:
+    if deleted_files:
         deleted_files_text = "\n".join([f"- {f}" for f in deleted_files])
         description_paragraphs.append(
             inspect.cleandoc(
                 f"""
-            The following files were updated in the template repository but are **no longer
-            present** in this incarnation repository. Please resolve the conflicts manually:
+                The following files were updated in the template repository but are **no longer
+                present** in this incarnation repository. Please resolve the conflicts manually:
 
-            {deleted_files_text}
-            """
+                {deleted_files_text}
+                """
             )
         )
 
