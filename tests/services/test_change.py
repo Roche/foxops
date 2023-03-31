@@ -246,7 +246,7 @@ async def test_create_incarnation_succeeds_with_internal_retries_when_the_first_
         for change in result:
             assert change.incarnation_id is not None
             assert change.requested_version == "v1.0.0"
-            assert repo.has_commit(change.commit_sha)
+            assert await repo.has_commit(change.commit_sha)
 
 
 async def test_create_incarnation_fails_if_there_is_already_one_at_the_target(
