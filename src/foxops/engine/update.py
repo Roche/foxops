@@ -19,6 +19,12 @@ async def update_incarnation_from_git_template_repository(
     incarnation_root_dir: Path,
     diff_patch_func,
 ) -> tuple[bool, IncarnationState, PatchResult | None]:
+    if update_template_repository_version.startswith("-"):
+        raise ValueError(
+            f"update_template_repository_version must ba a valid git refspec and "
+            f"not start with a dash (-): {update_template_repository_version}"
+        )
+
     # initialize pristine incarnation from current incarnation state
     current_incarnation_state_path = incarnation_root_dir / ".fengine.yaml"
     current_incarnation_state = load_incarnation_state(current_incarnation_state_path)
