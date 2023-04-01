@@ -1,3 +1,4 @@
+import asyncio
 import inspect
 import json
 import shutil
@@ -704,25 +705,27 @@ class ChangeService:
     async def _push_change_commit_and_update_database(self, incarnation_git: GitRepository, change_id: int) -> None:
         # the push might fail when other changes are pushed in the meantime. We need to rebase/retry in that case
         last_exception = None
-        for i in range(10):
+        for attempt in range(10):
+            log = self._log.bind(change_id=change_id, attempt=attempt)
+
             try:
                 await incarnation_git.push()
             except RetryableError as e:
-                self._log.info(
+                log.info(
                     "Failed to push commit to incarnation repository. "
-                    "But a retry is possible (possibly someone else pushed in the meantime).",
-                    change_id=change_id,
-                    attempt=i,
+                    "But a retry is possible (possibly someone else pushed in the meantime)."
                 )
                 last_exception = e
 
                 await incarnation_git.pull(rebase=True)
+
+                new_commit_sha = await incarnation_git.head()
+                await self._change_repository.update_commit_sha(change_id, new_commit_sha)
+
+                await asyncio.sleep(3)
                 continue
             except GitError as e:
-                self._log.exception(
-                    "Failed to push commit to incarnation repository. Removing change from database.",
-                    change_id=change_id,
-                )
+                log.exception("Failed to push commit to incarnation repository. Removing change from database.")
                 await self._change_repository.delete_change(change_id)
 
                 raise ChangeFailed from e
@@ -732,6 +735,7 @@ class ChangeService:
         else:
             if last_exception:
                 self._log.error("last exception", last_exception=last_exception)
+            await self._change_repository.delete_change(change_id)
             raise ChangeFailed("Failed to push commit to incarnation repository. Retries exceeded.")
 
 
@@ -740,29 +744,29 @@ def _construct_merge_request_conflict_description(
 ) -> str:
     description_paragraphs = ["Foxops couldn't automatically apply the changes from the template in this incarnation"]
 
-    if conflict_files is not None:
+    if conflict_files:
         conflict_files_text = "\n".join([f"- {f}" for f in conflict_files])
         description_paragraphs.append(
             inspect.cleandoc(
                 f"""
-            The following files were updated in the template repository - and at the same time - also
-            **modified** in the incarnation repository. Please resolve the conflicts manually:
+                The following files were updated in the template repository - and at the same time - also
+                **modified** in the incarnation repository. Please resolve the conflicts manually:
 
-            {conflict_files_text}
-            """
+                {conflict_files_text}
+                """
             )
         )
 
-    if deleted_files is not None:
+    if deleted_files:
         deleted_files_text = "\n".join([f"- {f}" for f in deleted_files])
         description_paragraphs.append(
             inspect.cleandoc(
                 f"""
-            The following files were updated in the template repository but are **no longer
-            present** in this incarnation repository. Please resolve the conflicts manually:
+                The following files were updated in the template repository but are **no longer
+                present** in this incarnation repository. Please resolve the conflicts manually:
 
-            {deleted_files_text}
-            """
+                {deleted_files_text}
+                """
             )
         )
 

@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from datetime import timedelta
 from http import HTTPStatus
 from pathlib import Path
+from ssl import SSLZeroReturnError
 from tempfile import mkdtemp
 from typing import AsyncIterator, TypedDict
 from urllib.parse import quote_plus
@@ -295,9 +296,22 @@ class GitLab(Hoster):
             pipeline_timeout = timedelta()
 
         async def _get_commit_status(commit_sha: GitSha, pipeline_timeout: timedelta) -> ReconciliationStatus:
-            response = await self.client.get(
-                f"/projects/{quote_plus(incarnation_repository)}/repository/commits/{commit_sha}"
-            )
+            try:
+                response = await self.client.get(
+                    f"/projects/{quote_plus(incarnation_repository)}/repository/commits/{commit_sha}"
+                )
+            except SSLZeroReturnError as e:
+                logger.warning(
+                    "failed to get commit status due to an SSL error when connecting to Gitlab. Returning UNKNOWN.",
+                    commit_sha=commit_sha,
+                    repository=incarnation_repository,
+                    error=str(e),
+                )
+                return ReconciliationStatus.UNKNOWN
+            if response.status_code == 404:
+                logger.warning("commit or project not found", commit_sha=commit_sha, repository=incarnation_repository)
+                return ReconciliationStatus.UNKNOWN
+
             response.raise_for_status()
             commit: Commit = response.json()
 
@@ -323,7 +337,7 @@ class GitLab(Hoster):
                     logger.debug("Reconciliation status: commit status is success, returning SUCCESS")
                     return ReconciliationStatus.SUCCESS
 
-                if commit["status"] in {"created", "pending", "running"}:
+                if commit["status"] in {"created", "pending", "waiting_for_resource", "running"}:
                     logger.debug(f"Reconciliation status: commit status is {commit['status']}, returning PENDING")
                     return ReconciliationStatus.PENDING
 

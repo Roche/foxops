@@ -190,6 +190,9 @@ async def attempt_fixing_rejection(
 ) -> bool:
     diff_b_file = diff_b_directory / file_with_rejection
     patch_file = patch_directory / file_with_rejection
+    if not diff_b_file.exists() or not patch_file.exists():
+        logger.info("could not fix rejection - file doesn't exist anymore", file=file_with_rejection)
+        return False
 
     logger.debug(f"attempting to fix rejection for file {file_with_rejection} ...")
 

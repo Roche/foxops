@@ -21,6 +21,13 @@ class ChangeNotFoundError(FoxopsError):
         super().__init__(f"Change with id {id_} not found")
 
 
+class ChangeCommitAlreadyPushedError(FoxopsError):
+    def __init__(self, id_: int) -> None:
+        super().__init__(
+            f"The commit for change with id {id_} was already pushed. Then the commit sha cannot be changed."
+        )
+
+
 class IncarnationHasNoChangesError(FoxopsError):
     def __init__(self, incarnation_id: int) -> None:
         super().__init__(f"Incarnation with id {incarnation_id} has no changes")
@@ -275,6 +282,37 @@ class ChangeRepository:
 
         if result.rowcount == 0:
             raise ChangeNotFoundError(id_)
+
+    async def update_commit_sha(self, id_: int, commit_sha: str) -> ChangeInDB:
+        query_select_change_commit_pushed = select(change.c.commit_pushed).where(change.c.id == id_)
+        query_select_change_incarnation_id = select(change.c.incarnation_id).where(change.c.id == id_)
+
+        async with self.engine.begin() as conn:
+            # verify that the change exists and the referenced commit was not yet pushed
+            # NOTE: Maybe it makes sense to move this into the business service, to also verify that the commit
+            #       referenced in the DB does NOT exist in the target repo
+            result = await conn.execute(query_select_change_commit_pushed)
+            try:
+                commit_pushed = result.scalar_one()
+            except NoResultFound:
+                raise ChangeNotFoundError(id_)
+
+            if commit_pushed:
+                raise ChangeCommitAlreadyPushedError(id_)
+
+            result = await conn.execute(query_select_change_incarnation_id)
+            incarnation_id = result.scalar_one()
+
+            # all good, let's update the commit sha (in change and incarnation table)
+            await conn.execute(update(incarnations).values(commit_sha=commit_sha).where(change.c.id == incarnation_id))
+
+            result = await conn.execute(
+                update(change).values(commit_sha=commit_sha).where(change.c.id == id_).returning(*change.columns)
+            )
+            row = result.one()
+            await conn.commit()
+
+        return ChangeInDB.from_orm(row)
 
     async def update_commit_pushed(self, id_: int, commit_pushed: bool) -> ChangeInDB:
         return await self._update_one(id_, commit_pushed=commit_pushed)
