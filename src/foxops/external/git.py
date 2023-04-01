@@ -199,7 +199,7 @@ class GitRepository:
         if rebase:
             await self._run("pull", "--rebase")
         else:
-            await self._run("pull")
+            await self._run("pull", "--no-rebase")
 
     async def head(self) -> str:
         proc = await self._run("rev-parse", "HEAD")

@@ -228,8 +228,7 @@ async def test_create_incarnation_succeeds_with_internal_retries_when_the_first_
         )
 
     # WHEN
-    result = await asyncio.gather(
-        _delayed_creation(),
+    change_1, change_2 = await asyncio.gather(
         change_service_with_delay.create_incarnation(
             incarnation_repository=repo_name,
             target_directory="inc2",
@@ -237,15 +236,21 @@ async def test_create_incarnation_succeeds_with_internal_retries_when_the_first_
             template_repository_version="v1.0.0",
             template_data={},
         ),
+        _delayed_creation(),
     )
 
     # THEN
-    # check if all commits of all changes exist in the incarnation repo
+    # verify that the commit of the first change exists in the incarnation repo
+    assert change_1.incarnation_id is not None
+    assert change_1.requested_version == "v1.0.0"
+
+    assert change_2.incarnation_id is not None
+    assert change_2.requested_version == "v1.0.0"
+
+    # verify that both changes were actually committed to the incarnation repository
     async with local_hoster_with_delay.cloned_repository(repo_name) as repo:
-        for change in result:
-            assert change.incarnation_id is not None
-            assert change.requested_version == "v1.0.0"
-            assert await repo.has_commit(change.commit_sha)
+        assert await repo.has_commit(change_1.commit_sha)
+        assert await repo.has_commit(change_2.commit_sha)
 
 
 async def test_create_incarnation_fails_if_there_is_already_one_at_the_target(
@@ -449,14 +454,12 @@ async def test_construct_merge_request_conflict_description_with_conflicts():
     # THEN
     assert (
         description
-        == """
-Foxops couldn't automatically apply the changes from the template in this incarnation
+        == """Foxops couldn't automatically apply the changes from the template in this incarnation
 
 The following files were updated in the template repository - and at the same time - also
 **modified** in the incarnation repository. Please resolve the conflicts manually:
 
-- README.md
-"""
+- README.md"""
     )
 
 
@@ -471,8 +474,7 @@ async def test_construct_merge_request_conflict_description_with_conflicts_and_d
     # THEN
     assert (
         description
-        == """
-Foxops couldn't automatically apply the changes from the template in this incarnation
+        == """Foxops couldn't automatically apply the changes from the template in this incarnation
 
 The following files were updated in the template repository - and at the same time - also
 **modified** in the incarnation repository. Please resolve the conflicts manually:
@@ -482,8 +484,7 @@ The following files were updated in the template repository - and at the same ti
 The following files were updated in the template repository but are **no longer
 present** in this incarnation repository. Please resolve the conflicts manually:
 
-- CONTRIBUTING.md
-"""
+- CONTRIBUTING.md"""
     )
 
 

@@ -705,24 +705,26 @@ class ChangeService:
         # the push might fail when other changes are pushed in the meantime. We need to rebase/retry in that case
         last_exception = None
         for i in range(10):
+            log = self._log.bind(change_id=change_id, attempt=i)
+
             try:
                 await incarnation_git.push()
             except RetryableError as e:
-                self._log.info(
+                log.info(
                     "Failed to push commit to incarnation repository. "
-                    "But a retry is possible (possibly someone else pushed in the meantime).",
-                    change_id=change_id,
-                    attempt=i,
+                    "But a retry is possible (possibly someone else pushed in the meantime)."
                 )
                 last_exception = e
 
                 await incarnation_git.pull(rebase=True)
+                ### TODO: After rebasing, the commit hash will change, that is not yet reflected correctly in the database
+                ### TODO: If the retries are exceeded, the change should also be deleted from the DB
+                ### IDEA: Move retries up - but then we need to duplicate code, because that code is different for direct changes, with MRs, resets etc.
+                ###       Can we somehow generalize the commit code even more? I.e. by subclassing the PreparedChangeEnvironment?
+
                 continue
             except GitError as e:
-                self._log.exception(
-                    "Failed to push commit to incarnation repository. Removing change from database.",
-                    change_id=change_id,
-                )
+                log.exception("Failed to push commit to incarnation repository. Removing change from database.")
                 await self._change_repository.delete_change(change_id)
 
                 raise ChangeFailed from e

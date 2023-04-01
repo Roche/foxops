@@ -9,7 +9,7 @@ from foxops.database.repositories.change import (
     ChangeNotFoundError,
     ChangeRepository,
     ChangeType,
-    IncarnationHasNoChangesError,
+    IncarnationHasNoChangesError, ChangeCommitAlreadyPushedError,
 )
 from foxops.models import DesiredIncarnationState, Incarnation
 
@@ -194,6 +194,45 @@ async def test_update_change_commit_pushed_succeeds(change_repository: ChangeRep
     # THEN
     updated_change = await change_repository.get_change(change.id)
     assert updated_change.commit_pushed is True
+
+
+async def test_update_change_commit_sha_succeeds(change_repository: ChangeRepository, incarnation: Incarnation):
+    # GIVEN
+    change = await change_repository.create_change(
+        incarnation_id=incarnation.id,
+        revision=1,
+        change_type=ChangeType.DIRECT,
+        commit_sha="dummy sha",
+        commit_pushed=False,
+        requested_version_hash="dummy template sha",
+        requested_version="v1",
+        requested_data=json.dumps({"foo": "bar"}),
+    )
+
+    # WHEN
+    await change_repository.update_commit_sha(change.id, "new sha")
+
+    # THEN
+    updated_change = await change_repository.get_change(change.id)
+    assert updated_change.commit_sha == "new sha"
+
+
+async def test_update_change_commit_sha_fails_when_commit_is_already_pushed(change_repository: ChangeRepository, incarnation: Incarnation):
+    # GIVEN
+    change = await change_repository.create_change(
+        incarnation_id=incarnation.id,
+        revision=1,
+        change_type=ChangeType.DIRECT,
+        commit_sha="dummy sha",
+        commit_pushed=True,
+        requested_version_hash="dummy template sha",
+        requested_version="v1",
+        requested_data=json.dumps({"foo": "bar"}),
+    )
+
+    # WHEN
+    with pytest.raises(ChangeCommitAlreadyPushedError):
+        await change_repository.update_commit_sha(change.id, "new sha")
 
 
 async def test_delete_change_succeeds_in_deleting(change_repository: ChangeRepository, incarnation: Incarnation):
