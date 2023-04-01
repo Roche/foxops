@@ -5,11 +5,12 @@ from pytest import fixture
 
 from foxops.database import DAL
 from foxops.database.repositories.change import (
+    ChangeCommitAlreadyPushedError,
     ChangeConflictError,
     ChangeNotFoundError,
     ChangeRepository,
     ChangeType,
-    IncarnationHasNoChangesError, ChangeCommitAlreadyPushedError,
+    IncarnationHasNoChangesError,
 )
 from foxops.models import DesiredIncarnationState, Incarnation
 
@@ -217,7 +218,9 @@ async def test_update_change_commit_sha_succeeds(change_repository: ChangeReposi
     assert updated_change.commit_sha == "new sha"
 
 
-async def test_update_change_commit_sha_fails_when_commit_is_already_pushed(change_repository: ChangeRepository, incarnation: Incarnation):
+async def test_update_change_commit_sha_fails_when_commit_is_already_pushed(
+    change_repository: ChangeRepository, incarnation: Incarnation
+):
     # GIVEN
     change = await change_repository.create_change(
         incarnation_id=incarnation.id,

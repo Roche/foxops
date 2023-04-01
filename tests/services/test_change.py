@@ -240,6 +240,8 @@ async def test_create_incarnation_succeeds_with_internal_retries_when_the_first_
     )
 
     # THEN
+    assert change_1.commit_sha != change_2.commit_sha
+
     # verify that the commit of the first change exists in the incarnation repo
     assert change_1.incarnation_id is not None
     assert change_1.requested_version == "v1.0.0"
