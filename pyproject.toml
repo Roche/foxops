@@ -17,7 +17,7 @@ fengine = 'foxops.engine.__main__:app'
 python = ">=3.10,<4.0"
 
 # Web Framework
-uvicorn = "^0.20.0"
+uvicorn = ">=0.20,<0.22"
 fastapi = ">=0.93,<0.95"
 
 # Auxiliary
