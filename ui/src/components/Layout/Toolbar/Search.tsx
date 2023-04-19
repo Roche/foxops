@@ -1,6 +1,6 @@
 import { useQueries, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Incarnation, incarnations } from '../../../services/incarnations'
+import { incarnations } from '../../../services/incarnations'
 import { useToolbarSearchStore } from '../../../stores/toolbar-search'
 import { Button } from '../../common/Button/Button'
 import { Hug } from '../../common/Hug/Hug'
@@ -9,6 +9,7 @@ import { Pause } from '../../common/Icons/Pause'
 import { TextField } from '../../common/TextField/TextField'
 import { Tooltip } from '../../common/Tooltip/Tooltip'
 import { useIncarnationsData } from '../../../hooks/use-incarnations-data'
+import { Incarnation } from '../../../interfaces/incarnations.types'
 
 const PARALLEL_REQUESTS = 5
 
