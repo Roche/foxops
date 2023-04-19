@@ -42,6 +42,7 @@ export interface Incarnation extends IncarnationBase {
 }
 
 export interface IncarnationInput {
+  automerge: boolean,
   repository: string,
   targetDirectory: string,
   templateRepository: string,
@@ -114,7 +115,7 @@ const convertToApiUpdateInput = (x: IncarnationInput): IncarnationUpdateApiInput
     acc[key] = value
     return acc
   }, {} as Record<string, string>),
-  automerge: true
+  automerge: x.automerge
 })
 
 export const incarnations = {
@@ -130,10 +131,10 @@ export const incarnations = {
     const incarnationApiInput = convertToApiUpdateInput(incarnation)
     return api.put<IncarnationUpdateApiInput, IncarnationApiView>(`/incarnations/${id}`, { body: incarnationApiInput })
   },
-  updateTemplateVersion: async (incarnation: Incarnation, templateVersion: string) => {
+  updateTemplateVersion: async (incarnation: Incarnation, input: Pick<IncarnationInput, 'automerge' | 'templateVersion'>) => {
     const incarnationApiInput: IncarnationUpdateApiInput = {
-      automerge: true,
-      template_repository_version: templateVersion,
+      automerge: input.automerge,
+      template_repository_version: input.templateVersion,
       template_data: incarnation.templateData
     }
     const data = await api.put<IncarnationUpdateApiInput, IncarnationApiView>(`/incarnations/${incarnation.id}`, { body: incarnationApiInput })
