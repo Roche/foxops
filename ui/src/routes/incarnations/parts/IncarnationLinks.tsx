@@ -27,13 +27,13 @@ export const IncarnationLinks = ({
       {
         typeof id === 'number' && <IncarnationStatus id={id} size={size} />
       }
-      <Tooltip title="Commit">
+      <Tooltip title="Commit" style={{ whiteSpace: 'nowrap' }}>
         <ButtonLink size={size} style={{ maxWidth: 38 }} target="_blank" disabled={!commitUrl} href={commitUrl}>
           <Commit {...svgProps} />
         </ButtonLink>
       </Tooltip>
       <Hug ml={4}>
-        <Tooltip title="Merge request">
+        <Tooltip title="Merge request" style={{ whiteSpace: 'nowrap' }}>
           <ButtonLink size={size} style={{ maxWidth: 38 }} target="_blank" disabled={!mergeRequestUrl} href={mergeRequestUrl ?? undefined}>
             <MergeRequest {...svgProps} />
           </ButtonLink>
@@ -41,7 +41,7 @@ export const IncarnationLinks = ({
       </Hug>
       {templateRepository && (
         <Hug ml={4}>
-          <Tooltip title="Template repository">
+          <Tooltip title="Template repository" style={{ whiteSpace: 'nowrap' }}>
             <ButtonLink size={size} href={templateRepository ?? ''} target="_blank">
               <Repository {...svgProps} />
             </ButtonLink>

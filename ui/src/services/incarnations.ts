@@ -1,45 +1,22 @@
+import { useQuery } from '@tanstack/react-query'
 import { api } from '../services/api'
+import { Incarnation, IncarnationApiView, IncarnationBase, IncarnationBaseApiView, IncarnationUpdateApiInput } from '../interfaces/incarnations.types'
 
-export interface IncarnationBaseApiView {
-  id: number,
-  incarnation_repository: string,
-  target_directory: string,
-  commit_url: string,
-  commit_sha: string,
-  merge_request_id: null | string,
-  merge_request_url: null | string
-}
-
-export type MergeRequestStatus = 'open' | 'merged' | 'closed' | 'unknown'
-
-export interface IncarnationApiView extends IncarnationBaseApiView {
-  template_repository: string | null,
-  template_repository_version: string | null,
-  template_repository_version_hash: string | null,
-  template_data: Record<string, string> | null,
-  merge_request_id: string | null
-  merge_request_url: string | null
-  merge_request_status: MergeRequestStatus | null
-}
-
-export interface IncarnationBase {
-  id: number,
-  incarnationRepository: string,
-  targetDirectory: string,
-  commitUrl: string,
-  mergeRequestUrl: null | string,
-  templateVersion: string // UI only
-}
-
-export interface Incarnation extends IncarnationBase {
-  templateRepository: string | null,
-  templateRepositoryVersion: string | null,
-  templateRepositoryVersionHash: string | null,
-  templateData: Record<string, string>,
-  mergeRequestId: string | null,
-  mergeRequestUrl: string | null,
-  mergeRequestStatus: MergeRequestStatus | null,
-}
+export const INCARNATION_SEARCH_FIELDS: (keyof IncarnationBase)[] = [
+  'id',
+  'incarnationRepository',
+  'targetDirectory',
+  'templateRepository',
+  'revision',
+  'type',
+  'requestedVersion',
+  'createdAt',
+  'commitSha',
+  'commitUrl',
+  'mergeRequestId',
+  'mergeRequestUrl',
+  'templateVersion'
+]
 
 export interface IncarnationInput {
   automerge: boolean,
@@ -68,18 +45,31 @@ export const convertToUiBaseIncarnation = (x: IncarnationBaseApiView): Incarnati
   targetDirectory: x.target_directory,
   commitUrl: x.commit_url,
   mergeRequestUrl: x.merge_request_url,
+  mergeRequestId: x.merge_request_id,
+  commitSha: x.commit_sha,
+  createdAt: x.created_at,
+  requestedVersion: x.requested_version,
+  revision: x.revision,
+  templateRepository: x.template_repository,
+  type: x.type,
   templateVersion: '' // UI only
 })
 
 const convertToUiIncarnation = (x: IncarnationApiView): Incarnation => ({
-  ...convertToUiBaseIncarnation(x),
+  id: x.id,
+  incarnationRepository: x.incarnation_repository,
+  targetDirectory: x.target_directory,
+  commitSha: x.commit_sha,
+  commitUrl: x.commit_url,
+  mergeRequestId: x.merge_request_id,
+  mergeRequestUrl: x.merge_request_url,
+  status: x.status,
+  mergeRequestStatus: x.merge_request_status,
   templateRepository: x.template_repository,
   templateRepositoryVersion: x.template_repository_version,
   templateRepositoryVersionHash: x.template_repository_version_hash,
-  templateData: x.template_data ?? {},
-  mergeRequestId: x.merge_request_id,
-  mergeRequestUrl: x.merge_request_url,
-  mergeRequestStatus: x.merge_request_status
+  templateData: x.template_data ?? {}
+
 })
 
 interface IncarnationApiInput {
@@ -103,12 +93,6 @@ const convertToApiInput = (x: IncarnationInput): IncarnationApiInput => ({
   automerge: false
 })
 
-interface IncarnationUpdateApiInput {
-  template_repository_version: string,
-  template_data: Record<string, string>,
-  automerge: boolean
-}
-
 const convertToApiUpdateInput = (x: IncarnationInput): IncarnationUpdateApiInput => ({
   template_repository_version: x.templateVersion,
   template_data: x.templateData.reduce((acc, { key, value }) => {
@@ -121,7 +105,7 @@ const convertToApiUpdateInput = (x: IncarnationInput): IncarnationUpdateApiInput
 export const incarnations = {
   get: async () => {
     const apiIncarnations = await api.get<undefined, IncarnationBaseApiView[]>('/incarnations')
-    return apiIncarnations.map(convertToUiBaseIncarnation)
+    return apiIncarnations.map(convertToUiBaseIncarnation).slice(0, 1)
   },
   create: async (incarnation: IncarnationInput) => {
     const incarnationApiInput = convertToApiInput(incarnation)
@@ -151,3 +135,9 @@ export const incarnations = {
     await api.delete<undefined, undefined>(`/incarnations/${id}`, { format: 'text' })
   }
 }
+
+export const useIncarnationsQuery = () => useQuery({
+  queryKey: ['incarnations'],
+  queryFn: incarnations.get,
+  refetchOnWindowFocus: false
+})

@@ -1,10 +1,9 @@
 import create from 'zustand'
-import { IncarnationsSortBy } from '../interfaces/incarnations.type'
 
 interface IncarnationsSortStore {
-  sort: IncarnationsSortBy,
+  sort: string,
   asc: boolean,
-  setSort: (sort: IncarnationsSortBy, asc: boolean) => void,
+  setSort: (sort: string, asc: boolean) => void,
 }
 
 export const useIncarnationsSortStore = create<IncarnationsSortStore>()(set => ({

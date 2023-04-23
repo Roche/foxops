@@ -1,5 +1,5 @@
 import { convertToUiBaseIncarnation, IncarnationBaseApiView } from '../services/incarnations'
-import { searchSortIncarnations } from './search-sort-incarnations'
+import { searchSortIncarnations } from './search-incarnations'
 
 const data: IncarnationBaseApiView[] = [
   {

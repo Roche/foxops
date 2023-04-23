@@ -62,11 +62,10 @@ export const Tooltip = ({ children, title, dataTestid, placement = 'bottom', sty
               style={{
                 position: strategy,
                 top: y ?? 0,
-                left: x ?? 0,
-                ...style
+                left: x ?? 0
               }}
               {...getFloatingProps()}>
-              <TooltipContent>{title}</TooltipContent>
+              <TooltipContent style={style}>{title}</TooltipContent>
             </TooltipBody>
           )}
         </AnimatePresence>

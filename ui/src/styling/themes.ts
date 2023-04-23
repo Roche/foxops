@@ -6,7 +6,7 @@ const zIndex = {
   toolbar: 11,
   aside: 5, // should be less than toolbar
   floatingActionButton: 5,
-  tooltip: 10
+  tooltip: 12
 }
 
 const sizes = {
