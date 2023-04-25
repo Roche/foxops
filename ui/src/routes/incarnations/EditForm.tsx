@@ -9,6 +9,7 @@ import { IncarnationsForm } from './Form'
 import { Section } from './parts'
 
 const toIncarnationInput = (x: Incarnation): IncarnationInput => ({
+  automerge: true,
   repository: x.incarnationRepository,
   targetDirectory: x.targetDirectory,
   templateRepository: x.templateRepository ?? '',

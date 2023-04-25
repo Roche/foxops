@@ -1,15 +1,17 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useForm, SubmitHandler } from 'react-hook-form'
+import { useForm, SubmitHandler, Controller } from 'react-hook-form'
 import { Button } from '../../components/common/Button/Button'
 import { Hug } from '../../components/common/Hug/Hug'
 import { TextField } from '../../components/common/TextField/TextField'
 import { Incarnation, incarnations } from '../../services/incarnations'
 import { useIncarnationsOperations } from '../../stores/incarnations-operations'
+import { ToggleSwitch } from '../../components/common/ToggleSwitch/ToggleSwitch'
 
 export const BulkForm = () => {
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit, control, formState: { errors } } = useForm({
     defaultValues: {
-      templateVersion: ''
+      templateVersion: '',
+      automerge: true
     }
   })
 
@@ -18,11 +20,13 @@ export const BulkForm = () => {
   const { mutateAsync: update } = useMutation(
     ({
       incarnation,
-      templateVersion
+      templateVersion,
+      automerge
     }: {
       incarnation: Incarnation,
-      templateVersion: string
-    }) => incarnations.updateTemplateVersion(incarnation, templateVersion)
+      templateVersion: string,
+      automerge: boolean
+    }) => incarnations.updateTemplateVersion(incarnation, { templateVersion, automerge })
   )
   const {
     startUpdate,
@@ -35,7 +39,7 @@ export const BulkForm = () => {
     failedUpdatedIds
   } = useIncarnationsOperations()
 
-  const onSubmit: SubmitHandler<{ templateVersion: string }> = async ({ templateVersion }) => {
+  const onSubmit: SubmitHandler<{ templateVersion: string, automerge: boolean }> = async values => {
     const ids = selectedIncarnations.map(x => x.id)
     startUpdate(ids)
     const updates: Promise<void>[] = []
@@ -43,7 +47,7 @@ export const BulkForm = () => {
       updates.push(
         update({
           incarnation: x,
-          templateVersion
+          ...values
         })
           .then(updated => {
             console.log('success', updated)
@@ -61,7 +65,7 @@ export const BulkForm = () => {
   const updating = updatingIds.length !== updatedIds.length + failedUpdatedIds.length
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
-      <Hug mb={8}>
+      <Hug mb={16}>
         <TextField
           autoFocus
           label="Template version"
@@ -70,6 +74,14 @@ export const BulkForm = () => {
           hasError={!!errors.templateVersion}
           required
           {...register('templateVersion', { required: true })} />
+      </Hug>
+      <Hug mb={16}>
+        <Controller
+          control={control}
+          name="automerge"
+          render={({ field: { onChange, value } }) => (
+            <ToggleSwitch checked={value} label="Automerge" onChange={e => onChange(e.target.checked)} />
+          )} />
       </Hug>
       <Hug flex={['jcfe', 'aic']}>
         <Hug>

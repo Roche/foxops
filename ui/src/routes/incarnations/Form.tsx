@@ -1,4 +1,4 @@
-import { useForm, SubmitHandler, useFieldArray } from 'react-hook-form'
+import { useForm, SubmitHandler, useFieldArray, Controller } from 'react-hook-form'
 import isEqual from 'lodash.isequal'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/common/Button/Button'
@@ -19,6 +19,7 @@ import { Tooltip } from '../../components/common/Tooltip/Tooltip'
 import { IncarnationLinks } from './parts/IncarnationLinks'
 import isUrl from 'is-url'
 import { OpenInNew } from '../../components/common/Icons/OpenInNew'
+import { ToggleSwitch } from '../../components/common/ToggleSwitch/ToggleSwitch'
 
 const ErrorMessage = styled.div(({ theme }) => ({
   position: 'relative',
@@ -96,7 +97,7 @@ export const IncarnationsForm = ({
   }
 
   const queryClient = useQueryClient()
-  const { mutateAsync, isLoading, isSuccess } = useMutation(mutation)
+  const { mutateAsync, isLoading } = useMutation(mutation)
   const deleteMutation = useMutation(deleteIncarnation)
   const onDelete = async () => {
     if (window.confirm('Are you sure you want to delete this incarnation?')) {
@@ -114,10 +115,10 @@ export const IncarnationsForm = ({
   const onSubmit: SubmitHandler<IncarnationInput> = async incarnation => {
     setApiError(null)
     try {
+      console.log(incarnation)
       await mutateAsync(incarnation)
       await delay(1000)
       queryClient.invalidateQueries(['incarnations'])
-      navigate('/incarnations')
     } catch (err) {
       const error = err as ApiErrorResponse
       setApiError(error)
@@ -125,8 +126,8 @@ export const IncarnationsForm = ({
   }
   const title = <h3>{isEdit ? 'Edit' : 'Create'} incarnation</h3>
   const buttonTitle = isEdit
-    ? isSuccess ? 'Updated!' : isLoading ? 'Updating' : 'Update'
-    : isSuccess ? 'Created!' : isLoading ? 'Creating' : 'Create'
+    ? isLoading ? 'Updating' : 'Update'
+    : isLoading ? 'Creating' : 'Create'
 
   const deleteButtonTitle = deleteMutation.isSuccess ? 'Deleted!' : deleteMutation.isLoading ? 'Deleting' : 'Delete'
   const form = <Hug as="form" mb={16} flex mx={-8} onSubmit={handleSubmit(onSubmit)}>
@@ -154,6 +155,16 @@ export const IncarnationsForm = ({
       <Hug mb={16}>
         <TextField label="Template version" disabled={isLoading} size="large" hasError={!!errors.templateVersion} required {...register('templateVersion', { required: true })} />
       </Hug>
+      {isEdit && (
+        <Hug mb={16}>
+          <Controller
+            control={control}
+            name="automerge"
+            render={({ field: { onChange, value } }) => (
+              <ToggleSwitch checked={value} label="Automerge" disabled={isLoading} onChange={e => onChange(e.target.checked)} />
+            )} />
+        </Hug>
+      )}
       <h4>Template data</h4>
       <Hug mb={16}>
         {fields.map((field, index) => (
@@ -186,7 +197,7 @@ export const IncarnationsForm = ({
       </Hug>
       <Hug flex={['jcfe', 'aic']}>
         <Hug>
-          <Button loading={isLoading} style={{ minWidth: 120 }} type="submit" disabled={isLoading || isSuccess}>{buttonTitle}</Button>
+          <Button loading={isLoading} style={{ minWidth: 120 }} type="submit" disabled={isLoading}>{buttonTitle}</Button>
         </Hug>
       </Hug>
     </Hug>

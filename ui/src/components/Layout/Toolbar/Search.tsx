@@ -10,6 +10,7 @@ import { Download } from '../../common/Icons/Download'
 import { Pause } from '../../common/Icons/Pause'
 import { TextField } from '../../common/TextField/TextField'
 import { Tooltip } from '../../common/Tooltip/Tooltip'
+import { useLocation } from 'react-router-dom'
 
 const PARALLEL_REQUESTS = 5
 
@@ -18,10 +19,11 @@ export const Search = () => {
   const { data } = useQuery(['incarnations'], incarnations.get)
   const { sort, asc } = useIncarnationsSortStore()
   const _data = searchSortIncarnations(data || [], { search, sort, asc })
+  const isIncarnationsPage = useLocation().pathname === '/incarnations'
 
-  const results = search ? `${_data.length} result${_data.length === 1 ? '' : 's'}` : ''
+  const results = isIncarnationsPage && search ? `${_data.length} result${_data.length === 1 ? '' : 's'}` : ''
 
-  const hasResults = search && _data.length > 0
+  const hasResults = isIncarnationsPage && search && _data.length > 0
 
   const incarnationIds = _data.map(x => x.id)
   const [requested, setRequested] = useState<number[]>([])
