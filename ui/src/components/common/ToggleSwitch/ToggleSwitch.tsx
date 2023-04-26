@@ -5,7 +5,8 @@ interface ToggleSwitchProps {
   checked: boolean
   onChange: React.ChangeEventHandler<HTMLInputElement>
   label: string
-  disabled?: boolean
+  disabled?: boolean,
+  size?: 'small' | 'medium'
 }
 
 export const ToggleSwitch = forwardRef<HTMLInputElement, ToggleSwitchProps>(({
@@ -13,12 +14,14 @@ export const ToggleSwitch = forwardRef<HTMLInputElement, ToggleSwitchProps>(({
   onChange,
   label,
   disabled,
+  size = 'medium',
   ...rest
 }, ref) => {
   const id = useId()
-
   return (
-    <Container disabled={disabled}>
+    <Container
+      small={size === 'small'}
+      disabled={disabled}>
       <input
         ref={ref}
         id={id}
@@ -38,7 +41,10 @@ export const ToggleSwitch = forwardRef<HTMLInputElement, ToggleSwitchProps>(({
 
 ToggleSwitch.displayName = 'ToggleSwitch'
 
-const Container = styled.div<{ disabled?: boolean }>`
+const Container = styled.div<{ disabled?: boolean, small: boolean }>`
+  --size: ${x => x.small ? 22 : 32}px;
+  --circle-size: ${x => x.small ? 16 : 26}px;
+  --circle-offset: calc((var(--size) - var(--circle-size)) / 2);
   opacity: ${props => props.disabled ? 0.66 : 1};
   input[type=checkbox]{
     display: none;
@@ -51,8 +57,8 @@ const Container = styled.div<{ disabled?: boolean }>`
     .switch {
       cursor: pointer;
       text-indent: -9999px;
-      width: 64px;
-      height: 32px;
+      width: calc(var(--size) * 2);
+      height: var(--size);
       background: ${props => props.theme.colors.inputBorder};
       display: block;
       border-radius: 100px;
@@ -61,24 +67,26 @@ const Container = styled.div<{ disabled?: boolean }>`
       &::after {
         content: '';
         position: absolute;
-        top: 3px;
-        left: 3px;
-        width: 26px;
-        height: 26px;
-        background: ${props => props.theme.colors.baseBg};
-        border-radius: 26px;
+        top: var(--circle-offset);
+        left: var(--circle-offset);
+        width: var(--circle-size);
+        height: var(--circle-size);
+        background: var(--base-bg);
+        border-radius: var(--circle-size);
         transition: 0.3s;
       } 
     }
   }
   input:checked + label .switch {
-    background: ${props => props.theme.colors.orange};
+    background: var(--primary);
   }
   input:checked + label .switch::after {
-    left: calc(100% - 5px);
-    transform: translateX(-100%);
+    transform: translateX(calc(var(--size)));
   }
   label:active .switch::after {
-    width: 30px;
+    /* width: calc(var(--circle-size) + var(--circle-offset)); */
+  }
+  .off-label {
+    margin-right: 8px;
   }
 `

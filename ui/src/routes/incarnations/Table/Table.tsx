@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from 'react'
-import { createColumnHelper, useReactTable, getCoreRowModel, flexRender, SortingState, getSortedRowModel, Row } from '@tanstack/react-table'
+import { useEffect, useMemo, useRef } from 'react'
+import { flexRender, Row } from '@tanstack/react-table'
 import styled from '@emotion/styled'
 import clsx from 'clsx'
 import { Hug } from '../../../components/common/Hug/Hug'
@@ -7,113 +7,52 @@ import { IconButton } from '../../../components/common/IconButton/IconButton'
 import { SortUp } from '../../../components/common/Icons/SortUp'
 import { SortDown } from '../../../components/common/Icons/SortDown'
 import { Sort } from '../../../components/common/Icons/Sort'
-import { useCanShowVersionStore } from '../../../stores/show-version'
-import { Link } from 'react-router-dom'
-import { IncarnationLinks } from '../parts/IncarnationLinks'
-import { sortByTemplateVersion } from '../../../utils/search-incarnations'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Resizer } from './parts/Resizer'
 import { useColResizeBodyCursor } from '../../../hooks/use-col-resize-body-cursor'
 import { useWindowSize } from 'usehooks-ts'
-import { INCARNATION_TABLE_COLUMNS } from '../../../constants/incarnations.consts'
-import { useTableSettingsStore } from '../../../stores/table-settings'
-import { useIncarnationsData } from '../../../hooks/use-incarnations-data'
 import { IncarnationBase } from '../../../interfaces/incarnations.types'
+import { useIncarnationsTable } from './use-incarnations-table'
+import { useTableSettingsStore } from '../../../stores/table-settings'
 
-const OFFSET = 100
-
-const columnHelper = createColumnHelper<IncarnationBase>()
-
-const defineColumns = INCARNATION_TABLE_COLUMNS
-  .filter(x => x.id !== 'templateVersion')
-  .map(x => {
-    switch (x.id) {
-      case 'id':
-        return columnHelper.display({
-          ...x,
-          cell: x => x.row.original.id
-        })
-      case 'incarnationRepository':
-        return columnHelper.accessor('incarnationRepository', {
-          ...x,
-          cell: x => <Link to={`${x.row.original.id}`}>{x.row.original.incarnationRepository}</Link>
-        })
-    }
-    return columnHelper.accessor(x.id, x)
-  })
-
-const templateVersion = columnHelper.accessor(
-  'templateVersion',
-  {
-    ...INCARNATION_TABLE_COLUMNS.find(x => x.id === 'templateVersion'),
-    sortingFn: (a, b) => sortByTemplateVersion(a.original, b.original)
-  }
-)
+const OFFSET_DEFAULT = 100
+const OFFSET_WITH_PAGINATION = 150
 
 export const IncarnationsTable = () => {
-  const [sorting, setSorting] = useState<SortingState>([])
-  const { canShow: templateVersionIsShown } = useCanShowVersionStore()
+  const { withPagination } = useTableSettingsStore()
+  return withPagination
+    ? <Table key="1" withPagination />
+    : <Table key="2" withPagination={false} /> // added `key` for forcing rerender
+}
 
-  const _actions = useMemo(() => columnHelper.display({
-    id: 'actions',
-    header: 'Actions',
-    size: templateVersionIsShown ? 250 : 140,
-    cell: x => {
-      const incarnation = x.row.original
-      return <IncarnationLinks
-        id={incarnation.id}
-        commitUrl={incarnation.commitUrl}
-        mergeRequestUrl={incarnation.mergeRequestUrl} />
-    }
-  }), [templateVersionIsShown])
-
-  const availableColumns = useMemo(
-    () => templateVersionIsShown
-      ? [...defineColumns, templateVersion]
-      : [...defineColumns],
-    [templateVersionIsShown]
-  )
-
-  const tableSettingsStore = useTableSettingsStore()
-
-  const columns = useMemo(
-    () => [
-      ...availableColumns.filter(x => {
-        if (!x.id) return false // type narrowing
-        return tableSettingsStore.visibleColumns.includes(x.id as keyof IncarnationBase)
-      }),
-      _actions
-    ],
-    [availableColumns, tableSettingsStore.visibleColumns]
-  )
-
-  const data = useIncarnationsData()
-
-  const table = useReactTable({
-    data,
-    columns,
-    state: {
-      sorting
-    },
-    onSortingChange: setSorting,
-    columnResizeMode: 'onChange',
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel()
-  })
+export const Table = ({
+  withPagination
+}: { withPagination: boolean }) => {
+  const { tableDensity } = useTableSettingsStore()
+  const {
+    table,
+    data
+  } = useIncarnationsTable(withPagination)
 
   const tbodyElementRef = useRef<HTMLTableSectionElement>(null)
+
+  const isCompact = tableDensity === 'compact'
 
   const rowVirtualizer = useVirtualizer({
     count: data.length,
     getScrollElement: () => tbodyElementRef.current,
-    estimateSize: () => 48,
+    estimateSize: () => isCompact ? 36 : 48,
     overscan: 10
   })
+
+  useEffect(() => {
+    rowVirtualizer.measure()
+  }, [tableDensity])
 
   const { rows } = table.getRowModel()
 
   const { height: windowHeight } = useWindowSize()
-  const height = useMemo(() => windowHeight - OFFSET, [windowHeight])
+  const height = useMemo(() => windowHeight - (withPagination ? OFFSET_WITH_PAGINATION : OFFSET_DEFAULT), [windowHeight])
   useColResizeBodyCursor()
   return (
     <TableContainer>
@@ -133,6 +72,7 @@ export const IncarnationsTable = () => {
                     style={makeColumnStyles(header.getSize())}
                     className={clsx(
                       'th',
+                      isCompact && 'compact',
                       header.column.getCanSort() && 'sortable',
                       `column-${header.column.id}`
                     )}>
@@ -179,40 +119,106 @@ export const IncarnationsTable = () => {
               </div>
             ))}
           </div>
-          <div
-            className="tbody"
-            style={{
-              height: `${rowVirtualizer.getTotalSize()}px`
-            }}>
-            {rowVirtualizer.getVirtualItems().map(virtualRow => {
-              const row = rows[virtualRow.index] as Row<IncarnationBase>
-              return (
+          {
+            withPagination
+              ? (
                 <div
-                  key={row.id}
-                  className="tr"
-                  style={{
-                    height: `${virtualRow.size}px`,
-                    transform: `translateY(${virtualRow.start + 40}px)`
-                  }}>
-                  {row.getVisibleCells().map(cell => (
+                  className="tbody">
+                  {table.getRowModel().rows.map(row => (
                     <div
-                      key={cell.id}
-                      style={makeColumnStyles(cell.column.getSize())}
-                      className={clsx(
-                        'td',
-                        ['id', 'actions'].some(x => x === cell.column.id) && 'text-right',
-                        `column-${cell.column.id}`
-                      )}>
-                      <span>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </span>
+                      key={row.id}
+                      className="tr">
+                      {row.getVisibleCells().map(cell => (
+                        <div
+                          key={cell.id}
+                          style={makeColumnStyles(cell.column.getSize())}
+                          className={clsx(
+                            'td',
+                            isCompact && 'compact',
+                            ['id', 'actions'].some(x => x === cell.column.id) && 'text-right',
+                            `column-${cell.column.id}`
+                          )}>
+                          {cell.column.id === 'actions'
+                            ? flexRender(cell.column.columnDef.cell, cell.getContext())
+                            : <span>{flexRender(cell.column.columnDef.cell, cell.getContext())}</span>}
+                        </div>
+                      ))}
                     </div>
                   ))}
                 </div>
               )
-            })}
-          </div>
+              : (
+                <div
+                  className="tbody"
+                  style={{
+                    height: `${rowVirtualizer.getTotalSize()}px`
+                  }}>
+                  {rowVirtualizer.getVirtualItems().map(virtualRow => {
+                    const row = rows[virtualRow.index] as Row<IncarnationBase>
+                    return (
+                      <div
+                        key={row.id}
+                        className="tr virtual"
+                        style={{
+                          height: `${virtualRow.size}px`,
+                          transform: `translateY(${virtualRow.start + 48}px)`
+                        }}>
+                        {row.getVisibleCells().map(cell => (
+                          <div
+                            key={cell.id}
+                            style={makeColumnStyles(cell.column.getSize())}
+                            className={clsx(
+                              'td',
+                              isCompact && 'compact',
+                              ['id', 'actions'].some(x => x === cell.column.id) && 'text-right',
+                              `column-${cell.column.id}`
+                            )}>
+                            {cell.column.id === 'actions'
+                              ? flexRender(cell.column.columnDef.cell, cell.getContext())
+                              : <span>{flexRender(cell.column.columnDef.cell, cell.getContext())}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+          }
         </div>
+        {withPagination && (
+          <Hug flex my={8}>
+            <Hug ml="auto" flex={['aic']} gap={8}>
+              <Hug style={{ color: 'var(--grey-600)' }}>Per page</Hug>
+              {[5, 10, 25, 50].map(x => {
+                const perPage = table.getState().pagination.pageSize
+                return (
+                  <IconButton
+                    key={x}
+                    active={x === perPage}
+                    onClick={() => table.setPageSize(x)}>
+                    <span>{x}</span>
+                  </IconButton>
+                )
+              })}
+              <Hug ml={8} flex={['jcfe']} miw={150} style={{ color: 'var(--grey-600)' }}>
+              Page {table.getState().pagination.pageIndex + 1} of{' '}
+                {table.getPageCount()}</Hug>
+              <IconButton
+                onClick={() => table.setPageIndex(0)}
+                disabled={!table.getCanPreviousPage()}>{'<<'}</IconButton>
+              <IconButton
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}>{'<'}</IconButton>
+              <IconButton
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}>{'>'}</IconButton>
+              <IconButton
+                onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+                disabled={!table.getCanNextPage()}
+              >{'>>'}</IconButton>
+            </Hug>
+          </Hug>
+        )}
       </div>
     </TableContainer>
   )
@@ -238,7 +244,6 @@ const TableContainer = styled.div`
     position: sticky;
     top: 0;
     z-index: 1;
-    height: 40px;
   }
   .tbody-scroll-box {
     position: relative;
@@ -250,14 +255,15 @@ const TableContainer = styled.div`
   }
   .tr {
     display: flex;
-    position: absolute;
-    top: 0;
-    left: 0;
     width: 100%;
+    &.virtual {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
   }
   .th {
     position: relative;
-    padding: 8px 16px;
     line-height: 24px;
     white-space: nowrap;
     user-select: none;
@@ -286,11 +292,9 @@ const TableContainer = styled.div`
   .td {
     border-bottom: 1px solid ${x => x.theme.colors.grey};
     font-size: 14px;
-    padding: 8px 16px;
     background-color: var(--base-bg);
     display: flex;
     align-items: center;
-    height: 48px;
     span {
       white-space: nowrap;
       overflow: hidden;
@@ -314,6 +318,14 @@ const TableContainer = styled.div`
   .column-id {
     .th-text {
       width: fit-content;
+    }
+  }
+  .td, .th {
+    padding: 8px 16px;
+    height: 48px;
+    &.compact {
+      padding: 2px 8px;
+      height: 36px;
     }
   }
 `

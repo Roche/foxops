@@ -151,6 +151,7 @@ export const createHeightOptions = (options: HeightOptions) => {
 
 interface BoxProps extends Partial<Record<OffsetPropsKeys, string | number>>, WidthOptions, HeightOptions {
   flex?: boolean | FlexOptions[]
+  gap?: string | number
 }
 
 const Box = styled(
@@ -160,13 +161,17 @@ const Box = styled(
   ...createOffsetProp({ name: 'padding', full: props.p, vertical: props.py, horizontal: props.px, top: props.pt, bottom: props.pb, left: props.pl, right: props.pr }),
   ...createFlexOptions(props.flex),
   ...createWidthOptions({ w: props.w, miw: props.miw, maw: props.maw, allw: props.allw }),
-  ...createHeightOptions({ h: props.h, mih: props.mih, mah: props.mah, allh: props.allh })
+  ...createHeightOptions({ h: props.h, mih: props.mih, mah: props.mah, allh: props.allh }),
+  ...(props.gap !== undefined ? {
+    gap: addPoints(props.gap)
+  } : {})
 }))
 
 interface HugProps extends Partial<Record<OffsetPropsKeys, string | number>>, React.HTMLAttributes<HTMLDivElement>, WidthOptions, HeightOptions {
   children?: React.ReactNode,
   as?: React.ElementType,
   flex?: boolean | FlexOptions[],
+  gap?: string | number,
 }
 
 export const Hug = forwardRef<HTMLDivElement, HugProps>((props, ref) => {

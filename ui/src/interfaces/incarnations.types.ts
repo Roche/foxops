@@ -66,3 +66,12 @@ export interface IncarnationUpdateApiInput {
   template_data: Record<string, string>,
   automerge: boolean
 }
+
+export interface IncarnationApiInput {
+  incarnation_repository: string,
+  template_repository: string,
+  template_repository_version: string,
+  target_directory: string,
+  template_data: Record<string, string>,
+  automerge: boolean
+}

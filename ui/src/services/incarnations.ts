@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../services/api'
-import { Incarnation, IncarnationApiView, IncarnationBase, IncarnationBaseApiView, IncarnationUpdateApiInput } from '../interfaces/incarnations.types'
+import { Incarnation, IncarnationApiInput, IncarnationApiView, IncarnationBase, IncarnationBaseApiView, IncarnationUpdateApiInput } from '../interfaces/incarnations.types'
 
 export const INCARNATION_SEARCH_FIELDS: (keyof IncarnationBase)[] = [
   'id',
@@ -72,15 +72,6 @@ const convertToUiIncarnation = (x: IncarnationApiView): Incarnation => ({
 
 })
 
-interface IncarnationApiInput {
-  incarnation_repository: string,
-  template_repository: string,
-  template_repository_version: string,
-  target_directory: string,
-  template_data: Record<string, string>,
-  automerge: boolean
-}
-
 const convertToApiInput = (x: IncarnationInput): IncarnationApiInput => ({
   incarnation_repository: x.repository,
   template_repository: x.templateRepository,
@@ -105,7 +96,7 @@ const convertToApiUpdateInput = (x: IncarnationInput): IncarnationUpdateApiInput
 export const incarnations = {
   get: async () => {
     const apiIncarnations = await api.get<undefined, IncarnationBaseApiView[]>('/incarnations')
-    return apiIncarnations.map(convertToUiBaseIncarnation).slice(0, 1)
+    return apiIncarnations.map(convertToUiBaseIncarnation)
   },
   create: async (incarnation: IncarnationInput) => {
     const incarnationApiInput = convertToApiInput(incarnation)

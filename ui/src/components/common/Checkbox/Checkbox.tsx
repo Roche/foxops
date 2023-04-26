@@ -36,7 +36,6 @@ const Box = styled.div`
   cursor: pointer;
   label {
     cursor: pointer;
-    user-select: none;
   }
   &:hover {
     input:not(:disabled) ~ label {

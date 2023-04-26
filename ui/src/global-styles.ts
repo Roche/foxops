@@ -30,7 +30,7 @@ export const createGlobalStyles = ({
       "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji",
       "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 
-    --actions-column-shadow: -4px 0 10px 0 var(${mode === 'dark' ? '--grey-900' : '--grey-100'});
+    --actions-column-shadow: -4px 0 4px 0 var(${mode === 'dark' ? '--grey-900' : '--grey-100'});
     
   }
   html {
