@@ -63,8 +63,6 @@ export const useTableSettingsStore = create<TableSettingsStore>()(
           return { visibleColumns }
         }),
         setPagination: pagination => set(() => ({ pagination })),
-        // (updaterOrValue: T | ((old: T) => T)) => void
-        // 
         setSorting: updater => set(state => {
           if (typeof updater === 'function') {
             const sorting = updater(state.sorting)
