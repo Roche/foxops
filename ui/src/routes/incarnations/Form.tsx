@@ -8,7 +8,7 @@ import { ExpandLeft } from '../../components/common/Icons/ExpandLeft'
 import { Trash } from '../../components/common/Icons/Trash'
 import { TextField } from '../../components/common/TextField/TextField'
 import { Section, StatusTag } from './parts'
-import { IncarnationApiView, IncarnationInput, MergeRequestStatus } from '../../services/incarnations'
+import { IncarnationInput } from '../../services/incarnations'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ApiErrorResponse } from '../../services/api'
 import { delay } from '../../utils'
@@ -20,6 +20,7 @@ import { IncarnationLinks } from './parts/IncarnationLinks'
 import isUrl from 'is-url'
 import { OpenInNew } from '../../components/common/Icons/OpenInNew'
 import { ToggleSwitch } from '../../components/common/ToggleSwitch/ToggleSwitch'
+import { IncarnationApiView, MergeRequestStatus } from 'interfaces/incarnations.types'
 
 const ErrorMessage = styled.div(({ theme }) => ({
   position: 'relative',

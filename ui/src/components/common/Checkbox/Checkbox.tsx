@@ -19,22 +19,25 @@ export const Checkbox = ({
   return (
     <Box>
       <input disabled={disabled} id={id} name={name} type="checkbox" checked={checked} onChange={onChange} />
-      <span className="checkbox">
-        <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M4 8L6.5 10.5L12 4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </span>
-      <label htmlFor={id}>{label}</label>
+      <label htmlFor={id}>
+        <span className="checkbox">
+          <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 8L6.5 10.5L12 4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+        {label}
+      </label>
     </Box>
   )
 }
 
 const Box = styled.div`
   display: inline-flex;
-  align-items: center;
-  gap: 8px;
   cursor: pointer;
   label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     cursor: pointer;
   }
   &:hover {
@@ -58,7 +61,7 @@ const Box = styled.div`
     }
   }
   input:checked {
-    + .checkbox {
+    + label .checkbox {
       background-color: var(--primary);
       svg {
         opacity: 1;
@@ -66,7 +69,7 @@ const Box = styled.div`
     }
   }
   input:disabled {
-    + .checkbox {
+    + label .checkbox {
       background-color: var(--grey-200);
     }
     ~ label {

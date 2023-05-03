@@ -1,6 +1,5 @@
 import styled from '@emotion/styled'
 import clsx from 'clsx'
-import { useEventListener } from 'usehooks-ts'
 
 export const ResizerComponent = styled.div`
   position: absolute;

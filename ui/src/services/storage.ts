@@ -6,5 +6,6 @@ export const createStorageKey = (key: string) => `${PREFIX}-${key}`
 
 export const STORAGE_KEYS = {
   AUTH: createStorageKey('auth'),
-  THEME: createStorageKey('theme')
+  THEME: createStorageKey('theme'),
+  TABLE: createStorageKey('table')
 }

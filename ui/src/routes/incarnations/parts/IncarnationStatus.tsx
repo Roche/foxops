@@ -10,9 +10,8 @@ import { Plus } from '../../../components/common/Icons/Plus'
 import { Tooltip } from '../../../components/common/Tooltip/Tooltip'
 import { incarnations } from '../../../services/incarnations'
 import { useIncarnationsOperations } from '../../../stores/incarnations-operations'
-import { useCanShowVersionStore } from '../../../stores/show-version'
-import { Incarnation, IncarnationBase } from '../../../interfaces/incarnations.types'
-import { mergeIncarnationBaseWithIncarnation } from '../../../utils/merge-incarnation-base-with-incarnation'
+import { useCanShowStatusStore } from '../../../stores/show-status'
+import { Incarnation } from '../../../interfaces/incarnations.types'
 
 export const IncarnationStatus = ({ id, size }: { id: number, size?: 'small' | 'large' }) => {
   const key = ['incarnations', id]
@@ -30,16 +29,7 @@ export const IncarnationStatus = ({ id, size }: { id: number, size?: 'small' | '
   const handleGetStatus = () => {
     setStatusRequested(statusRequested + 1)
     if (statusRequested > 0) {
-      refetch().then(result => {
-        queryClient.setQueriesData({
-          queryKey: ['incarnations'],
-          exact: true
-        }, x => {
-          if (!result.isSuccess) return
-          if (!x) return [result.data]
-          return (x as IncarnationBase[]).map(y => y.id === result.data?.id ? mergeIncarnationBaseWithIncarnation(y, result.data) : y)
-        })
-      })
+      refetch()
     }
   }
 
@@ -59,19 +49,12 @@ export const IncarnationStatus = ({ id, size }: { id: number, size?: 'small' | '
 }
 
 const Status = ({ id, incarnation }: { id: number, incarnation?: Incarnation }) => {
-  const queryClient = useQueryClient()
   const { data, isError, isSuccess } = useQuery(
     ['incarnations', id],
     () => incarnations.getById(id),
     {
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      onSuccess: data => {
-        queryClient.setQueryData(
-          ['incarnations'],
-          (x: IncarnationBase[] | undefined) => x?.map(y => y.id === data?.id ? mergeIncarnationBaseWithIncarnation(y, data) : y)
-        )
-      }
+      staleTime: Infinity
     }
   )
   const _incarnation = data || incarnation
@@ -87,7 +70,7 @@ const Status = ({ id, incarnation }: { id: number, incarnation?: Incarnation }) 
     }
     select(_incarnation)
   }
-  const { setCanShow } = useCanShowVersionStore()
+  const { setCanShow } = useCanShowStatusStore()
   useEffect(() => {
     if (!isSuccess) return
     setCanShow(true)

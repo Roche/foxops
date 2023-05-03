@@ -3,10 +3,11 @@ import { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { Hug } from '../../components/common/Hug/Hug'
 import { Loader } from '../../components/common/Loader/Loader'
-import { Incarnation, IncarnationInput, incarnations } from '../../services/incarnations'
-import { useCanShowVersionStore } from '../../stores/show-version'
+import { IncarnationInput, incarnations } from '../../services/incarnations'
+import { useCanShowStatusStore } from '../../stores/show-status'
 import { IncarnationsForm } from './Form'
 import { Section } from './parts'
+import { Incarnation } from '../../interfaces/incarnations.types'
 
 const toIncarnationInput = (x: Incarnation): IncarnationInput => ({
   automerge: true,
@@ -26,7 +27,7 @@ export const EditIncarnationForm = () => {
     : isError
       ? 'Error loading incarnation 😔'
       : null
-  const { setCanShow } = useCanShowVersionStore()
+  const { setCanShow } = useCanShowStatusStore()
   useEffect(() => {
     if (!isSuccess) return
     setCanShow(true)

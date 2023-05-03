@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { flexRender, Row } from '@tanstack/react-table'
-import styled from '@emotion/styled'
 import clsx from 'clsx'
 import { Hug } from '../../../components/common/Hug/Hug'
 import { IconButton } from '../../../components/common/IconButton/IconButton'
@@ -9,11 +8,11 @@ import { SortDown } from '../../../components/common/Icons/SortDown'
 import { Sort } from '../../../components/common/Icons/Sort'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Resizer } from './parts/Resizer'
-import { useColResizeBodyCursor } from '../../../hooks/use-col-resize-body-cursor'
 import { useWindowSize } from 'usehooks-ts'
 import { IncarnationBase } from '../../../interfaces/incarnations.types'
 import { useIncarnationsTable } from './use-incarnations-table'
 import { useTableSettingsStore } from '../../../stores/table-settings'
+import { TableContainer } from './parts/TableContainer'
 
 const OFFSET_DEFAULT = 100
 const OFFSET_WITH_PAGINATION = 150
@@ -46,14 +45,13 @@ export const Table = ({
   })
 
   useEffect(() => {
-    rowVirtualizer.measure()
+    if (!withPagination) rowVirtualizer.measure()
   }, [tableDensity])
 
   const { rows } = table.getRowModel()
-
   const { height: windowHeight } = useWindowSize()
   const height = useMemo(() => windowHeight - (withPagination ? OFFSET_WITH_PAGINATION : OFFSET_DEFAULT), [windowHeight])
-  useColResizeBodyCursor()
+
   return (
     <TableContainer>
       <div className="table">
@@ -229,103 +227,3 @@ const makeColumnStyles = (width: number) => ({
   minWidth: width,
   maxWidth: width
 })
-
-const TableContainer = styled.div`
-  position: relative;
-  width: 100%;
-  overflow: hidden;
-  .table {
-    display: block;
-  }
-  .sort-icon:not(.sorted) {
-    opacity: 0;
-  }
-  .thead {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-  }
-  .tbody-scroll-box {
-    position: relative;
-    overflow: scroll;
-  }
-  .tbody {
-    display: flex;
-    flex-direction: column;
-  }
-  .tr {
-    display: flex;
-    width: 100%;
-    &.virtual {
-      position: absolute;
-      top: 0;
-      left: 0;
-    }
-  }
-  .th {
-    position: relative;
-    line-height: 24px;
-    white-space: nowrap;
-    user-select: none;
-    text-align: left;
-    background-color: var(--base-bg);
-    width: 300px;
-    font-weight: 500;
-    overflow: hidden;
-    &:hover .sort-icon {
-      opacity: 1;
-    }
-  }
-  .th-text {
-    width: calc(100% - 32px);
-    flex-shrink: 1;
-    overflow: hidden;
-    span {
-      vertical-align: middle;
-      display: inline-block;
-      width: 100%;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-  }
-  .td {
-    border-bottom: 1px solid ${x => x.theme.colors.grey};
-    font-size: 14px;
-    background-color: var(--base-bg);
-    display: flex;
-    align-items: center;
-    span {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    &.column-actions {
-      box-shadow: var(--actions-column-shadow);
-    }
-  }
-  .text-right {
-    text-align: right;
-    justify-content: flex-end;
-  }
-  .column-actions {
-    position: sticky;
-    right: 0;
-    .th-text {
-      width: fit-content;
-    }
-  }
-  .column-id {
-    .th-text {
-      width: fit-content;
-    }
-  }
-  .td, .th {
-    padding: 8px 16px;
-    height: 48px;
-    &.compact {
-      padding: 2px 8px;
-      height: 36px;
-    }
-  }
-`

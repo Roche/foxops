@@ -1,18 +1,22 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useTableSettingsStore } from '../../../stores/table-settings'
 import { IncarnationBase } from '../../../interfaces/incarnations.types'
-import { SortingState, createColumnHelper, getCoreRowModel, getPaginationRowModel, getSortedRowModel, useReactTable, TableOptions } from '@tanstack/react-table'
+import { createColumnHelper, getCoreRowModel, getPaginationRowModel, getSortedRowModel, useReactTable, TableOptions } from '@tanstack/react-table'
 import { useIncarnationsData } from '../../../hooks/use-incarnations-data'
-import { useCanShowVersionStore } from '../../../stores/show-version'
+import { useCanShowStatusStore } from '../../../stores/show-status'
 import { INCARNATION_TABLE_COLUMNS } from '../../../constants/incarnations.consts'
 import { Link } from 'react-router-dom'
-import { sortByTemplateVersion } from '../../../utils/search-incarnations'
+import { makeSortBySemVer } from '../../../utils/search-incarnations'
 import { IncarnationLinks } from '../parts/IncarnationLinks'
+import { useToolbarSearchStore } from '../../../stores/toolbar-search'
+import { useColResizeBodyCursor } from '../../../hooks/use-col-resize-body-cursor'
+import { useEventListener } from 'usehooks-ts'
+
+const sortBySemVer = makeSortBySemVer('requestedVersion')
 
 const columnHelper = createColumnHelper<IncarnationBase>()
 
 const defineColumns = INCARNATION_TABLE_COLUMNS
-  .filter(x => x.id !== 'templateVersion')
   .map(x => {
     switch (x.id) {
       case 'id':
@@ -30,26 +34,22 @@ const defineColumns = INCARNATION_TABLE_COLUMNS
           ...x,
           cell: x => new Date(x.row.original.createdAt).toLocaleString()
         })
+      case 'requestedVersion':
+        return columnHelper.accessor('requestedVersion', {
+          ...x,
+          sortingFn: (a, b) => sortBySemVer(a.original, b.original)
+        })
     }
     return columnHelper.accessor(x.id, x)
   })
 
-const templateVersion = columnHelper.accessor(
-  'templateVersion',
-  {
-    ...INCARNATION_TABLE_COLUMNS.find(x => x.id === 'templateVersion'),
-    sortingFn: (a, b) => sortByTemplateVersion(a.original, b.original)
-  }
-)
-
 export const useIncarnationsTable = (withPagination: boolean) => {
-  const [sorting, setSorting] = useState<SortingState>([])
-  const { canShow: templateVersionIsShown } = useCanShowVersionStore()
+  const { canShow: canShowStatus } = useCanShowStatusStore()
 
   const _actions = useMemo(() => columnHelper.display({
     id: 'actions',
     header: 'Actions',
-    size: templateVersionIsShown ? 250 : 140,
+    size: canShowStatus ? 250 : 140,
     cell: x => {
       const incarnation = x.row.original
       return <IncarnationLinks
@@ -57,26 +57,32 @@ export const useIncarnationsTable = (withPagination: boolean) => {
         commitUrl={incarnation.commitUrl}
         mergeRequestUrl={incarnation.mergeRequestUrl} />
     }
-  }), [templateVersionIsShown])
+  }), [canShowStatus])
 
-  const availableColumns = useMemo(
-    () => templateVersionIsShown
-      ? [...defineColumns, templateVersion]
-      : [...defineColumns],
-    [templateVersionIsShown]
-  )
-
-  const tableSettings = useTableSettingsStore()
+  const {
+    setColumnsSize,
+    visibleColumns,
+    pagination,
+    setPagination,
+    sorting,
+    setSorting
+  } = useTableSettingsStore()
+  const visibleColumnsMap = useMemo(() => new Map(visibleColumns.map(x => [x.id, x])), [visibleColumns])
 
   const columns = useMemo(
     () => [
-      ...availableColumns.filter(x => {
-        if (!x.id) return false // type narrowing
-        return tableSettings.visibleColumns.includes(x.id as keyof IncarnationBase)
-      }),
+      ...defineColumns
+        .filter(x => {
+          if (!x.id) return false // type narrowing
+          return visibleColumnsMap.has(x.id as keyof IncarnationBase)
+        })
+        .map(x => ({
+          ...x,
+          size: visibleColumnsMap.get(x.id as keyof IncarnationBase)?.size
+        })),
       _actions
     ],
-    [availableColumns, tableSettings.visibleColumns]
+    [defineColumns, visibleColumns, _actions]
   )
 
   const data = useIncarnationsData()
@@ -90,12 +96,36 @@ export const useIncarnationsTable = (withPagination: boolean) => {
     onSortingChange: setSorting,
     columnResizeMode: 'onChange',
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel()
+    getSortedRowModel: getSortedRowModel(),
+    enableMultiSort: true,
+    getRowId: x => `${x.id}`
   }
   if (withPagination) {
     tableConfig.getPaginationRowModel = getPaginationRowModel()
+    tableConfig.autoResetPageIndex = false
+    tableConfig.initialState = {
+      pagination
+    }
   }
-
   const table = useReactTable(tableConfig)
+  useEffect(() => {
+    setPagination(table.getState().pagination)
+  }, [table.getState().pagination.pageSize, table.getState().pagination.pageIndex])
+  const { search } = useToolbarSearchStore()
+  useEffect(() => {
+    if (withPagination && search) {
+      table.resetPageIndex(true)
+    }
+  }, [search, withPagination, table.resetPageIndex])
+
+  useColResizeBodyCursor()
+  const handleBodyMouseup = () => {
+    const columnsWidth = table.getAllColumns().map(x => ({
+      id: x.id,
+      width: x.getSize()
+    }))
+    setColumnsSize(columnsWidth)
+  }
+  useEventListener('mouseup', handleBodyMouseup)
   return { table, data }
 }

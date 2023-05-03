@@ -3,9 +3,10 @@ import { useForm, SubmitHandler, Controller } from 'react-hook-form'
 import { Button } from '../../components/common/Button/Button'
 import { Hug } from '../../components/common/Hug/Hug'
 import { TextField } from '../../components/common/TextField/TextField'
-import { Incarnation, incarnations } from '../../services/incarnations'
+import { incarnations } from '../../services/incarnations'
 import { useIncarnationsOperations } from '../../stores/incarnations-operations'
 import { ToggleSwitch } from '../../components/common/ToggleSwitch/ToggleSwitch'
+import { Incarnation } from 'interfaces/incarnations.types'
 
 export const BulkForm = () => {
   const { register, handleSubmit, control, formState: { errors } } = useForm({

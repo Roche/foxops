@@ -18,14 +18,17 @@ const mergeIncarnations = (a: IncarnationBase[], b: IncarnationBase[]) => {
   return result
 }
 
-export const sortByTemplateVersion = (a: IncarnationBase, b: IncarnationBase) => {
-  const sv1 = semverRegex().exec(a.templateVersion)?.[0]
-  const sv2 = semverRegex().exec(b.templateVersion)?.[0]
+export const makeSortBySemVer = (semVerField: keyof IncarnationBase) => (a: IncarnationBase, b: IncarnationBase) => {
+  const valA = a[semVerField]
+  const valB = b[semVerField]
+  if (typeof valA !== 'string' || typeof valB !== 'string') return 1
+  const sv1 = semverRegex().exec(valA)?.[0]
+  const sv2 = semverRegex().exec(valB)?.[0]
 
-  if (!a.templateVersion) {
+  if (!valA) {
     return 1
   }
-  if (!b.templateVersion) {
+  if (!valB) {
     return -1
   }
   if (sv1 && sv2) {
