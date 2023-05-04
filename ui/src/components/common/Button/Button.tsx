@@ -2,10 +2,12 @@ import { Theme } from '@emotion/react'
 import styled from '@emotion/styled'
 import { forwardRef } from 'react'
 import { transparentize } from '../../../styling/colors'
+import { Link } from 'react-router-dom'
 
 type Size = 'small' | 'large'
 type Variant = 'primary' | 'danger'
 interface ButtonBoxProps {
+  outline: number,
   size?: Size,
   variant?: Variant
 }
@@ -20,19 +22,19 @@ const getBgByState = ({ theme, variant, disabled }: { theme: Theme, disabled?: b
   return theme.colors.orange
 }
 
-const ButtonBox = styled('button')<ButtonBoxProps>(({ theme, size, disabled, variant }) => {
+const ButtonBox = styled('button')<ButtonBoxProps>(({ theme, size, disabled, variant, outline }) => {
   const backgroundColor = getBgByState({ theme, variant, disabled })
   return {
     textDecoration: 'none',
-    color: '#fff',
-    border: 'none',
+    color: outline ? backgroundColor : '#fff',
+    border: outline ? `1px solid ${backgroundColor}` : 'none',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
     height: size === 'small' ? '32px' : '38px',
     fontSize: size === 'small' ? '12px' : '16px',
     borderRadius: 4,
-    background: backgroundColor,
+    background: outline ? 'transparent' : backgroundColor,
     position: 'relative',
     overflow: 'hidden',
     paddingLeft: size === 'small' ? 8 : 16,
@@ -47,7 +49,7 @@ const ButtonBox = styled('button')<ButtonBoxProps>(({ theme, size, disabled, var
       width: '100%',
       height: '100%',
       zIndex: 1,
-      background: '#000',
+      background: outline ? backgroundColor : '#000',
       opacity: 0,
       transition: 'opacity 0.1s var(--base-easing)'
     },
@@ -90,14 +92,15 @@ const Loader = styled.span`
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode,
+  outline?: boolean,
   variant?: Variant,
   size?: Size,
   dataTestid?: string,
   loading?: boolean
 }
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({ children, dataTestid, loading, ...props }, ref) => (
-  <ButtonBox data-testid={dataTestid} ref={ref} {...props}>
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({ children, dataTestid, loading, outline, ...props }, ref) => (
+  <ButtonBox outline={+!!outline} data-testid={dataTestid} ref={ref} {...props}>
     <ButtonInnerBox>{children}{loading && <Loader style={{ marginLeft: children ? 8 : 0 }} />}</ButtonInnerBox>
   </ButtonBox>
 ))
@@ -106,17 +109,30 @@ Button.displayName = 'Button'
 
 interface ButtonLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
   children: React.ReactNode,
+  to?: string,
+  outline?: boolean,
   size?: Size
   disabled?: boolean
   dataTestid?: string
 }
 
 const ButtonLinkBox = ButtonBox.withComponent('a')
+const ButtonInternalLinkBox = ButtonBox.withComponent(Link)
 
-export const ButtonLink = forwardRef<HTMLAnchorElement, ButtonLinkProps>(({ children, dataTestid, ...props }, ref) => (
-  <ButtonLinkBox data-testid={dataTestid} ref={ref} type="button" {...props}>
-    <ButtonInnerBox>{children}</ButtonInnerBox>
-  </ButtonLinkBox>
-))
+export const ButtonLink = forwardRef<HTMLAnchorElement, ButtonLinkProps>(({ children, dataTestid, to, outline, ...props }, ref) => {
+  const commonProps = { ...props, ref }
+  const content = <ButtonInnerBox>{children}</ButtonInnerBox>
+  return to
+    ? (
+      <ButtonInternalLinkBox outline={+!!outline} to={to} data-testid={dataTestid} {...commonProps}>
+        {content}
+      </ButtonInternalLinkBox>
+    )
+    : (
+      <ButtonLinkBox outline={+!!outline} data-testid={dataTestid} {...commonProps}>
+        {content}
+      </ButtonLinkBox>
+    )
+})
 
 ButtonLink.displayName = 'ButtonLink'

@@ -5,7 +5,7 @@ interface CanShowVersionStore {
   setCanShow: (canShow: boolean) => void
 }
 
-export const useCanShowVersionStore = create<CanShowVersionStore>()(set => ({
+export const useCanShowStatusStore = create<CanShowVersionStore>()(set => ({
   canShow: false,
   setCanShow: (canShow: boolean) => set(() => ({ canShow }))
 }))

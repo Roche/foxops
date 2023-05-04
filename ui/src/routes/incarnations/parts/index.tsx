@@ -1,7 +1,7 @@
 import styled from '@emotion/styled'
 import { forwardRef } from 'react'
-import { MergeRequestStatus } from '../../../services/incarnations'
 import { transparentize } from '../../../styling/colors'
+import { MergeRequestStatus } from '../../../interfaces/incarnations.types'
 
 export const Section = styled.div({
   maxWidth: 'calc(100% - 120px)',

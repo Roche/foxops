@@ -1,31 +1,27 @@
-import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueries, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Incarnation, incarnations } from '../../../services/incarnations'
-import { useIncarnationsSortStore } from '../../../stores/incarnations-sort'
+import { incarnations } from '../../../services/incarnations'
 import { useToolbarSearchStore } from '../../../stores/toolbar-search'
-import { searchSortIncarnations } from '../../../utils/search-sort-incarnations'
 import { Button } from '../../common/Button/Button'
 import { Hug } from '../../common/Hug/Hug'
 import { Download } from '../../common/Icons/Download'
 import { Pause } from '../../common/Icons/Pause'
 import { TextField } from '../../common/TextField/TextField'
 import { Tooltip } from '../../common/Tooltip/Tooltip'
-import { useLocation } from 'react-router-dom'
+import { useIncarnationsData } from '../../../hooks/use-incarnations-data'
+import { Incarnation } from '../../../interfaces/incarnations.types'
 
 const PARALLEL_REQUESTS = 5
 
 export const Search = () => {
   const { search, setSearch } = useToolbarSearchStore()
-  const { data } = useQuery(['incarnations'], incarnations.get)
-  const { sort, asc } = useIncarnationsSortStore()
-  const _data = searchSortIncarnations(data || [], { search, sort, asc })
-  const isIncarnationsPage = useLocation().pathname === '/incarnations'
+  const data = useIncarnationsData()
 
-  const results = isIncarnationsPage && search ? `${_data.length} result${_data.length === 1 ? '' : 's'}` : ''
+  const results = search ? `${data.length} result${data.length === 1 ? '' : 's'}` : ''
 
-  const hasResults = isIncarnationsPage && search && _data.length > 0
+  const hasResults = search && data.length > 0
 
-  const incarnationIds = _data.map(x => x.id)
+  const incarnationIds = data.map(x => x.id)
   const [requested, setRequested] = useState<number[]>([])
   const [limit, setLimit] = useState(0)
   const handleRequestStatuses = () => {

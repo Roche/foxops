@@ -33,6 +33,11 @@ export const IconButton = styled('button')<IconButtonProps>(({ theme, active, fl
       width: svgSize,
       height: svgSize
     },
+    span: {
+      verticalAlign: 'middle',
+      position: 'relative',
+      zIndex: 3
+    },
     '&::before': {
       content: '""',
       position: 'absolute',

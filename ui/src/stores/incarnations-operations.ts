@@ -1,5 +1,5 @@
+import { Incarnation } from 'interfaces/incarnations.types'
 import create from 'zustand'
-import { Incarnation } from '../services/incarnations'
 
 interface IncarnationsOperationsStore {
   selectedIncarnations: Incarnation[]

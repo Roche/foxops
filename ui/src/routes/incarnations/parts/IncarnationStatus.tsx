@@ -8,9 +8,10 @@ import { Download } from '../../../components/common/Icons/Download'
 import { Minus } from '../../../components/common/Icons/Minus'
 import { Plus } from '../../../components/common/Icons/Plus'
 import { Tooltip } from '../../../components/common/Tooltip/Tooltip'
-import { Incarnation, IncarnationBase, incarnations } from '../../../services/incarnations'
+import { incarnations } from '../../../services/incarnations'
 import { useIncarnationsOperations } from '../../../stores/incarnations-operations'
-import { useCanShowVersionStore } from '../../../stores/show-version'
+import { useCanShowStatusStore } from '../../../stores/show-status'
+import { Incarnation } from '../../../interfaces/incarnations.types'
 
 export const IncarnationStatus = ({ id, size }: { id: number, size?: 'small' | 'large' }) => {
   const key = ['incarnations', id]
@@ -28,13 +29,7 @@ export const IncarnationStatus = ({ id, size }: { id: number, size?: 'small' | '
   const handleGetStatus = () => {
     setStatusRequested(statusRequested + 1)
     if (statusRequested > 0) {
-      refetch().then(result => {
-        queryClient.setQueriesData<IncarnationBase[]>(['incarnations'], x => {
-          if (!result.isSuccess) return
-          if (!x) return [result.data]
-          return x.map(y => y.id === result.data?.id ? result.data : y)
-        })
-      })
+      refetch()
     }
   }
 
@@ -43,7 +38,7 @@ export const IncarnationStatus = ({ id, size }: { id: number, size?: 'small' | '
     <>
       {(!!cached || !!statusRequested) && <Status id={id} key={statusRequested} incarnation={cached} />}
       <Hug mr={4}>
-        <Tooltip title={isFetching ? 'Getting status...' : 'Get status'}>
+        <Tooltip title={isFetching ? 'Getting status...' : 'Get status'} style={{ whiteSpace: 'nowrap' }}>
           <Button size={size} loading={isFetching} onClick={handleGetStatus}>
             {!isFetching && <Download {...svgProps} />}
           </Button>
@@ -54,19 +49,12 @@ export const IncarnationStatus = ({ id, size }: { id: number, size?: 'small' | '
 }
 
 const Status = ({ id, incarnation }: { id: number, incarnation?: Incarnation }) => {
-  const queryClient = useQueryClient()
   const { data, isError, isSuccess } = useQuery(
     ['incarnations', id],
     () => incarnations.getById(id),
     {
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      onSuccess: data => {
-        queryClient.setQueryData(
-          ['incarnations'],
-          (x: IncarnationBase[] | undefined) => x?.map(y => y.id === data?.id ? data : y)
-        )
-      }
+      staleTime: Infinity
     }
   )
   const _incarnation = data || incarnation
@@ -82,7 +70,7 @@ const Status = ({ id, incarnation }: { id: number, incarnation?: Incarnation }) 
     }
     select(_incarnation)
   }
-  const { setCanShow } = useCanShowVersionStore()
+  const { setCanShow } = useCanShowStatusStore()
   useEffect(() => {
     if (!isSuccess) return
     setCanShow(true)

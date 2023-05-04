@@ -9,6 +9,8 @@ module.exports = {
   ],
   coverageDirectory: '<rootDir>/../coverage',
   moduleNameMapper: {
-    '\\.(css|less|scss)$': '<rootDir>/support/style-mock.ts'
+    '\\.(css|less|scss)$': '<rootDir>/support/style-mock.ts',
+    '^support/(.*)$': '<rootDir>/support/$1',
+    '^interfaces/(.*)$': '<rootDir>/interfaces/$1'
   }
 }

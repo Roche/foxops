@@ -10,14 +10,14 @@ import { Close } from '../common/Icons/Close'
 const Container = styled.div`
   position: fixed;
   bottom: 0;
-  right: 0;
+  left: 0;
   z-index: 5;
 `
 
 const Box = styled.div<{show: boolean}>`
   position: absolute;
   bottom: 0;
-  right: 16px;
+  left: 73px;
   width: 460px;
   transform: translateY(${x => x.show ? '0' : '100%'});
   border-radius: 4px 4px 0 0;
@@ -57,7 +57,7 @@ export const IncarnationsOperationsWindow = () => {
           <Link to="/incarnations/bulk-update" style={{ textDecoration: 'none' }}>
             <Button size="small" type="button">
               <Hug as="span" flex={['aic']}>
-              Bulk update
+                Bulk update
                 <Hug as="span" ml={4}>
                   <Bulk width={16} height={16} />
                 </Hug>
