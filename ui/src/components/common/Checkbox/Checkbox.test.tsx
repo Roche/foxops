@@ -32,6 +32,5 @@ test('changes CheckBox state', async () => {
 
 test('renders disabled input', async () => {
   render(<CheckboxControl disabled />)
-  // const user = userEvent.setup()
   expect(screen.getByLabelText('Some label')).toBeDisabled()
 })
