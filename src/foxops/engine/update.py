@@ -92,6 +92,13 @@ async def update_incarnation(
             incarnation_root_dir=Path(tmp_pristine_incarnation_dir),
         )
 
+        # copy over .fengine.yaml from the actual incarnation, just to make sure there are no formatting differences
+        # that would be messing up the patching.
+        #
+        # there were unclear cases where the YAML rending was slightly different (e.g. strings starting on a newline)
+        # during updates, compared to the original incarnation rendering (reason unclear)
+        (Path(tmp_pristine_incarnation_dir) / ".fengine.yaml").write_bytes(current_incarnation_state_path.read_bytes())
+
         logger.debug(
             "initialize new incarnation from update incarnation state",
             template_dir=updated_template_root_dir,
