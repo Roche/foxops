@@ -82,7 +82,7 @@ export const useIncarnationsTable = (withPagination: boolean) => {
         })),
       _actions
     ],
-    [defineColumns, visibleColumns, _actions]
+    [visibleColumns, _actions]
   )
 
   const data = useIncarnationsData()
