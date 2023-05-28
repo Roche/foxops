@@ -3,6 +3,7 @@ from http import HTTPStatus
 from pathlib import Path
 
 import typer
+from pydantic import SecretStr
 from ruamel.yaml import YAML
 
 from foxops.cli.v1_compat_reconcile.api import foxops_api
@@ -45,7 +46,7 @@ def cmd_reconcile(
         raise typer.Exit(1)
 
     logger.debug("configuring settings for reconciliation")
-    settings = Settings()
+    settings = Settings(static_token=SecretStr("dummysecret"))
     logger.debug("configured settings", settings=settings)
 
     logger.debug(
@@ -130,7 +131,6 @@ def cmd_reconcile(
             )
             incarnation_id = incarnation_before_update.id
             dis_patch = DesiredIncarnationStatePatch(
-                template_repository=config.template_repository,
                 template_repository_version=config.template_repository_version,
                 template_data=config.template_data,
                 automerge=config.automerge,

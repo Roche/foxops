@@ -1,7 +1,7 @@
 import copy
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Mapping
+from typing import Annotated, Mapping
 
 from pydantic import BaseModel, Field
 from ruamel.yaml import YAML
@@ -65,10 +65,10 @@ def load_incarnation_state_from_string(incarnation_state: str) -> IncarnationSta
 class VariableDefinition(BaseModel):
     type: str = Field(..., description="The type of the variable")
     description: str = Field(..., help="The description for this variable")
-    default: TemplateDataValue | None = Field(
-        None,
-        help="The default value for this variable (setting this makes the variable optional)",
-    )
+    default: Annotated[
+        TemplateDataValue | None,
+        Field(help="The default value for this variable (setting this makes the variable optional)"),
+    ] = None
 
     def is_required(self) -> bool:
         return self.default is None

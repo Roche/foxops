@@ -116,6 +116,7 @@ async def initialized_incarnation(
         target_directory=".",
         template_repository=git_repo_template,
         commit_sha="dummy",
+        merge_request_id=None,
     )
 
 
