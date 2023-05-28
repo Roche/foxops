@@ -5,26 +5,18 @@ import pytest
 from pytest import fixture
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from foxops import reconciliation
 from foxops.database import DAL
 from foxops.database.repositories.change import ChangeRepository
 from foxops.engine import load_incarnation_state
 from foxops.errors import IncarnationNotFoundError
-from foxops.hosters import ReconciliationStatus
 from foxops.hosters.local import LocalHoster
 from foxops.hosters.types import MergeRequestStatus
-from foxops.models import (
-    DesiredIncarnationState,
-    DesiredIncarnationStatePatch,
-    Incarnation,
-)
-from foxops.models.change import Change, ChangeWithMergeRequest
+from foxops.models import Incarnation
+from foxops.models.change import ChangeWithMergeRequest
 from foxops.services.change import (
-    ChangeFailed,
     ChangeRejectedDueToNoChanges,
     ChangeService,
     IncarnationAlreadyExists,
-    IncarnationAlreadyUpgraded,
     _construct_merge_request_conflict_description,
     delete_all_files_in_local_git_repository,
 )

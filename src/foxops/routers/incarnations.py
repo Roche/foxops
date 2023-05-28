@@ -2,11 +2,7 @@ from fastapi import APIRouter, Depends, Response, status
 from pydantic import BaseModel
 
 from foxops.database import DAL
-from foxops.dependencies import (
-    get_change_service,
-    get_dal,
-    get_hoster,
-)
+from foxops.dependencies import get_change_service, get_dal, get_hoster
 from foxops.engine import TemplateData
 from foxops.errors import IncarnationNotFoundError
 from foxops.hosters import Hoster
@@ -14,7 +10,6 @@ from foxops.logger import bind, get_logger
 from foxops.models import (
     DesiredIncarnationState,
     DesiredIncarnationStatePatch,
-    Incarnation,
     IncarnationBasic,
     IncarnationWithDetails,
 )
