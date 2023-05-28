@@ -214,5 +214,5 @@ async def should_err_if_fengine_initialization_fails(
     test_dis.template_data = {}
 
     # THEN
-    with pytest.raises(Exception):
+    with pytest.raises(ReconciliationError):
         await initialize_incarnation(hoster, test_dis)
