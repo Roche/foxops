@@ -674,7 +674,11 @@ class ChangeService:
             )
             await local_incarnation_repository.create_and_checkout_branch(branch_name, exist_ok=False)
 
-            (update_performed, _, patch_result,) = await fengine.update_incarnation_from_git_template_repository(
+            (
+                update_performed,
+                _,
+                patch_result,
+            ) = await fengine.update_incarnation_from_git_template_repository(
                 template_git_repository=local_template_repository.directory,
                 update_template_repository_version=to_version,
                 update_template_data=to_data,
