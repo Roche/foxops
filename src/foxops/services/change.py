@@ -531,6 +531,7 @@ class ChangeService:
         if change_in_db.type != ChangeType.MERGE_REQUEST:
             raise ValueError(f"Change {change_id} is not a merge request change.")
         assert change_in_db.merge_request_id is not None
+        assert change_in_db.merge_request_branch_name is not None
 
         status = await self._hoster.get_merge_request_status(
             incarnation_repository=incarnation_in_db.incarnation_repository,
