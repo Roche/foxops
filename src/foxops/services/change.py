@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import inspect
 import json
 import shutil
@@ -16,18 +17,16 @@ from foxops.database import DAL
 from foxops.database.repositories.change import (
     ChangeRepository,
     ChangeType,
-    IncarnationHasNoChangesError,
     IncarnationWithChangesSummary,
 )
 from foxops.engine import TemplateData
 from foxops.engine.patching.git_diff_patch import PatchResult
-from foxops.errors import IncarnationRepositoryNotFound, RetryableError
+from foxops.errors import RetryableError
 from foxops.external.git import GitError, GitRepository
 from foxops.hosters import Hoster
 from foxops.hosters.types import MergeRequestStatus
 from foxops.models import IncarnationBasic, IncarnationWithDetails
 from foxops.models.change import Change, ChangeWithMergeRequest
-from foxops.reconciliation.utils import generate_foxops_branch_name
 from foxops.utils import get_logger
 
 
@@ -36,10 +35,6 @@ class IncarnationAlreadyExists(Exception):
 
 
 class IncarnationAlreadyUpgraded(Exception):
-    pass
-
-
-class IncarnationUpgradeFailedAsNoIncarnationStateExists(Exception):
     pass
 
 
@@ -196,63 +191,6 @@ class ChangeService:
 
         return await self.get_change(change.id)
 
-    async def initialize_legacy_incarnation(self, incarnation_id: int) -> Change:
-        """
-        Initialize a legacy incarnation.
-
-        Legacy incarnations are incarnations that were created before the change service was
-        introduced. This method will create the first change for the given incarnation.
-        """
-
-        # prevent from initializing an incarnation that already has a change history
-        try:
-            await self.get_latest_change_id_for_incarnation(incarnation_id)
-        except IncarnationHasNoChangesError:
-            pass
-        else:
-            raise IncarnationAlreadyUpgraded("Incarnation was already initialized for the changes datamodel")
-
-        # verify there are no changes pending currently
-        incarnation = await self._incarnation_repository.get_incarnation(incarnation_id)
-        if incarnation.merge_request_id is not None:
-            mr_status = await self._hoster.get_merge_request_status(
-                incarnation.incarnation_repository, incarnation.merge_request_id
-            )
-            if mr_status not in (MergeRequestStatus.MERGED, MergeRequestStatus.CLOSED):
-                raise ChangeFailed(
-                    f"Cannot initialize legacy incarnation {incarnation_id} because it has "
-                    f"a pending merge request: {incarnation.merge_request_id}. "
-                    f"Please first clean up all pending foxops merge requests and then "
-                    f"manually set the `merge_request_id` column to NULL."
-                )
-
-        get_incarnation_state_result = await self._hoster.get_incarnation_state(
-            incarnation.incarnation_repository, incarnation.target_directory
-        )
-        if get_incarnation_state_result is None:
-            raise IncarnationUpgradeFailedAsNoIncarnationStateExists(
-                f"Cannot initialize legacy incarnation {incarnation_id} because it does not have a .fengine.yaml file. "
-                f"This could happen if it is a subdirectory incarnation, where the subdirectory was already deleted."
-            )
-        commit_sha, incarnation_state = get_incarnation_state_result
-
-        await self._incarnation_repository.update_incarnation_template_repository(
-            incarnation_id, incarnation_state.template_repository
-        )
-
-        change_in_db = await self._change_repository.create_change(
-            incarnation_id=incarnation_id,
-            revision=1,
-            change_type=ChangeType.DIRECT,
-            commit_sha=commit_sha,
-            commit_pushed=True,
-            requested_version_hash=incarnation_state.template_repository_version_hash,
-            requested_version=incarnation_state.template_repository_version,
-            requested_data=json.dumps(incarnation_state.template_data),
-        )
-
-        return await self.get_change(change_in_db.id)
-
     async def reset_incarnation(
         self, incarnation_id: int, override_version: str | None = None, override_data: TemplateData | None = None
     ) -> ChangeWithMergeRequest:
@@ -334,43 +272,6 @@ class ChangeService:
 
         return await self.get_change_with_merge_request(change_in_db.id)
 
-    async def upgrade_all_incarnations(self, delete_nonexisting: bool = False):
-        failed_upgrades = []
-        successful_upgrades = []
-        deleted_incarnations = []
-
-        async for incarnation in self._incarnation_repository.get_incarnations():
-            try:
-                await self.initialize_legacy_incarnation(incarnation.id)
-            except IncarnationAlreadyUpgraded:
-                continue
-            except (IncarnationRepositoryNotFound, IncarnationUpgradeFailedAsNoIncarnationStateExists):
-                if delete_nonexisting:
-                    await self._incarnation_repository.delete_incarnation(incarnation.id)
-                    deleted_incarnations.append(
-                        (incarnation.id, incarnation.incarnation_repository, incarnation.target_directory)
-                    )
-                else:
-                    failed_upgrades.append(
-                        (
-                            incarnation.id,
-                            incarnation.incarnation_repository,
-                            incarnation.target_directory,
-                            "repository not found",
-                        )
-                    )
-            except Exception as e:
-                self._log.exception("Failed to upgrade incarnation", incarnation_id=incarnation.id)
-                failed_upgrades.append(
-                    (incarnation.id, incarnation.incarnation_repository, incarnation.target_directory, str(e))
-                )
-            else:
-                successful_upgrades.append(
-                    (incarnation.id, incarnation.incarnation_repository, incarnation.target_directory)
-                )
-
-        return failed_upgrades, successful_upgrades, deleted_incarnations
-
     async def create_change_direct(
         self, incarnation_id: int, requested_version: str | None = None, requested_data: TemplateData | None = None
     ) -> Change:
@@ -426,7 +327,6 @@ class ChangeService:
         Such a change will result in a merge request being created on the incarnation repository. The merge request
         can be merged manually or automatically (if the `automerge` parameter is set to `True`).
         """
-        await self._upgrade_incarnation_if_possible(incarnation_id)
 
         # https://youtrack.jetbrains.com/issue/PY-36444
         env: _PreparedChangeEnvironment
@@ -601,7 +501,6 @@ class ChangeService:
 
         incarnation_basic = await self.get_incarnation_basic(incarnation_id)
 
-        await self._upgrade_incarnation_if_possible(incarnation_id)
         change_id = await self.get_latest_change_id_for_incarnation(incarnation_id)
         change = await self.get_change(change_id)
 
@@ -631,12 +530,6 @@ class ChangeService:
             template_data=change.requested_data,
         )
 
-    async def _upgrade_incarnation_if_possible(self, incarnation_id: int):
-        try:
-            await self.initialize_legacy_incarnation(incarnation_id)
-        except IncarnationAlreadyUpgraded:
-            pass
-
     @asynccontextmanager
     async def _prepared_change_environment(
         self, incarnation_id: int, requested_version: str | None, requested_data: TemplateData | None
@@ -646,7 +539,6 @@ class ChangeService:
         """
         incarnation = await self._incarnation_repository.get_incarnation(incarnation_id)
 
-        await self._upgrade_incarnation_if_possible(incarnation_id)
         if incarnation.template_repository is None:
             raise Exception("upgrade failed. Should not happen.")
 
@@ -787,3 +679,8 @@ def delete_all_files_in_local_git_repository(directory: Path) -> None:
             shutil.rmtree(file)
         else:
             file.unlink()
+
+
+def generate_foxops_branch_name(prefix: str, target_directory: str, template_repository_version: str) -> str:
+    target_directory_hash = hashlib.sha1(target_directory.encode("utf-8")).hexdigest()[:7]
+    return f"foxops/{prefix}-{target_directory_hash}-{template_repository_version}"
