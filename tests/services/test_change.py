@@ -19,7 +19,6 @@ from foxops.models import (
     Incarnation,
 )
 from foxops.models.change import Change, ChangeWithMergeRequest
-from foxops.reconciliation import initialize_incarnation
 from foxops.services.change import (
     ChangeFailed,
     ChangeRejectedDueToNoChanges,
@@ -71,29 +70,6 @@ async def git_repo_template(local_hoster: LocalHoster) -> str:
         await repo.push(tags=True)
 
     return repo_name
-
-
-@fixture(scope="function")
-async def initialized_legacy_incarnation_id(
-    local_hoster: LocalHoster, incarnation_repository: DAL, git_repo_template: str
-) -> int:
-    repo_name = "incarnation_initialized_legacy"
-    await local_hoster.create_repository(repo_name)
-
-    desired_incarnation_state = DesiredIncarnationState(
-        incarnation_repository=repo_name,
-        target_directory=".",
-        template_repository=git_repo_template,
-        template_repository_version="v1.0.0",
-        template_data={},
-        automerge=True,
-    )
-    commit_sha, merge_request_id = await initialize_incarnation(local_hoster, desired_incarnation_state)
-    incarnation = await incarnation_repository.create_incarnation(
-        desired_incarnation_state, commit_sha, merge_request_id
-    )
-
-    return incarnation.id
 
 
 @fixture(scope="function")
@@ -279,56 +255,6 @@ async def test_create_incarnation_fails_if_there_is_already_one_at_the_target(
         )
 
 
-async def test_initialize_legacy_incarnation_succeeds_when_given_a_legacy_incarnation(
-    change_service: ChangeService, initialized_legacy_incarnation_id: int
-):
-    # WHEN
-    change = await change_service.initialize_legacy_incarnation(initialized_legacy_incarnation_id)
-
-    # THEN
-    assert isinstance(change, Change)
-    assert change.revision == 1
-    assert change.incarnation_id == initialized_legacy_incarnation_id
-    assert change.commit_sha is not None
-
-
-async def test_initialize_legacy_incarnation_fails_if_already_initialized(
-    change_service: ChangeService, initialized_legacy_incarnation_id: int
-):
-    # GIVEN
-    await change_service.initialize_legacy_incarnation(initialized_legacy_incarnation_id)
-
-    # WHEN
-    with pytest.raises(IncarnationAlreadyUpgraded):
-        await change_service.initialize_legacy_incarnation(initialized_legacy_incarnation_id)
-
-
-async def test_initialize_legacy_incarnation_fails_if_incarnation_has_incomplete_update(
-    change_service: ChangeService, initialized_legacy_incarnation_id: int
-):
-    # GIVEN
-    incarnation = await change_service._incarnation_repository.get_incarnation(initialized_legacy_incarnation_id)
-    update = await reconciliation.update_incarnation(
-        change_service._hoster,
-        incarnation,
-        DesiredIncarnationStatePatch(
-            template_repository_version="v1.1.0",
-            template_data={},
-            automerge=False,
-        ),
-    )
-
-    if update is not None:
-        incarnation = await change_service._incarnation_repository.update_incarnation(
-            incarnation.id, commit_sha=update[0], merge_request_id=update[1]
-        )
-    assert incarnation.merge_request_id is not None
-
-    # WHEN
-    with pytest.raises(ChangeFailed, match="pending merge request"):
-        await change_service.initialize_legacy_incarnation(initialized_legacy_incarnation_id)
-
-
 async def test_create_change_direct_succeeds_when_updating_the_template_version(
     change_service: ChangeService, incarnation_repository: DAL, initialized_incarnation: Incarnation
 ):
@@ -489,27 +415,6 @@ present** in this incarnation repository. Please resolve the conflicts manually:
 
 - CONTRIBUTING.md"""
     )
-
-
-async def test_get_incarnation_with_details_succeeds_for_legacy_incarnation(
-    change_service: ChangeService, initialized_legacy_incarnation_id: int
-):
-    # WHEN
-    incarnation = await change_service.get_incarnation_with_details(initialized_legacy_incarnation_id)
-
-    # THEN
-    assert incarnation.id == initialized_legacy_incarnation_id
-    assert incarnation.incarnation_repository == "incarnation_initialized_legacy"
-    assert incarnation.target_directory == "."
-    assert incarnation.commit_sha is not None
-    assert incarnation.commit_url.endswith(incarnation.commit_sha)
-    assert incarnation.merge_request_id is None
-    assert incarnation.merge_request_url is None
-    assert incarnation.merge_request_status is None
-    assert incarnation.status == ReconciliationStatus.SUCCESS
-    assert incarnation.template_repository == "template"
-    assert incarnation.template_repository_version == "v1.0.0"
-    assert incarnation.template_data == {}
 
 
 async def test_reset_incarnation_returns_change_and_does_not_modify_main_branch(
