@@ -5,7 +5,6 @@ from fastapi.openapi.models import APIKey, APIKeyIn
 from fastapi.security.base import SecurityBase
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
-import foxops.reconciliation as reconciliation
 from foxops.database import DAL
 from foxops.database.repositories.change import ChangeRepository
 from foxops.hosters import Hoster, HosterSettings
@@ -68,10 +67,6 @@ def get_change_service(
     return ChangeService(
         hoster=hoster, incarnation_repository=incarnation_repository, change_repository=change_repository
     )
-
-
-def get_reconciliation():
-    return reconciliation
 
 
 class StaticTokenHeaderAuth(SecurityBase):
