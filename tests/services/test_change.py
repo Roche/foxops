@@ -5,10 +5,10 @@ import pytest
 from pytest import fixture
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from foxops.database import DAL
 from foxops.database.repositories.change import ChangeRepository
+from foxops.database.repositories.incarnation.errors import IncarnationNotFoundError
+from foxops.database.repositories.incarnation.repository import IncarnationRepository
 from foxops.engine import load_incarnation_state
-from foxops.errors import IncarnationNotFoundError
 from foxops.hosters.local import LocalHoster
 from foxops.hosters.types import MergeRequestStatus
 from foxops.models import Incarnation
@@ -20,14 +20,6 @@ from foxops.services.change import (
     _construct_merge_request_conflict_description,
     delete_all_files_in_local_git_repository,
 )
-
-
-@fixture(scope="function")
-async def incarnation_repository(test_async_engine: AsyncEngine) -> DAL:
-    dal = DAL(test_async_engine)
-    await dal.initialize_db()
-
-    return dal
 
 
 @fixture(scope="function")
@@ -103,7 +95,7 @@ async def initialized_incarnation_with_customizations(
 
 @fixture(scope="function")
 async def change_service(
-    test_async_engine: AsyncEngine, incarnation_repository: DAL, local_hoster: LocalHoster
+    test_async_engine: AsyncEngine, incarnation_repository: IncarnationRepository, local_hoster: LocalHoster
 ) -> ChangeService:
     change_repository = ChangeRepository(test_async_engine)
 
@@ -116,7 +108,7 @@ async def change_service(
 
 @fixture(scope="function")
 async def change_service_with_delay(
-    test_async_engine: AsyncEngine, incarnation_repository: DAL, local_hoster_with_delay: LocalHoster
+    test_async_engine: AsyncEngine, incarnation_repository: IncarnationRepository, local_hoster_with_delay: LocalHoster
 ) -> ChangeService:
     change_repository = ChangeRepository(test_async_engine)
 
@@ -248,7 +240,7 @@ async def test_create_incarnation_fails_if_there_is_already_one_at_the_target(
 
 
 async def test_create_change_direct_succeeds_when_updating_the_template_version(
-    change_service: ChangeService, incarnation_repository: DAL, initialized_incarnation: Incarnation
+    change_service: ChangeService, initialized_incarnation: Incarnation
 ):
     # WHEN
     change = await change_service.create_change_direct(initialized_incarnation.id, requested_version="v1.1.0")
@@ -268,7 +260,6 @@ async def test_create_change_direct_succeeds_when_updating_the_template_version(
 
 async def test_create_change_direct_succeeds_when_updating_to_the_same_branch_name(
     change_service: ChangeService,
-    incarnation_repository: DAL,
     local_hoster: LocalHoster,
     initialized_incarnation: Incarnation,
     git_repo_template: str,
@@ -318,7 +309,7 @@ async def test_create_change_direct_succeeds_when_the_previous_change_was_not_me
 
 
 async def test_create_change_merge_request_succeeds_when_updating_the_template_version_without_automerge(
-    change_service: ChangeService, incarnation_repository: DAL, initialized_incarnation: Incarnation
+    change_service: ChangeService, initialized_incarnation: Incarnation
 ):
     # WHEN
     change = await change_service.create_change_merge_request(
@@ -343,7 +334,7 @@ async def test_create_change_merge_request_succeeds_when_updating_the_template_v
 
 
 async def test_create_change_merge_request_succeeds_when_updating_the_template_version_with_automerge(
-    change_service: ChangeService, incarnation_repository: DAL, initialized_incarnation: Incarnation
+    change_service: ChangeService, initialized_incarnation: Incarnation
 ):
     # WHEN
     change = await change_service.create_change_merge_request(

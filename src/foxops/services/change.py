@@ -13,19 +13,19 @@ from typing import AsyncIterator
 from pydantic import BaseModel
 
 import foxops.engine as fengine
-from foxops.database import DAL
 from foxops.database.repositories.change import (
     ChangeRepository,
     ChangeType,
     IncarnationWithChangesSummary,
 )
+from foxops.database.repositories.incarnation.repository import IncarnationRepository
 from foxops.engine import TemplateData
 from foxops.engine.patching.git_diff_patch import PatchResult
 from foxops.errors import RetryableError
 from foxops.external.git import GitError, GitRepository
 from foxops.hosters import Hoster
 from foxops.hosters.types import MergeRequestStatus
-from foxops.models import IncarnationBasic, IncarnationWithDetails
+from foxops.models import IncarnationWithDetails
 from foxops.models.change import Change, ChangeWithMergeRequest
 from foxops.utils import get_logger
 
@@ -100,10 +100,13 @@ class _PreparedChangeEnvironment:
 
 
 class ChangeService:
-    def __init__(self, hoster: Hoster, incarnation_repository: DAL, change_repository: ChangeRepository):
+    def __init__(
+        self, hoster: Hoster, incarnation_repository: IncarnationRepository, change_repository: ChangeRepository
+    ):
         self._hoster = hoster
-        self._change_repository = change_repository
+
         self._incarnation_repository = incarnation_repository
+        self._change_repository = change_repository
 
         self._log = get_logger("change_service")
 
@@ -204,7 +207,7 @@ class ChangeService:
         Returns the merge request ID that was created.
         """
 
-        incarnation = await self._incarnation_repository.get_incarnation(incarnation_id)
+        incarnation = await self._incarnation_repository.get_by_id(incarnation_id)
         last_change = await self.get_latest_change_for_incarnation_if_completed(incarnation_id)
         if incarnation.template_repository is None:
             raise ValueError("template_repository is None. That should not happen.")
@@ -268,7 +271,6 @@ class ChangeService:
         )
 
         await self._change_repository.update_merge_request_id(change_in_db.id, merge_request_id)
-        await self._incarnation_repository.update_incarnation(incarnation_id, commit_sha, merge_request_id)
 
         return await self.get_change_with_merge_request(change_in_db.id)
 
@@ -310,7 +312,6 @@ class ChangeService:
             # if some failure happens after this point, the database object can be cleaned
             # by the update_incomplete_change() method.
             await self._push_change_commit_and_update_database(env.incarnation_repository, change_in_db.id)
-            await self._incarnation_repository.update_incarnation(incarnation_id, env.commit_sha, None)
 
         return await self.get_change(change_in_db.id)
 
@@ -365,7 +366,6 @@ class ChangeService:
         )
 
         await self._change_repository.update_merge_request_id(change_in_db.id, merge_request_id)
-        await self._incarnation_repository.update_incarnation(incarnation_id, env.commit_sha, merge_request_id)
 
         return await self.get_change_with_merge_request(change_in_db.id)
 
@@ -387,7 +387,7 @@ class ChangeService:
         if change.created_at > datetime.now(timezone.utc) - timedelta(minutes=1):
             return
 
-        incarnation = await self._incarnation_repository.get_incarnation(change.incarnation_id)
+        incarnation = await self._incarnation_repository.get_by_id(change.incarnation_id)
 
         commit_exists = await self._hoster.does_commit_exist(incarnation.incarnation_repository, change.commit_sha)
         if commit_exists:
@@ -426,7 +426,7 @@ class ChangeService:
         change_basic = await self.get_change(change_id)
 
         change_in_db = await self._change_repository.get_change(change_id)
-        incarnation_in_db = await self._incarnation_repository.get_incarnation(change_in_db.incarnation_id)
+        incarnation_in_db = await self._incarnation_repository.get_by_id(change_in_db.incarnation_id)
 
         if change_in_db.type != ChangeType.MERGE_REQUEST:
             raise ValueError(f"Change {change_id} is not a merge request change.")
@@ -475,56 +475,47 @@ class ChangeService:
 
         raise ValueError(f"Unknown change type {change_type}")
 
-    async def get_incarnation_basic(self, incarnation_id: int) -> IncarnationBasic:
-        incarnation = await self._incarnation_repository.get_incarnation(incarnation_id)
-
-        merge_request_url: str | None = None
-        if incarnation.merge_request_id:
-            merge_request_url = await self._hoster.get_merge_request_url(
-                incarnation.incarnation_repository, incarnation.merge_request_id
-            )
-
-        return IncarnationBasic(
-            id=incarnation.id,
-            incarnation_repository=incarnation.incarnation_repository,
-            target_directory=incarnation.target_directory,
-            commit_sha=incarnation.commit_sha,
-            commit_url=await self._hoster.get_commit_url(incarnation.incarnation_repository, incarnation.commit_sha),
-            merge_request_id=incarnation.merge_request_id,
-            merge_request_url=merge_request_url,
-        )
-
     async def get_incarnation_with_details(self, incarnation_id: int) -> IncarnationWithDetails:
         """
         Returns an IncarnationWithDetails object for the given incarnation ID.
         """
 
-        incarnation_basic = await self.get_incarnation_basic(incarnation_id)
+        incarnation = await self._incarnation_repository.get_by_id(incarnation_id)
 
         change_id = await self.get_latest_change_id_for_incarnation(incarnation_id)
         change = await self.get_change(change_id)
 
+        merge_request_id = getattr(change, "merge_request_id", None)
+
         status = await self._hoster.get_reconciliation_status(
-            incarnation_repository=incarnation_basic.incarnation_repository,
-            target_directory=incarnation_basic.target_directory,
-            commit_sha=incarnation_basic.commit_sha,
-            merge_request_id=incarnation_basic.merge_request_id,
+            incarnation_repository=incarnation.incarnation_repository,
+            target_directory=incarnation.target_directory,
+            commit_sha=change.commit_sha,
+            merge_request_id=merge_request_id,
             pipeline_timeout=timedelta(seconds=10),
         )
+
+        merge_request_url: str | None = None
         merge_request_status: MergeRequestStatus | None = None
-        if incarnation_basic.merge_request_id is not None:
+        if merge_request_id is not None:
             merge_request_status = await self._hoster.get_merge_request_status(
-                incarnation_basic.incarnation_repository, incarnation_basic.merge_request_id
+                incarnation.incarnation_repository, merge_request_id
             )
-        incarnation_state = await self._hoster.get_incarnation_state(
-            incarnation_basic.incarnation_repository, incarnation_basic.target_directory
-        )
+            merge_request_url = await self._hoster.get_merge_request_url(
+                incarnation.incarnation_repository, merge_request_id
+            )
 
         return IncarnationWithDetails(
-            **incarnation_basic.dict(),
-            status=status,
+            id=incarnation.id,
+            incarnation_repository=incarnation.incarnation_repository,
+            target_directory=incarnation.target_directory,
+            commit_sha=change.commit_sha,
+            commit_url=await self._hoster.get_commit_url(incarnation.incarnation_repository, change.commit_sha),
+            merge_request_id=merge_request_id,
+            merge_request_url=merge_request_url,
             merge_request_status=merge_request_status,
-            template_repository=incarnation_state[1].template_repository if incarnation_state is not None else None,
+            status=status,
+            template_repository=incarnation.template_repository,
             template_repository_version=change.requested_version,
             template_repository_version_hash=change.requested_version_hash,
             template_data=change.requested_data,
@@ -537,7 +528,7 @@ class ChangeService:
         """
         This method checks out the incarnation repository, prepares a branch that contains the update and commits.
         """
-        incarnation = await self._incarnation_repository.get_incarnation(incarnation_id)
+        incarnation = await self._incarnation_repository.get_by_id(incarnation_id)
 
         if incarnation.template_repository is None:
             raise Exception("upgrade failed. Should not happen.")

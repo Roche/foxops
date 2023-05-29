@@ -19,10 +19,7 @@ incarnations = Table(
     Column("id", Integer, primary_key=True),
     Column("incarnation_repository", String, nullable=False),
     Column("target_directory", String, nullable=False),
-    # template_repository: to be changed to nullable=False, once all data has been migrated
-    Column("template_repository", String, nullable=True),
-    Column("commit_sha", String),
-    Column("merge_request_id", String, nullable=True),
+    Column("template_repository", String, nullable=False),
     UniqueConstraint("incarnation_repository", "target_directory", name="incarnation_identity"),
 )
 
