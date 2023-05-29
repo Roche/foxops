@@ -13,9 +13,10 @@ from sqlalchemy import Engine, event
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from foxops.__main__ import FRONTEND_SUBDIRS, create_app
-from foxops.database import DAL
 from foxops.database.repositories.change import ChangeRepository
-from foxops.dependencies import get_change_repository, get_dal
+from foxops.database.repositories.incarnation.repository import IncarnationRepository
+from foxops.database.schema import meta
+from foxops.dependencies import get_change_repository, get_incarnation_repository
 from foxops.logger import setup_logging
 
 
@@ -58,6 +59,9 @@ async def test_async_engine() -> AsyncGenerator[AsyncEngine, None]:
         cursor.close()
 
     async_engine = create_async_engine("sqlite+aiosqlite://", future=True, echo=False, pool_pre_ping=True)
+    async with async_engine.begin() as conn:
+        await conn.run_sync(meta.create_all)
+
     yield async_engine
 
 
@@ -83,17 +87,13 @@ def create_foxops_app() -> FastAPI:
     return create_app()
 
 
-@pytest.fixture(name="dal")
-async def create_dal(test_async_engine: AsyncEngine) -> AsyncGenerator[DAL, None]:
-    dal = DAL(test_async_engine)
-
-    await dal.initialize_db()
-
-    yield dal
+@pytest.fixture
+async def incarnation_repository(test_async_engine: AsyncEngine) -> IncarnationRepository:
+    return IncarnationRepository(test_async_engine)
 
 
 @pytest.fixture
-async def change_repository(test_async_engine: AsyncEngine, dal: DAL) -> ChangeRepository:
+async def change_repository(test_async_engine: AsyncEngine) -> ChangeRepository:
     return ChangeRepository(test_async_engine)
 
 
@@ -104,9 +104,11 @@ def get_static_api_token() -> str:
 
 @pytest.fixture(name="unauthenticated_client")
 async def create_unauthenticated_client(
-    dal: DAL, app: FastAPI, change_repository: ChangeRepository
+    app: FastAPI,
+    incarnation_repository: IncarnationRepository,
+    change_repository: ChangeRepository,
 ) -> AsyncGenerator[AsyncClient, None]:
-    app.dependency_overrides[get_dal] = lambda: dal
+    app.dependency_overrides[get_incarnation_repository] = lambda: incarnation_repository
     app.dependency_overrides[get_change_repository] = lambda: change_repository
 
     async with AsyncClient(

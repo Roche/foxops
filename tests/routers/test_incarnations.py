@@ -7,10 +7,9 @@ import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
 from pytest_mock import MockFixture
-from sqlalchemy import text
 
-from foxops.database import DAL
 from foxops.database.repositories.change import ChangeRepository
+from foxops.database.repositories.incarnation.repository import IncarnationRepository
 from foxops.dependencies import get_change_service
 from foxops.models.change import Change
 from foxops.services.change import ChangeService, IncarnationAlreadyExists
@@ -173,22 +172,19 @@ async def test_api_create_incarnation_fails_when_called_with_allow_import(
 
 async def test_api_delete_incarnation_removes_incarnation_from_inventory(
     api_client: AsyncClient,
-    dal: DAL,
+    incarnation_repository: IncarnationRepository,
 ):
     # GIVEN
-    async with dal.connection() as conn:
-        await conn.execute(
-            text(
-                "INSERT INTO incarnation VALUES (1, 'test', 'test', 'template_repo', 'commit_sha', 'merge_request_id')"
-            )
-        )
-        await conn.commit()
+    incarnation = await incarnation_repository.create(
+        incarnation_repository="test",
+        target_directory="test",
+        template_repository="template_repo",
+    )
 
     # WHEN
-    response = await api_client.delete("/incarnations/1")
+    response = await api_client.delete(f"/incarnations/{incarnation.id}")
 
     # THEN
     assert response.status_code == HTTPStatus.NO_CONTENT
-    async with dal.connection() as conn:
-        actual_incarnations = await conn.execute(text("SELECT 1 FROM incarnation"))
-    assert actual_incarnations.scalar_one_or_none() is None
+
+    assert len([i async for i in incarnation_repository.list()]) == 0

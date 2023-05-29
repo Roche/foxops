@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, Response, status
 from pydantic import BaseModel
 
-from foxops.database import DAL
-from foxops.dependencies import get_change_service, get_dal, get_hoster
+from foxops.database.repositories.incarnation.errors import IncarnationNotFoundError
+from foxops.dependencies import get_change_service, get_hoster, get_incarnation_service
 from foxops.engine import TemplateData
-from foxops.errors import IncarnationNotFoundError
+from foxops.errors import IncarnationNotFoundError as IncarnationNotFoundLegacyError
 from foxops.hosters import Hoster
 from foxops.logger import bind, get_logger
 from foxops.models import (
@@ -21,6 +21,7 @@ from foxops.services.change import (
     ChangeService,
     IncarnationAlreadyExists,
 )
+from foxops.services.incarnation import IncarnationService
 
 #: Holds the router for the incarnations API endpoints
 router = APIRouter(prefix="/api/incarnations", tags=["incarnations"])
@@ -66,7 +67,7 @@ async def list_incarnations(
         return [
             await change_service.get_incarnation_by_repo_and_target_directory(incarnation_repository, target_directory)
         ]
-    except IncarnationNotFoundError:
+    except IncarnationNotFoundLegacyError:
         response.status_code = status.HTTP_404_NOT_FOUND
         return ApiError(message="No incarnation found for the given repository and target directory")
 
@@ -186,6 +187,7 @@ async def reset_incarnation(
     incarnation_id: int,
     response: Response,
     request: IncarnationResetRequest | None = None,
+    incarnation_service: IncarnationService = Depends(get_incarnation_service),
     change_service: ChangeService = Depends(get_change_service),
     hoster: Hoster = Depends(get_hoster),
 ):
@@ -201,7 +203,7 @@ async def reset_incarnation(
         response.status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
         return ApiError(message="The incarnation does not have any customizations. Nothing to reset.")
 
-    incarnation = await change_service.get_incarnation_basic(incarnation_id)
+    incarnation = await incarnation_service.get_by_id(incarnation_id)
     return IncarnationResetResponse(
         incarnation_id=incarnation_id,
         merge_request_id=change.merge_request_id,
@@ -296,7 +298,7 @@ async def update_incarnation(
 async def delete_incarnation(
     response: Response,
     incarnation_id: int,
-    dal: DAL = Depends(get_dal),
+    incarnation_service: IncarnationService = Depends(get_incarnation_service),
 ):
     """Deletes the incarnation from the inventory.
 
@@ -305,11 +307,12 @@ async def delete_incarnation(
     This won't delete the incarnation repository itself, but only deletes the
     incarnation from the inventory.
     """
+
     try:
-        incarnation = await dal.get_incarnation(incarnation_id)
+        incarnation = await incarnation_service.get_by_id(incarnation_id)
     except IncarnationNotFoundError as exc:
         response.status_code = status.HTTP_404_NOT_FOUND
         return ApiError(message=str(exc))
 
-    await dal.delete_incarnation(incarnation.id)
+    await incarnation_service.delete(incarnation)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

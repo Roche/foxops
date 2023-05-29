@@ -5,11 +5,12 @@ from fastapi.openapi.models import APIKey, APIKeyIn
 from fastapi.security.base import SecurityBase
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
-from foxops.database import DAL
 from foxops.database.repositories.change import ChangeRepository
+from foxops.database.repositories.incarnation.repository import IncarnationRepository
 from foxops.hosters import Hoster, HosterSettings
 from foxops.hosters.gitlab import GitLab, GitLabSettings, get_gitlab_settings
 from foxops.services.change import ChangeService
+from foxops.services.incarnation import IncarnationService
 from foxops.settings import DatabaseSettings, Settings
 
 # NOTE: Yes, you may absolutely use proper dependency injection at some point.
@@ -42,8 +43,8 @@ def get_database_engine(settings: DatabaseSettings = Depends(get_database_settin
     return async_engine
 
 
-def get_dal(database_engine: AsyncEngine = Depends(get_database_engine)) -> DAL:
-    return DAL(database_engine)
+def get_incarnation_repository(database_engine: AsyncEngine = Depends(get_database_engine)) -> IncarnationRepository:
+    return IncarnationRepository(database_engine)
 
 
 def get_change_repository(database_engine: AsyncEngine = Depends(get_database_engine)) -> ChangeRepository:
@@ -59,10 +60,17 @@ def get_hoster(settings: HosterSettings = Depends(get_gitlab_settings)) -> Hoste
     )
 
 
+def get_incarnation_service(
+    incarnation_repository: IncarnationRepository = Depends(get_incarnation_repository),
+    hoster: Hoster = Depends(get_hoster),
+) -> IncarnationService:
+    return IncarnationService(incarnation_repository=incarnation_repository, hoster=hoster)
+
+
 def get_change_service(
     hoster: Hoster = Depends(get_hoster),
     change_repository: ChangeRepository = Depends(get_change_repository),
-    incarnation_repository: DAL = Depends(get_dal),
+    incarnation_repository: IncarnationRepository = Depends(get_incarnation_repository),
 ) -> ChangeService:
     return ChangeService(
         hoster=hoster, incarnation_repository=incarnation_repository, change_repository=change_repository

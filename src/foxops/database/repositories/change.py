@@ -153,7 +153,6 @@ class ChangeRepository:
                     incarnation_repository=incarnation_repository,
                     target_directory=target_directory,
                     template_repository=template_repository,
-                    commit_sha=commit_sha,
                 )
                 .returning(incarnations.c.id)
             )
@@ -285,7 +284,6 @@ class ChangeRepository:
 
     async def update_commit_sha(self, id_: int, commit_sha: str) -> ChangeInDB:
         query_select_change_commit_pushed = select(change.c.commit_pushed).where(change.c.id == id_)
-        query_select_change_incarnation_id = select(change.c.incarnation_id).where(change.c.id == id_)
 
         async with self.engine.begin() as conn:
             # verify that the change exists and the referenced commit was not yet pushed
@@ -300,12 +298,7 @@ class ChangeRepository:
             if commit_pushed:
                 raise ChangeCommitAlreadyPushedError(id_)
 
-            result = await conn.execute(query_select_change_incarnation_id)
-            incarnation_id = result.scalar_one()
-
-            # all good, let's update the commit sha (in change and incarnation table)
-            await conn.execute(update(incarnations).values(commit_sha=commit_sha).where(change.c.id == incarnation_id))
-
+            # all good, let's update the commit sha
             result = await conn.execute(
                 update(change).values(commit_sha=commit_sha).where(change.c.id == id_).returning(*change.columns)
             )

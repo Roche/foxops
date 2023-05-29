@@ -3,7 +3,6 @@ import json
 import pytest
 from pytest import fixture
 
-from foxops.database import DAL
 from foxops.database.repositories.change import (
     ChangeCommitAlreadyPushedError,
     ChangeConflictError,
@@ -12,25 +11,20 @@ from foxops.database.repositories.change import (
     ChangeType,
     IncarnationHasNoChangesError,
 )
-from foxops.models import DesiredIncarnationState, Incarnation
+from foxops.database.repositories.incarnation.model import IncarnationInDB
+from foxops.database.repositories.incarnation.repository import IncarnationRepository
 
 
 @fixture(scope="function")
-async def incarnation(dal: DAL) -> Incarnation:
-    return await dal.create_incarnation(
-        desired_incarnation_state=DesiredIncarnationState(
-            incarnation_repository="test",
-            target_directory="test",
-            template_repository="test",
-            template_repository_version="test",
-            template_data={},
-        ),
-        commit_sha="dummy sha",
-        merge_request_id=None,
+async def incarnation(incarnation_repository: IncarnationRepository) -> IncarnationInDB:
+    return await incarnation_repository.create(
+        incarnation_repository="test",
+        target_directory="test",
+        template_repository="test",
     )
 
 
-async def test_create_change_persists_all_data(change_repository: ChangeRepository, incarnation: Incarnation):
+async def test_create_change_persists_all_data(change_repository: ChangeRepository, incarnation: IncarnationInDB):
     # WHEN
     change = await change_repository.create_change(
         incarnation_id=incarnation.id,
@@ -49,7 +43,7 @@ async def test_create_change_persists_all_data(change_repository: ChangeReposito
     assert change.type == ChangeType.DIRECT
 
 
-async def test_create_change_rejects_double_revision(change_repository: ChangeRepository, incarnation: Incarnation):
+async def test_create_change_rejects_double_revision(change_repository: ChangeRepository, incarnation: IncarnationInDB):
     # GIVEN
     await change_repository.create_change(
         incarnation_id=incarnation.id,
@@ -83,7 +77,7 @@ async def test_get_change_throws_exception_when_not_found(change_repository: Cha
 
 
 async def test_get_latest_change_for_incarnation_succeeds(
-    change_repository: ChangeRepository, incarnation: Incarnation
+    change_repository: ChangeRepository, incarnation: IncarnationInDB
 ):
     # GIVEN
     await change_repository.create_change(
@@ -115,7 +109,7 @@ async def test_get_latest_change_for_incarnation_succeeds(
 
 
 async def test_get_latest_change_for_incarnation_throws_exception_when_no_change_exists(
-    change_repository: ChangeRepository, incarnation: Incarnation
+    change_repository: ChangeRepository, incarnation: IncarnationInDB
 ):
     # WHEN
     with pytest.raises(IncarnationHasNoChangesError):
@@ -176,7 +170,7 @@ async def test_list_incarnations_with_change_summary_returns_all_incarnations_wi
     assert incarnations[1].commit_sha == incarnation2_change1.commit_sha
 
 
-async def test_update_change_commit_pushed_succeeds(change_repository: ChangeRepository, incarnation: Incarnation):
+async def test_update_change_commit_pushed_succeeds(change_repository: ChangeRepository, incarnation: IncarnationInDB):
     # GIVEN
     change = await change_repository.create_change(
         incarnation_id=incarnation.id,
@@ -197,7 +191,7 @@ async def test_update_change_commit_pushed_succeeds(change_repository: ChangeRep
     assert updated_change.commit_pushed is True
 
 
-async def test_update_change_commit_sha_succeeds(change_repository: ChangeRepository, incarnation: Incarnation):
+async def test_update_change_commit_sha_succeeds(change_repository: ChangeRepository, incarnation: IncarnationInDB):
     # GIVEN
     change = await change_repository.create_change(
         incarnation_id=incarnation.id,
@@ -219,7 +213,7 @@ async def test_update_change_commit_sha_succeeds(change_repository: ChangeReposi
 
 
 async def test_update_change_commit_sha_fails_when_commit_is_already_pushed(
-    change_repository: ChangeRepository, incarnation: Incarnation
+    change_repository: ChangeRepository, incarnation: IncarnationInDB
 ):
     # GIVEN
     change = await change_repository.create_change(
@@ -238,7 +232,7 @@ async def test_update_change_commit_sha_fails_when_commit_is_already_pushed(
         await change_repository.update_commit_sha(change.id, "new sha")
 
 
-async def test_delete_change_succeeds_in_deleting(change_repository: ChangeRepository, incarnation: Incarnation):
+async def test_delete_change_succeeds_in_deleting(change_repository: ChangeRepository, incarnation: IncarnationInDB):
     # GIVEN
     change = await change_repository.create_change(
         incarnation_id=incarnation.id,
