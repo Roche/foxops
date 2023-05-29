@@ -489,6 +489,7 @@ class ChangeService:
         merge_request_url: str | None = None
         merge_request_status: MergeRequestStatus | None = None
 
+        change: Change | ChangeWithMergeRequest
         if change_type == ChangeType.MERGE_REQUEST:
             change = await self.get_change_with_merge_request(change_id)
 
