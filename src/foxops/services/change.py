@@ -483,9 +483,26 @@ class ChangeService:
         incarnation = await self._incarnation_repository.get_by_id(incarnation_id)
 
         change_id = await self.get_latest_change_id_for_incarnation(incarnation_id)
-        change = await self.get_change(change_id)
+        change_type = await self.get_change_type(change_id)
 
-        merge_request_id = getattr(change, "merge_request_id", None)
+        merge_request_id: str | None = None
+        merge_request_url: str | None = None
+        merge_request_status: MergeRequestStatus | None = None
+
+        if change_type == ChangeType.MERGE_REQUEST:
+            change = await self.get_change_with_merge_request(change_id)
+
+            merge_request_id = change.merge_request_id
+            merge_request_status = await self._hoster.get_merge_request_status(
+                incarnation.incarnation_repository, merge_request_id
+            )
+            merge_request_url = await self._hoster.get_merge_request_url(
+                incarnation.incarnation_repository, merge_request_id
+            )
+        elif change_type == ChangeType.DIRECT:
+            change = await self.get_change(change_id)
+        else:
+            raise ValueError(f"Unknown change type {change_type}")
 
         status = await self._hoster.get_reconciliation_status(
             incarnation_repository=incarnation.incarnation_repository,
@@ -494,16 +511,6 @@ class ChangeService:
             merge_request_id=merge_request_id,
             pipeline_timeout=timedelta(seconds=10),
         )
-
-        merge_request_url: str | None = None
-        merge_request_status: MergeRequestStatus | None = None
-        if merge_request_id is not None:
-            merge_request_status = await self._hoster.get_merge_request_status(
-                incarnation.incarnation_repository, merge_request_id
-            )
-            merge_request_url = await self._hoster.get_merge_request_url(
-                incarnation.incarnation_repository, merge_request_id
-            )
 
         return IncarnationWithDetails(
             id=incarnation.id,
