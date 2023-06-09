@@ -3,6 +3,7 @@ name = "foxops"
 # managed by poetry-dynamic-versioning, do not change.
 version = "0.0.0"
 description = "Foxops 🦊"
+license = "Apache-2.0"
 authors = [
     "Alexander Hungenberg <alexander.hungenberg@roche.com>",
     "Timo Furrer <timo.furrer@roche.com>",
