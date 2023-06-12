@@ -18,7 +18,7 @@ python = ">=3.10,<4.0"
 
 # Web Framework
 uvicorn = "^0.22.0"
-fastapi = "^0.95.2"
+fastapi = ">=0.95.2,<0.98.0"
 
 # Auxiliary
 httpx = "^0.24.1"
