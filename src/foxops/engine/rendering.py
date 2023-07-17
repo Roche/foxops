@@ -7,7 +7,7 @@ from aiopath import AsyncPath
 from jinja2 import FileSystemLoader, StrictUndefined
 from jinja2.sandbox import SandboxedEnvironment
 
-from foxops.engine.custom_filters import ip_add_integer
+from foxops.engine.custom_filters import ip_add_integer, base64encode
 from foxops.engine.models import TemplateData
 from foxops.logger import get_logger
 
@@ -31,6 +31,7 @@ def create_template_environment(template_root_dir: Path) -> SandboxedEnvironment
         undefined=StrictUndefined,
     )
     env.filters["ip_add_integer"] = ip_add_integer
+    env.filters["base64encode"] = base64encode
     return env
 
 

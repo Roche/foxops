@@ -355,6 +355,7 @@ async def test_rendering_a_template_directory_inherits_file_permissions(tmp_path
     [
         ("192.168.0.0", "{{ x | ip_add_integer }}", "192.168.0.1"),
         ("192.168.0.0", "{{ x | ip_add_integer(2) }}", "192.168.0.2"),
+        ("orig", "{{ x | base64encode }}", "b3JpZw=="),
     ],
 )
 async def test_availability_of_custom_filters(tmp_path: Path, orig: str, statement: str, expected: str):

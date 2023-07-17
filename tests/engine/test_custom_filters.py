@@ -1,6 +1,6 @@
 import pytest
 
-from foxops.engine.custom_filters import ip_add_integer
+from foxops.engine.custom_filters import ip_add_integer, base64encode
 
 
 @pytest.mark.parametrize(
@@ -14,3 +14,16 @@ from foxops.engine.custom_filters import ip_add_integer
 )
 async def test_ip_add_integer(ip, n, expected):
     assert ip_add_integer(ip, n) == expected
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("", ""),
+        ("test:user\n", "dGVzdDp1c2VyCg=="),
+        (b"test:user\n", "dGVzdDp1c2VyCg=="),
+        (b"\x00", "AA=="),
+    ],
+)
+def test_base64_encode(value, expected):
+    assert base64encode(value) == expected
