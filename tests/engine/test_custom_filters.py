@@ -1,6 +1,6 @@
 import pytest
 
-from foxops.engine.custom_filters import ip_add_integer, base64encode
+from foxops.engine.custom_filters import base64encode, ip_add_integer
 
 
 @pytest.mark.parametrize(
