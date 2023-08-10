@@ -130,7 +130,7 @@ async def render_template_file(
         content_template = environment.get_template(str(relative_template_path))
         rendered_content = await content_template.render_async(**template_data)
     else:
-        rendered_content = template_file_path.read_text()
+        rendered_content = template_file_path.read_bytes()
 
     # get and render template file path
     # NOTE (AH): Even when file content rendering is disabled, we still need to render the file path.
@@ -148,7 +148,10 @@ async def render_template_file(
     template_file_stat = template_file_path.stat(follow_symlinks=False)  # type: ignore
     incarnation_file_path = AsyncPath(incarnation_root_dir, rendered_path)
     await incarnation_file_path.parent.mkdir(parents=True, exist_ok=True)
-    await incarnation_file_path.write_text(rendered_content)
+    if render_content:
+        await incarnation_file_path.write_text(rendered_content)
+    else:
+        await incarnation_file_path.write_bytes(rendered_content)
     apply_path_stats(Path(incarnation_file_path), template_file_stat)
     return incarnation_file_path
 
