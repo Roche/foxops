@@ -125,6 +125,7 @@ async def render_template_file(
     loader: FileSystemLoader = typing.cast(FileSystemLoader, environment.loader)
     relative_template_path = template_file_path.relative_to(loader.searchpath[0])
 
+    rendered_content: typing.Union[str, bytes]
     if render_content:
         # get and render template file contents
         content_template = environment.get_template(str(relative_template_path))
