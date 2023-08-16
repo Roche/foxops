@@ -48,6 +48,28 @@ async def test_rendering_a_template_file_renders_data_in_file_content(tmp_path: 
     assert (incarnation_dir / "template.txt").read_text() == "Hello World"
 
 
+async def test_rendering_a_template_file_with_a_binary_file_skipped(tmp_path: Path):
+    # GIVEN
+    template_file = tmp_path / "template.bin"
+    template_file.write_bytes(b"\x89\xA9")
+    incarnation_dir = tmp_path / "incarnation"
+    incarnation_dir.mkdir()
+
+    env = create_template_environment(tmp_path)
+
+    # WHEN
+    await render_template_file(
+        env,
+        template_file,
+        incarnation_dir,
+        {},
+        render_content=False,
+    )
+
+    # THEN
+    assert (incarnation_dir / "template.bin").read_bytes() == b"\x89\xA9"
+
+
 async def test_rendering_a_template_file_with_invalid_templating_syntax_raises_exception(
     tmp_path: Path,
 ):
