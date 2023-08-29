@@ -110,7 +110,7 @@ class LocalHoster(Hoster):
     async def cloned_repository(
         self, repository: str, *, refspec: str | None = None, bare: bool = False
     ) -> AsyncIterator[GitRepository]:
-        repo_path = (self.directory / repository).absolute()
+        repo_path = self._repo_path(repository)
         if not Path(repo_path).is_dir():
             raise ValueError("Repository does not exist")
 
@@ -154,7 +154,11 @@ class LocalHoster(Hoster):
     async def has_pending_incarnation_merge_request(
         self, project_identifier: str, branch: str
     ) -> MergeRequestId | None:
-        raise NotImplementedError
+        for mr in self._merge_requests[project_identifier]:
+            if mr.source_branch == branch and mr.status == MergeRequestStatus.OPEN:
+                return str(mr.id)
+
+        return None
 
     async def get_repository_metadata(self, project_identifier: str) -> RepositoryMetadata:
         return {
@@ -199,3 +203,6 @@ class LocalHoster(Hoster):
             raise ValueError("Merge request does not exist")
 
         return existing_merge_requests[merge_request_index].status
+
+    def _repo_path(self, repository: str) -> Path:
+        return (self.directory / repository).absolute()

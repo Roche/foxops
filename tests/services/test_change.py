@@ -5,15 +5,17 @@ import pytest
 from pytest import fixture
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from foxops.database.repositories.change import ChangeRepository
+from foxops.database.repositories.change import ChangeNotFoundError, ChangeRepository
 from foxops.database.repositories.incarnation.errors import IncarnationNotFoundError
 from foxops.database.repositories.incarnation.repository import IncarnationRepository
 from foxops.engine import load_incarnation_state
+from foxops.external.git import git_exec
 from foxops.hosters.local import LocalHoster
 from foxops.hosters.types import MergeRequestStatus
 from foxops.models import Incarnation
 from foxops.models.change import ChangeWithMergeRequest
 from foxops.services.change import (
+    CannotRepairChangeException,
     ChangeRejectedDueToNoChanges,
     ChangeService,
     IncarnationAlreadyExists,
@@ -398,6 +400,111 @@ present** in this incarnation repository. Please resolve the conflicts manually:
 
 - CONTRIBUTING.md"""
     )
+
+
+async def test_update_incomplete_change_recovers_from_unpushed_direct_change(
+    local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation
+):
+    # GIVEN
+    change = await change_service.create_change_direct(initialized_incarnation.id, requested_version="v1.1.0")
+
+    # remove latest commit from repo
+    repo_path = local_hoster._repo_path(initialized_incarnation.incarnation_repository)
+    await git_exec("update-ref", "HEAD", "HEAD^", cwd=repo_path)
+    await git_exec("gc", "--prune=now", cwd=repo_path)
+
+    # update database to reflect the missing commit
+    await change_service._change_repository.update_commit_pushed(change.id, False)
+
+    # WHEN
+    await change_service.update_incomplete_change(change.id, grace_period_minutes=0)
+
+    # THEN
+    # expect that the incomplete change was deleted because the commit was not pushed
+    with pytest.raises(ChangeNotFoundError):
+        await change_service.get_change(change.id)
+
+    change = await change_service.get_latest_change_for_incarnation_if_completed(initialized_incarnation.id)
+    assert await local_hoster.does_commit_exist(initialized_incarnation.incarnation_repository, change.commit_sha)
+
+
+async def test_update_incomplete_change_recovers_from_pushed_direct_change(
+    local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation
+):
+    # GIVEN
+    change = await change_service.create_change_direct(initialized_incarnation.id, requested_version="v1.1.0")
+
+    # update database to reflect the missing update about the pushed change
+    await change_service._change_repository.update_commit_pushed(change.id, False)
+
+    # WHEN
+    await change_service.update_incomplete_change(change.id, grace_period_minutes=0)
+
+    # THEN
+    change = await change_service.get_latest_change_for_incarnation_if_completed(initialized_incarnation.id)
+    assert await local_hoster.does_commit_exist(initialized_incarnation.incarnation_repository, change.commit_sha)
+
+
+async def test_update_incomplete_change_recovers_from_unpushed_merge_request_change(
+    local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation
+):
+    # GIVEN
+    change = await change_service.create_change_merge_request(
+        initialized_incarnation.id, requested_version="v1.1.0", automerge=False
+    )
+
+    # remove the pushed branch from the repo
+    repo_path = local_hoster._repo_path(initialized_incarnation.incarnation_repository)
+    await git_exec("branch", "-D", change.merge_request_branch_name, cwd=repo_path)
+    await git_exec("gc", "--prune=now", cwd=repo_path)
+
+    # update database to reflect the missing commit
+    await change_service._change_repository.update_commit_pushed(change.id, False)
+    await change_service._change_repository.update_merge_request_id(change.id, None)
+
+    # WHEN
+    await change_service.update_incomplete_change(change.id, grace_period_minutes=0)
+
+    # THEN
+    # expect that the incomplete change was deleted because the commit was not pushed
+    with pytest.raises(ChangeNotFoundError):
+        await change_service.get_change(change.id)
+
+
+async def test_update_incomplete_change_recovers_from_pushed_merge_request_change_with_existing_merge_request(
+    local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation
+):
+    # GIVEN
+    change = await change_service.create_change_merge_request(
+        initialized_incarnation.id, requested_version="v1.1.0", automerge=False
+    )
+
+    await change_service._change_repository.update_merge_request_id(change.id, None)
+
+    # WHEN
+    await change_service.update_incomplete_change(change.id, grace_period_minutes=0)
+
+    # THEN
+    change = await change_service.get_change_with_merge_request(change.id)
+    assert change.merge_request_id is not None
+
+
+async def test_update_incomplete_change_raises_exception_for_pushed_merge_request_change_with_non_existing_merge_request(
+    local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation
+):
+    # GIVEN
+    change = await change_service.create_change_merge_request(
+        initialized_incarnation.id, requested_version="v1.1.0", automerge=False
+    )
+
+    await change_service._change_repository.update_merge_request_id(change.id, None)
+
+    # remove merge request
+    local_hoster._merge_requests[initialized_incarnation.incarnation_repository] = []
+
+    # THEN
+    with pytest.raises(CannotRepairChangeException):
+        await change_service.update_incomplete_change(change.id, grace_period_minutes=0)
 
 
 async def test_reset_incarnation_returns_change_and_does_not_modify_main_branch(

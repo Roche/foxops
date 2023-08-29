@@ -78,6 +78,10 @@ class IncompleteChange(Exception):
     pass
 
 
+class CannotRepairChangeException(Exception):
+    pass
+
+
 @dataclass
 class _PreparedChangeEnvironment:
     """
@@ -369,31 +373,56 @@ class ChangeService:
 
         return await self.get_change_with_merge_request(change_in_db.id)
 
-    async def update_incomplete_change(self, change_id: int) -> None:
+    async def update_incomplete_change(self, change_id: int, grace_period_minutes=1) -> None:
         """
-        Updates an incomplete change (commit_pushed=False) to the latest state.
+        Updates an incomplete change (commit not pushed, MR not created) to the latest state.
 
         Either by updating the flag (if the commit exists in Git) or by deleting the change object.
         """
 
-        # FIXME: needs an update to also work with MR changes
-
         change = await self._change_repository.get_change(change_id)
-        if change.commit_pushed:
-            self._log.debug("Change is already complete (commit_pushed=True). Skipping.", change_id=change_id)
-            return
+        match change.type:
+            case ChangeType.DIRECT:
+                if change.commit_pushed:
+                    self._log.debug("Change is already complete (commit_pushed=True). Skipping.", change_id=change_id)
+                    return
+            case ChangeType.MERGE_REQUEST:
+                if change.commit_pushed and change.merge_request_id is not None:
+                    self._log.debug(
+                        "Change is already complete (commit_pushed=True, merge_request_id set). Skipping.",
+                        change_id=change_id,
+                    )
+                    return
+            case _:
+                raise Exception(f"unsupported change type {change.type}")
 
         # don't touch if the change is very new - the git push might still be in progress
-        if change.created_at > datetime.now(timezone.utc) - timedelta(minutes=1):
+        if change.created_at > datetime.now(timezone.utc) - timedelta(minutes=grace_period_minutes):
             return
 
         incarnation = await self._incarnation_repository.get_by_id(change.incarnation_id)
 
         commit_exists = await self._hoster.does_commit_exist(incarnation.incarnation_repository, change.commit_sha)
-        if commit_exists:
-            await self._change_repository.update_commit_pushed(change_id, True)
-        else:
+        if not commit_exists:
             await self._change_repository.delete_change(change_id)
+            return
+
+        await self._change_repository.update_commit_pushed(change_id, True)
+
+        if change.type == ChangeType.MERGE_REQUEST:
+            assert change.merge_request_branch_name is not None
+            merge_request_id = await self._hoster.has_pending_incarnation_merge_request(
+                incarnation.incarnation_repository, change.merge_request_branch_name
+            )
+
+            if merge_request_id is None:
+                raise CannotRepairChangeException(
+                    "the commit and branch for the change exist, but the MR does not. "
+                    f"Please go ahead and manually create a merge request for "
+                    f"branch '{change.merge_request_branch_name}', then rerun update_incomplete_change()"
+                )
+
+            await self._change_repository.update_merge_request_id(change_id, merge_request_id)
 
     async def get_change_type(self, change_id: int) -> ChangeType:
         change = await self._change_repository.get_change(change_id)
