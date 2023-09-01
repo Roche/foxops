@@ -195,8 +195,11 @@ class ChangeRepository:
                 row = result.one()
             except NoResultFound:
                 raise ChangeNotFoundError(id_)
-            else:
-                return ChangeInDB.from_orm(row)
+
+        change_in_db = ChangeInDB.from_orm(row)
+        change_in_db.created_at = change_in_db.created_at.replace(tzinfo=timezone.utc)
+
+        return change_in_db
 
     async def get_latest_change_for_incarnation(self, incarnation_id: int) -> ChangeInDB:
         query = (
@@ -310,7 +313,7 @@ class ChangeRepository:
     async def update_commit_pushed(self, id_: int, commit_pushed: bool) -> ChangeInDB:
         return await self._update_one(id_, commit_pushed=commit_pushed)
 
-    async def update_merge_request_id(self, id_: int, merge_request_id: str) -> ChangeInDB:
+    async def update_merge_request_id(self, id_: int, merge_request_id: str | None) -> ChangeInDB:
         return await self._update_one(id_, merge_request_id=merge_request_id)
 
     async def _update_one(self, id_: int, **kwargs) -> ChangeInDB:
