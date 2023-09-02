@@ -9,6 +9,7 @@ from foxops.database.repositories.change import ChangeNotFoundError, ChangeRepos
 from foxops.database.repositories.incarnation.errors import IncarnationNotFoundError
 from foxops.database.repositories.incarnation.repository import IncarnationRepository
 from foxops.engine import load_incarnation_state
+from foxops.engine.models import TemplateConfig, VariableDefinition
 from foxops.external.git import git_exec
 from foxops.hosters.local import LocalHoster
 from foxops.hosters.types import MergeRequestStatus
@@ -52,6 +53,16 @@ async def git_repo_template(local_hoster: LocalHoster) -> str:
         (repo.directory / "template" / "README.md").write_text("Hello, world3!")
         await repo.commit_all("update")
         await repo.tag("v1.2.0")
+
+        # adding a new version that adds a template variable
+        template_config = TemplateConfig(
+            variables={
+                "author": VariableDefinition(type="str", description="The author of the project", default="dummy"),
+            }
+        )
+        template_config.to_yaml(repo.directory / "fengine.yaml")
+        await repo.commit_all("add template config and new variable")
+        await repo.tag("v1.3.0")
 
         await repo.push(tags=True)
 
@@ -258,6 +269,21 @@ async def test_create_change_direct_succeeds_when_updating_the_template_version(
 
         incarnation_state = load_incarnation_state(repo.directory / ".fengine.yaml")
         assert incarnation_state.template_repository_version == "v1.1.0"
+
+
+async def test_create_change_direct_succeeds_and_makes_new_template_variables_visible_in_the_foxops_api(
+    change_service: ChangeService, initialized_incarnation: Incarnation
+):
+    # WHEN
+    change = await change_service.create_change_direct(initialized_incarnation.id, requested_version="v1.3.0")
+
+    # THEN
+    assert change.requested_data == {"author": "dummy"}
+
+    async with change_service._hoster.cloned_repository(initialized_incarnation.incarnation_repository) as repo:
+        incarnation_state = load_incarnation_state(repo.directory / ".fengine.yaml")
+        assert incarnation_state.template_repository_version == "v1.3.0"
+        assert incarnation_state.template_data == {"author": "dummy"}
 
 
 async def test_create_change_direct_succeeds_when_updating_to_the_same_branch_name(

@@ -596,7 +596,7 @@ class ChangeService:
 
             (
                 update_performed,
-                _,
+                incarnation_state,
                 patch_result,
             ) = await fengine.update_incarnation_from_git_template_repository(
                 template_git_repository=local_template_repository.directory,
@@ -620,7 +620,7 @@ class ChangeService:
                 incarnation_repository_default_branch=incarnation_repo_metadata["default_branch"],
                 to_version_hash=await local_template_repository.head(),
                 to_version=to_version,
-                to_data=to_data,
+                to_data=incarnation_state.template_data,
                 expected_revision=last_change.revision + 1,
                 branch_name=branch_name,
                 commit_sha=commit_sha,
