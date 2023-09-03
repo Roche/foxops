@@ -1,9 +1,9 @@
 import enum
 from datetime import datetime, timezone
-from typing import AsyncIterator
+from typing import AsyncIterator, Self
 
 from pydantic import BaseModel
-from sqlalchemy import and_, delete, insert, select, update
+from sqlalchemy import and_, delete, desc, insert, select, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -59,6 +59,13 @@ class ChangeInDB(BaseModel):
 
     class Config:
         orm_mode = True
+
+    @classmethod
+    def from_database_row(cls, obj) -> Self:
+        change_in_db = cls.from_orm(obj)
+        change_in_db.created_at = change_in_db.created_at.replace(tzinfo=timezone.utc)
+
+        return change_in_db
 
 
 class IncarnationWithChangesSummary(BaseModel):
@@ -186,6 +193,18 @@ class ChangeRepository:
             await conn.execute(delete(incarnations).where(incarnations.c.id == id_))
             await conn.commit()
 
+    async def get_change_by_revision(self, incarnation_id: int, revision: int) -> ChangeInDB:
+        query = select(change).where(and_(change.c.incarnation_id == incarnation_id, change.c.revision == revision))
+        async with self.engine.connect() as conn:
+            result = await conn.execute(query)
+
+            try:
+                row = result.one()
+            except NoResultFound:
+                raise ChangeNotFoundError(0)
+
+        return ChangeInDB.from_database_row(row)
+
     async def get_change(self, id_: int) -> ChangeInDB:
         query = select(change).where(change.c.id == id_)
         async with self.engine.connect() as conn:
@@ -196,10 +215,7 @@ class ChangeRepository:
             except NoResultFound:
                 raise ChangeNotFoundError(id_)
 
-        change_in_db = ChangeInDB.from_orm(row)
-        change_in_db.created_at = change_in_db.created_at.replace(tzinfo=timezone.utc)
-
-        return change_in_db
+        return ChangeInDB.from_database_row(row)
 
     async def get_latest_change_for_incarnation(self, incarnation_id: int) -> ChangeInDB:
         query = (
@@ -276,6 +292,13 @@ class ChangeRepository:
                 raise IncarnationNotFoundError(0)
 
         return IncarnationWithChangesSummary.from_orm(row)
+
+    async def list_changes(self, incarnation_id: int) -> list[ChangeInDB]:
+        query = select(change).where(change.c.incarnation_id == incarnation_id).order_by(desc(change.c.revision))
+        async with self.engine.connect() as conn:
+            result = await conn.execute(query)
+
+            return [ChangeInDB.from_database_row(row) for row in result]
 
     async def delete_change(self, id_: int) -> None:
         async with self.engine.connect() as conn:
