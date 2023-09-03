@@ -1,4 +1,4 @@
-## Write a Template from Scratch
+# Write a Template from Scratch
 
 A valid template that can be used by fengine only consists of a few components:
 
@@ -6,7 +6,7 @@ A valid template that can be used by fengine only consists of a few components:
 * A `fengine.yaml` file that contains the templates metadata.
 * A `template/` subdirectory that contains the files that should be rendered into the incarnation.
 
-### Create a New Template
+## Create a New Template
 
 To initialize a new, empty template you need to create the elements described in the list above.
 If you're lazy, just use the following set of bash commands to do that:
@@ -24,12 +24,12 @@ Be aware that only the files within the `template/` directory will be rendered i
 Therefore you can use the root directory of the template Git repository to place other subdirectories or files for documentation,
 tests or a CI configuration file for the template repository itself.
 
-### Template Configuration
+## Template Configuration
 
 In the above section you've just created an empty template configuration in the `fengine.yaml` file.
 There are a few things you can configure for a template:
 
-#### Template Variables
+### Template Variables
 
 Probably the most important template configuration are *variables* or *template data*.
 Every template can have zero or more variables that it must define in the `fengine.yaml` file
@@ -62,7 +62,7 @@ variables:
         default: Jane Doe
 ```
 
-### Exclude Files from Rendering
+## Exclude Files from Rendering
 
 Sometimes you don't want to render every file in `template/`, but only copy&paste them as-is
 to the incarnation. You can use the `exclude_files` field to list the files you don't want
@@ -80,7 +80,7 @@ variables:
     ...
 ```
 
-### Change an Existing Template
+## Change an Existing Template
 
 Nothing special to consider here. Just change the files in the repository and commit to git as normal.
 

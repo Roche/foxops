@@ -22,8 +22,8 @@ sys.path.insert(0, str(SOURCE_DIR))
 # -- Project information -----------------------------------------------------
 
 project = "foxops"
-copyright = "2022, Timo Furrer"
-author = "Timo Furrer"
+copyright = "2023, Alexander Hungenberg, Timo Furrer"
+author = "Alexander Hungenberg, Timo Furrer"
 
 # The full version, including alpha/beta/rc tags
 release = "v1"

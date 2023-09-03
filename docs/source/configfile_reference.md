@@ -1,6 +1,6 @@
-## Configuration Files
+# Configuration Files
 
-### fengine.yaml File Reference
+## fengine.yaml File Reference
 
 The `fengine.yaml` file holds metadata that is required by fengine when rendering the template into an incarnation. Most importantly it contains definitions of template variables, but can also override some settings that affect the rendering process.
 

@@ -1,44 +1,44 @@
 # Usage
 
-foxops is primarily a command line interface and can be installed by following [these instructions](installation).
+## Using the FoxOps UI
 
-## Command Line Interfaces
+![ui](assets/foxops.png)
 
-The foxops Python package will install two console scripts:
+The foxops UI is the main interface to interact with foxops "as a human". It can be used to:
 
-* `foxops`: main console script to initialize and update incarnation from a template and interacting with GitLab.
-* `fengine`: a lower level console script used by `foxops` to do the heavy lifting around incarnation initialization and updates.
-             It's primarily used to develop templates.
+* Create new incarnations
+* View and search existing incarnations
+* Update existing incarnations (update them to a newer template version or change variable values)
+* Perform bulk updates on many incarnations
 
-## Initialize an Incarnation from a Template
+## Terraform Provider
 
-:::{note}
-Checkout the [Write Template from Scratch](tutorials/write-template-from-scratch) tutorial to
-learn more about templates.
-:::
+FoxOps also provides a [Terraform Provider](https://registry.terraform.io/providers/Roche/foxops/latest/docs) that can be used to manage incarnations from Terraform.
 
-Let's assume you have a template at `https://gitlab.com/my-org/templates/python` with two variables, one is called `name` and one `category`.
+This is especially useful in combination with the [Gitlab Provider](https://registry.terraform.io/providers/gitlabhq/gitlab/latest/docs) - to create new projects and immediately initialize them from a foxops template.
 
-tbd.
+## HTTP API
 
-## Update an Incarnation
+FoxOps also provides an HTTP API that can be used to manage incarnations programmatically. Its documentation is available at the `/docs` URL of your foxops instance and it offers the same functionality as the UI.
 
-When an update to the template was made it's sometimes worthwhile to update the incarnation to reflect these changes, too.
+To call the API, the same authentication token must be used as when logging in to the UI.
 
-tbd ....
+Provide it with a `Authorization: Bearer <your-token>` header.
 
-An update will always create a Merge Request on the incarnation repository with the changes, ready to be reviewed and merged.
+### Python Client Library
 
-In case the update wasn't successful because of conflicts between the template and the incarnation the Merge Request will
-reflect that.
+If you want to use the foxops API directly from Python, you can use the prebuilt client library (based on httpx): [https://github.com/Roche/foxops-client-python](https://github.com/Roche/foxops-client-python)
 
-You may add an `automerge: true` option to the incarnation configuration so that the update Merge Request is automatically merged.
-
-## Local Development
+## Local Development with _fengine_
 
 The `fengine` CLI tool is especially useful when you're working on a template,
 as it allows you to quickly create or update an incarnation locally to test your changes.
 
+```{warning}
+Be aware that fengine should not be used to work with incarnations that are managed by a foxops instance - as this can cause the foxops database to get out-of-sync.
+```
+
+(bootstrap-a-template)=
 ### Bootstrap a Template
 
 fengine is able to bootstrap a new template in a folder you specify, e.g. to create a new template in the `catcam` folder,
@@ -76,7 +76,7 @@ fengine initialize catcam/ --template-version v1.0.0 mycat -d author="Albert Ein
 
 This will create the `mycat/` folder and render the file `README.md` with the contents:
 
-```txt
+```text
 Created by Albert Einstein
 ```
 
@@ -107,22 +107,4 @@ fengine update mycat/ -u v2.0.0
 ```
 
 You may also provide other values for the template data like the `author` variable.
-
-## `default.fvars` File
-
-In addition to configuring the `template_data` in the desired incarnation state configuration,
-variable values can be provided in the `default.fvars` file located in the target incarnation directory.
-
-The file format is in `key=value` pairs (like `.env` files), e.g.:
-
-```ini
-author=Jon
-age=42
 ```
-
-### Behavior details
-
-Foxops will submit a Merge Request during incarnation initialization in the case the repository
-is not empty.
-If the incarnation repository only contains a `default.fvars` file, it's considered empty and
-no Merge Request will be submitted.

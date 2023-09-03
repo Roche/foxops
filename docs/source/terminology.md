@@ -6,4 +6,4 @@ Throughout this documentation the following terms are often used and you it's go
 
 **incarnation**: A Git repository which is a concrete instance of a rendered *template*. It may or may not contain *customizations* specific to that *incarnation*.
 
-**reconcile**: The process of bringing a set of incarnations to a desired state in terms of the template, template version and template variables.
+**change**: Represents an update that was performed by foxops on an incarnation repository. For example when updating it to a newer template version or when changing variable values. Every change is assigned a revision number - with the latest change having the highest revision.

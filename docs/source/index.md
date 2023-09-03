@@ -5,7 +5,6 @@
 installation
 usage
 tutorials/index
-advanced_usage
 ```
 
 ```{toctree}
@@ -14,7 +13,6 @@ advanced_usage
 :caption: References
 
 terminology
-workflows
 configfile_reference
 api
 ```
@@ -49,7 +47,7 @@ The foxops tool is split into two components:
 
 First let's create an *incarnation* for my `catcam` Python application based on a Python *template*:
 
-```yaml
+```bash
 curl --json '{
   "incarnation_repository": "my-org/catcam",
   "template_repository": https://gitlab.com/my-org/templates/python",
