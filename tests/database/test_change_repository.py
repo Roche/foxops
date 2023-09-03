@@ -108,6 +108,59 @@ async def test_get_latest_change_for_incarnation_succeeds(
     assert change.revision == 2
 
 
+async def test_list_changes(change_repository: ChangeRepository, incarnation: IncarnationInDB):
+    # GIVEN
+    await change_repository.create_change(
+        incarnation_id=incarnation.id,
+        revision=1,
+        change_type=ChangeType.DIRECT,
+        commit_sha="dummy sha",
+        commit_pushed=True,
+        requested_version_hash="dummy template sha",
+        requested_version="v1",
+        requested_data=json.dumps({"foo": "bar"}),
+    )
+    await change_repository.create_change(
+        incarnation_id=incarnation.id,
+        revision=2,
+        change_type=ChangeType.DIRECT,
+        commit_sha="dummy sha2",
+        commit_pushed=False,
+        requested_version_hash="dummy template sha2",
+        requested_version="v2",
+        requested_data=json.dumps({"foo": "bar"}),
+    )
+
+    # WHEN
+    changes = [x for x in await change_repository.list_changes(incarnation.id)]
+
+    # THEN
+    assert len(changes) == 2
+    assert changes[0].revision == 2
+    assert changes[1].revision == 1
+
+
+async def test_get_change_by_revision(change_repository: ChangeRepository, incarnation: IncarnationInDB):
+    # GIVEN
+    await change_repository.create_change(
+        incarnation_id=incarnation.id,
+        revision=1,
+        change_type=ChangeType.DIRECT,
+        commit_sha="dummy sha",
+        commit_pushed=True,
+        requested_version_hash="dummy template sha",
+        requested_version="v1",
+        requested_data=json.dumps({"foo": "bar"}),
+    )
+
+    # WHEN
+    change = await change_repository.get_change_by_revision(incarnation.id, 1)
+
+    # THEN
+    assert change.incarnation_id == incarnation.id
+    assert change.revision == 1
+
+
 async def test_get_latest_change_for_incarnation_throws_exception_when_no_change_exists(
     change_repository: ChangeRepository, incarnation: IncarnationInDB
 ):

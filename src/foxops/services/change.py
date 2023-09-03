@@ -6,7 +6,7 @@ import shutil
 import uuid
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import AsyncIterator
 
@@ -373,7 +373,19 @@ class ChangeService:
 
         return await self.get_change_with_merge_request(change_in_db.id)
 
-    async def update_incomplete_change(self, change_id: int, grace_period_minutes=1) -> None:
+    async def list_changes(self, incarnation_id: int) -> list[Change | ChangeWithMergeRequest]:
+        changes = []
+        for change_in_db in await self._change_repository.list_changes(incarnation_id):
+            if change_in_db.type == ChangeType.DIRECT:
+                changes.append(await self.get_change(change_in_db.id))
+            elif change_in_db.type == ChangeType.MERGE_REQUEST:
+                changes.append(await self.get_change_with_merge_request(change_in_db.id))
+            else:
+                raise ValueError(f"Unknown change type {change_in_db.type}")
+
+        return changes
+
+    async def update_incomplete_change(self, change_id: int) -> None:
         """
         Updates an incomplete change (commit not pushed, MR not created) to the latest state.
 
@@ -381,33 +393,28 @@ class ChangeService:
         """
 
         change = await self._change_repository.get_change(change_id)
+        log = self._log.bind(change_id=change.id)
+
         match change.type:
             case ChangeType.DIRECT:
                 if change.commit_pushed:
-                    self._log.debug("Change is already complete (commit_pushed=True). Skipping.", change_id=change_id)
+                    log.debug("Change is already complete (commit_pushed=True). Skipping.")
                     return
             case ChangeType.MERGE_REQUEST:
                 if change.commit_pushed and change.merge_request_id is not None:
-                    self._log.debug(
-                        "Change is already complete (commit_pushed=True, merge_request_id set). Skipping.",
-                        change_id=change_id,
-                    )
+                    log.debug("Change is already complete (commit_pushed=True, merge_request_id set). Skipping.")
                     return
             case _:
                 raise Exception(f"unsupported change type {change.type}")
-
-        # don't touch if the change is very new - the git push might still be in progress
-        if change.created_at > datetime.now(timezone.utc) - timedelta(minutes=grace_period_minutes):
-            return
 
         incarnation = await self._incarnation_repository.get_by_id(change.incarnation_id)
 
         commit_exists = await self._hoster.does_commit_exist(incarnation.incarnation_repository, change.commit_sha)
         if not commit_exists:
-            await self._change_repository.delete_change(change_id)
+            await self._change_repository.delete_change(change.id)
             return
 
-        await self._change_repository.update_commit_pushed(change_id, True)
+        await self._change_repository.update_commit_pushed(change.id, True)
 
         if change.type == ChangeType.MERGE_REQUEST:
             assert change.merge_request_branch_name is not None
@@ -422,11 +429,15 @@ class ChangeService:
                     f"branch '{change.merge_request_branch_name}', then rerun update_incomplete_change()"
                 )
 
-            await self._change_repository.update_merge_request_id(change_id, merge_request_id)
+            await self._change_repository.update_merge_request_id(change.id, merge_request_id)
 
     async def get_change_type(self, change_id: int) -> ChangeType:
         change = await self._change_repository.get_change(change_id)
         return change.type
+
+    async def get_change_id_by_revision(self, incarnation_id: int, revision: int) -> int:
+        change = await self._change_repository.get_change_by_revision(incarnation_id, revision)
+        return change.id
 
     async def get_change(self, change_id: int) -> Change:
         """

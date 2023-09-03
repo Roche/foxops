@@ -14,7 +14,7 @@ from foxops.external.git import git_exec
 from foxops.hosters.local import LocalHoster
 from foxops.hosters.types import MergeRequestStatus
 from foxops.models import Incarnation
-from foxops.models.change import ChangeWithMergeRequest
+from foxops.models.change import Change, ChangeWithMergeRequest
 from foxops.services.change import (
     CannotRepairChangeException,
     ChangeRejectedDueToNoChanges,
@@ -428,6 +428,26 @@ present** in this incarnation repository. Please resolve the conflicts manually:
     )
 
 
+async def test_list_changes(
+    change_service: ChangeService,
+    initialized_incarnation: Incarnation,
+):
+    # GIVEN
+    await change_service.create_change_merge_request(initialized_incarnation.id, requested_version="v1.1.0")
+
+    # WHEN
+    changes = await change_service.list_changes(initialized_incarnation.id)
+
+    # THEN
+    assert len(changes) == 2
+
+    assert isinstance(changes[0], ChangeWithMergeRequest)
+    assert changes[0].revision == 2
+
+    assert isinstance(changes[1], Change)
+    assert changes[1].revision == 1
+
+
 async def test_update_incomplete_change_recovers_from_unpushed_direct_change(
     local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation
 ):
@@ -443,7 +463,7 @@ async def test_update_incomplete_change_recovers_from_unpushed_direct_change(
     await change_service._change_repository.update_commit_pushed(change.id, False)
 
     # WHEN
-    await change_service.update_incomplete_change(change.id, grace_period_minutes=0)
+    await change_service.update_incomplete_change(change.id)
 
     # THEN
     # expect that the incomplete change was deleted because the commit was not pushed
@@ -464,7 +484,7 @@ async def test_update_incomplete_change_recovers_from_pushed_direct_change(
     await change_service._change_repository.update_commit_pushed(change.id, False)
 
     # WHEN
-    await change_service.update_incomplete_change(change.id, grace_period_minutes=0)
+    await change_service.update_incomplete_change(change.id)
 
     # THEN
     change = await change_service.get_latest_change_for_incarnation_if_completed(initialized_incarnation.id)
@@ -489,7 +509,7 @@ async def test_update_incomplete_change_recovers_from_unpushed_merge_request_cha
     await change_service._change_repository.update_merge_request_id(change.id, None)
 
     # WHEN
-    await change_service.update_incomplete_change(change.id, grace_period_minutes=0)
+    await change_service.update_incomplete_change(change.id)
 
     # THEN
     # expect that the incomplete change was deleted because the commit was not pushed
@@ -508,7 +528,7 @@ async def test_update_incomplete_change_recovers_from_pushed_merge_request_chang
     await change_service._change_repository.update_merge_request_id(change.id, None)
 
     # WHEN
-    await change_service.update_incomplete_change(change.id, grace_period_minutes=0)
+    await change_service.update_incomplete_change(change.id)
 
     # THEN
     change = await change_service.get_change_with_merge_request(change.id)
@@ -530,7 +550,7 @@ async def test_update_incomplete_change_raises_exception_for_pushed_merge_reques
 
     # THEN
     with pytest.raises(CannotRepairChangeException):
-        await change_service.update_incomplete_change(change.id, grace_period_minutes=0)
+        await change_service.update_incomplete_change(change.id)
 
 
 async def test_reset_incarnation_returns_change_and_does_not_modify_main_branch(
