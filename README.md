@@ -1,6 +1,6 @@
 # foxops 🦊
 
-![ci build](https://github.com/github/docs/actions/workflows/ci.yml/badge.svg)
+![ci build](https://github.com/Roche/foxops/actions/workflows/ci.yml/badge.svg)
 
 Foxops is a tool that helps creating Git repositories from a template file structure. It serves as a central tool for maintaining an overview of all repositories created from a template, including their versions and the data used to fill placeholders.
 
