@@ -2,8 +2,6 @@ from datetime import timedelta
 from enum import Enum
 from typing import AsyncContextManager, Protocol, TypedDict
 
-from pydantic import BaseSettings
-
 from foxops.engine import IncarnationState
 from foxops.external.git import GitRepository
 
@@ -82,7 +80,3 @@ class Hoster(Protocol):
 
     async def get_merge_request_status(self, incarnation_repository: str, merge_request_id: str) -> MergeRequestStatus:
         ...
-
-
-class HosterSettings(BaseSettings):
-    pass

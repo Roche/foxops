@@ -4,12 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse
 
 from foxops import __version__
-from foxops.dependencies import (
-    get_hoster,
-    get_hoster_settings,
-    get_settings,
-    static_token_auth_scheme,
-)
+from foxops.dependencies import get_hoster, get_settings, static_token_auth_scheme
 from foxops.error_handlers import __error_handlers__
 from foxops.logger import get_logger, setup_logging
 from foxops.middlewares import request_id_middleware, request_time_middleware
@@ -32,11 +27,11 @@ def create_app():
 
     @app.on_event("startup")
     async def startup():
-        # validate hoster
-        hoster = get_hoster(get_hoster_settings())
-        await hoster.validate()
-
         setup_logging(level=settings.log_level)
+
+        # validate hoster
+        hoster = get_hoster(get_settings())
+        await hoster.validate()
 
         logger.info(f"Started foxops {__version__}")
 

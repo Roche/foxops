@@ -1,6 +1,7 @@
 .python-version
 __pycache__/
 dist/
+run/
 .coverage*
 docs/build/
 .idea

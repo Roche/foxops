@@ -546,7 +546,7 @@ async def test_update_incomplete_change_raises_exception_for_pushed_merge_reques
     await change_service._change_repository.update_merge_request_id(change.id, None)
 
     # remove merge request
-    local_hoster._merge_requests[initialized_incarnation.incarnation_repository] = []
+    local_hoster._mr_manager(initialized_incarnation.incarnation_repository).delete(int(change.merge_request_id))
 
     # THEN
     with pytest.raises(CannotRepairChangeException):

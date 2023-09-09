@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.openapi.models import APIKey, APIKeyIn
@@ -7,16 +8,25 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from foxops.database.repositories.change import ChangeRepository
 from foxops.database.repositories.incarnation.repository import IncarnationRepository
-from foxops.hosters import Hoster, HosterSettings
-from foxops.hosters.gitlab import GitLab, GitLabSettings, get_gitlab_settings
+from foxops.hosters import Hoster
+from foxops.hosters.gitlab import GitlabHoster
+from foxops.hosters.local import LocalHoster
+from foxops.logger import get_logger
 from foxops.services.change import ChangeService
 from foxops.services.incarnation import IncarnationService
-from foxops.settings import DatabaseSettings, Settings
+from foxops.settings import (
+    DatabaseSettings,
+    GitlabHosterSettings,
+    HosterType,
+    LocalHosterSettings,
+    Settings,
+)
 
-# NOTE: Yes, you may absolutely use proper dependency injection at some point.
+logger = get_logger(__name__)
 
-#: Holds a singleton of the database engine
+#: Holding singletons
 async_engine: AsyncEngine | None = None
+_hoster: Hoster | None = None
 
 
 @lru_cache
@@ -27,11 +37,6 @@ def get_settings() -> Settings:
 @lru_cache
 def get_database_settings() -> DatabaseSettings:
     return DatabaseSettings()
-
-
-@lru_cache
-def get_hoster_settings() -> HosterSettings:
-    return GitLabSettings()  # type: ignore
 
 
 def get_database_engine(settings: DatabaseSettings = Depends(get_database_settings)) -> AsyncEngine:
@@ -51,13 +56,29 @@ def get_change_repository(database_engine: AsyncEngine = Depends(get_database_en
     return ChangeRepository(database_engine)
 
 
-def get_hoster(settings: HosterSettings = Depends(get_gitlab_settings)) -> Hoster:
-    # this assert makes mypy happy
-    assert isinstance(settings, GitLabSettings)
-    return GitLab(
-        address=settings.address,
-        token=settings.token.get_secret_value(),
-    )
+def get_hoster(settings: Annotated[Settings, Depends(get_settings)]) -> Hoster:
+    global _hoster
+    if _hoster is not None:
+        return _hoster
+
+    match settings.hoster_type:
+        case HosterType.LOCAL:
+            local_settings = LocalHosterSettings()
+
+            logger.warning(
+                "Using local hoster. This is for DEVELOPMENT use only!", directory=str(local_settings.directory)
+            )
+
+            _hoster = LocalHoster(local_settings.directory)
+        case HosterType.GITLAB:
+            gitlab_settings = GitlabHosterSettings()
+            logger.info("Using GitLab hoster", address=gitlab_settings.address)
+
+            _hoster = GitlabHoster(gitlab_settings.address, gitlab_settings.token.get_secret_value())
+        case _:
+            raise NotImplementedError(f"Unknown hoster type {settings.hoster_type}")
+
+    return _hoster
 
 
 def get_incarnation_service(

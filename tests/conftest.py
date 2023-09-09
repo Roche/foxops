@@ -16,7 +16,8 @@ from foxops.__main__ import FRONTEND_SUBDIRS, create_app
 from foxops.database.repositories.change import ChangeRepository
 from foxops.database.repositories.incarnation.repository import IncarnationRepository
 from foxops.database.schema import meta
-from foxops.dependencies import get_change_repository, get_incarnation_repository
+from foxops.dependencies import get_change_repository, get_incarnation_repository, get_hoster
+from foxops.hosters.local import LocalHoster
 from foxops.logger import setup_logging
 
 
@@ -97,6 +98,11 @@ async def change_repository(test_async_engine: AsyncEngine) -> ChangeRepository:
     return ChangeRepository(test_async_engine)
 
 
+@pytest.fixture
+def local_hoster(tmp_path: Path) -> LocalHoster:
+    return LocalHoster(tmp_path)
+
+
 @pytest.fixture(name="static_api_token", scope="session")
 def get_static_api_token() -> str:
     return "test-token"
@@ -107,9 +113,11 @@ async def create_unauthenticated_client(
     app: FastAPI,
     incarnation_repository: IncarnationRepository,
     change_repository: ChangeRepository,
+        local_hoster: LocalHoster,
 ) -> AsyncGenerator[AsyncClient, None]:
     app.dependency_overrides[get_incarnation_repository] = lambda: incarnation_repository
     app.dependency_overrides[get_change_repository] = lambda: change_repository
+    app.dependency_overrides[get_hoster] = lambda: local_hoster
 
     async with AsyncClient(
         app=app,

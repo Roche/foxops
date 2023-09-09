@@ -47,6 +47,9 @@ class MergeRequestManager:
 
         return mr.id
 
+    def delete(self, id_: int) -> None:
+        self._mr_file_path(id_).unlink()
+
     def get(self, id_: int) -> MergeRequest:
         return MergeRequest.parse_file(self._mr_file_path(id_))
 
@@ -123,7 +126,7 @@ class LocalHoster(Hoster):
 
     def close_merge_request(self, incarnation_repository: str, merge_request_id: str) -> None:
         mr = self.get_merge_request(incarnation_repository, merge_request_id)
-        mr.status = MergeRequestStatus.CLOSED
+        self._mr_manager(incarnation_repository).update_status(mr.id, MergeRequestStatus.CLOSED)
 
     async def merge_merge_request(self, incarnation_repository: str, merge_request_id: str):
         mr = self.get_merge_request(incarnation_repository, merge_request_id)
@@ -219,10 +222,10 @@ class LocalHoster(Hoster):
         raise RuntimeError(f"Unexpected return code from git cat-file: {result.returncode}")
 
     async def get_commit_url(self, incarnation_repository: str, commit_sha: GitSha) -> str:
-        return f"{self._repo_path(incarnation_repository)}:commit/{commit_sha}"
+        return f"file://{self._repo_path(incarnation_repository)}:commit/{commit_sha}"
 
     async def get_merge_request_url(self, incarnation_repository: str, merge_request_id: str) -> str:
-        return f"{self._repo_path(incarnation_repository)}:merge_requests/{merge_request_id}"
+        return f"file://{self._repo_path(incarnation_repository)}:merge_requests/{merge_request_id}"
 
     async def get_merge_request_status(self, incarnation_repository: str, merge_request_id: str) -> MergeRequestStatus:
         return self.get_merge_request(incarnation_repository, merge_request_id).status
