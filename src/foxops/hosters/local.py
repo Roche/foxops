@@ -1,6 +1,5 @@
 import re
 import tempfile
-from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from pathlib import Path
@@ -31,10 +30,7 @@ class MergeRequestManager:
         self.directory = directory
 
         # adding [0] to the max() call ensures that if the directory is empty, the next id will be 1
-        self._next_id = 1 + max([0] + [
-            int(p.name.removesuffix(".json"))
-            for p in self.directory.glob("*.json")
-        ])
+        self._next_id = 1 + max([0] + [int(p.name.removesuffix(".json")) for p in self.directory.glob("*.json")])
 
     def add(self, title: str, description: str, source_branch: str) -> int:
         mr = MergeRequest(
@@ -60,10 +56,7 @@ class MergeRequestManager:
         self._mr_file_path(mr.id).write_text(mr.json())
 
     def __iter__(self) -> Iterator[MergeRequest]:
-        yield from [
-            MergeRequest.parse_file(p)
-            for p in self.directory.glob("*.json")
-        ]
+        yield from [MergeRequest.parse_file(p) for p in self.directory.glob("*.json")]
 
     def _mr_file_path(self, id_: int) -> Path:
         return self.directory / f"{id_}.json"

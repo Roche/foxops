@@ -87,7 +87,7 @@ jobs:
           poetry self add "poetry-dynamic-versioning[plugin]"
           poetry install
 
-      - run: python -m pytest -m 'not e2e'
+      - run: coverage run -m pytest -m 'not e2e'
         env:
           # FoxOps test configuration
           FOXOPS_GITLAB_ADDRESS: https://nonsense.com/api/v4
@@ -130,7 +130,7 @@ jobs:
           docker compose up -d
           ./scripts/await-healthy.sh
 
-      - run: python -m pytest -m 'e2e'
+      - run: coverage run -m pytest -m 'e2e'
         env:
           # FoxOps test configuration
           FOXOPS_GITLAB_ADDRESS: https://nonsense.com/api/v4
