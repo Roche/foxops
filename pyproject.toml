@@ -90,9 +90,13 @@ markers = [
 asyncio_mode = "auto"
 python_functions = "should_* test_*"
 
-[[tool.mypy.overrides]]
-module = "aiopath"
-ignore_missing_imports = true
+[tool.mypy]
+plugins = [
+    "pydantic.mypy",
+]
+overrides = [
+    {module = "aiopath", ignore_missing_imports = true}
+]
 
 [tool.coverage.run]
 include = ["src/**"]
