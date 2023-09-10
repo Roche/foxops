@@ -23,7 +23,7 @@ fastapi = "^0.103.1"
 # Auxiliary
 httpx = "^0.24.1"
 tenacity = "^8.2.1"
-pydantic = {version = "1.10.12", extras = ["dotenv"]}
+pydantic = {version = "2.3.0", extras = ["dotenv"]}
 structlog = "^23.1.0"
 aiopath = "^0.6.10"
 
