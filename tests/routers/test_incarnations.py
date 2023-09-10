@@ -88,7 +88,7 @@ async def test_api_get_incarnations_returns_incarnations_from_inventory(
             "incarnation_repository": "test",
             "target_directory": "test",
             "commit_sha": "commit_sha",
-            "commit_url": "https://nonsense.com/test/-/commit/commit_sha",
+            "commit_url": mocker.ANY,
             "merge_request_id": None,
             "merge_request_url": None,
             "created_at": mocker.ANY,

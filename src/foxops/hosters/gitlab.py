@@ -67,7 +67,7 @@ def evaluate_gitlab_address(address: str) -> tuple[str, str]:
         return address, f"{address}/api/v4"
 
 
-class GitLab(Hoster):
+class GitlabHoster(Hoster):
     """REST API client for GitLab"""
 
     def __init__(self, address: str, token: str):

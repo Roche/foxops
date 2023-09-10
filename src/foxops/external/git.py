@@ -34,7 +34,8 @@ class RevisionNotFoundError(GitError, FoxopsUserError):
 
 GIT_ERROR_ORACLE = {
     re.compile(
-        rb"hint: Updates were rejected because the remote contains work that you do\nhint: not have locally."
+        rb"hint: Updates were rejected because the remote contains work that you do.*not.*have locally.",
+        re.DOTALL,
     ): RebaseRequiredError,
     re.compile(rb"hint: Updates were rejected because the tip of your current branch is behind"): RebaseRequiredError,
     re.compile(rb"error: cannot lock ref '.*': is at [a-f0-9]+ but expected [a-f0-9]+"): RebaseRequiredError,

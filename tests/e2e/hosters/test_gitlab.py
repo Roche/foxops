@@ -11,7 +11,7 @@ from tenacity.stop import stop_after_delay
 from tenacity.wait import wait_fixed
 
 from foxops.hosters import Hoster, ReconciliationStatus
-from foxops.hosters.gitlab import GitLab
+from foxops.hosters.gitlab import GitlabHoster
 from foxops.hosters.types import MergeRequestStatus
 
 # mark all tests in this module as e2e
@@ -77,7 +77,7 @@ build:
 
 @pytest.fixture(name="test_gitlab_hoster")
 async def create_test_gitlab_hoster(gitlab_test_address: str, gitlab_test_user_token: str) -> Hoster:
-    return GitLab(gitlab_test_address, gitlab_test_user_token)
+    return GitlabHoster(gitlab_test_address, gitlab_test_user_token)
 
 
 async def should_return_success_reconciliation_status_for_default_branch_commit_without_pipeline(

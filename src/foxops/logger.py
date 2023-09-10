@@ -10,35 +10,6 @@ from structlog.contextvars import (
 )
 from structlog.types import Processor
 
-shared_processors: Sequence[Processor] = [
-    merge_contextvars,
-    structlog.stdlib.add_log_level,
-    structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M:%S"),
-    structlog.stdlib.add_logger_name,
-]
-
-structlog.configure(
-    processors=shared_processors  # type: ignore
-    + [
-        # Prepare event dict for `ProcessorFormatter`.
-        structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
-    ],
-    logger_factory=structlog.stdlib.LoggerFactory(),
-    cache_logger_on_first_use=True,
-)
-
-formatter = structlog.stdlib.ProcessorFormatter(
-    # These run ONLY on `logging` entries that do NOT originate within
-    # structlog.
-    foreign_pre_chain=shared_processors,
-    # These run on ALL entries after the pre_chain is done.
-    processors=[
-        # Remove _record & _from_structlog.
-        structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-        structlog.dev.ConsoleRenderer(),
-    ],
-)
-
 
 def configure_sqlalchemy_logging():
     logging.getLogger("sqlalchemy.engine.Engine").handlers.clear()
@@ -63,6 +34,35 @@ def configure_uvicorn_logging():
 
 
 def setup_logging(level: int | str) -> None:
+    shared_processors: Sequence[Processor] = [
+        merge_contextvars,
+        structlog.stdlib.add_log_level,
+        structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M:%S"),
+        structlog.stdlib.add_logger_name,
+    ]
+
+    structlog.configure(
+        processors=shared_processors  # type: ignore
+        + [
+            # Prepare event dict for `ProcessorFormatter`.
+            structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
+        ],
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        cache_logger_on_first_use=True,
+    )
+
+    formatter = structlog.stdlib.ProcessorFormatter(
+        # These run ONLY on `logging` entries that do NOT originate within
+        # structlog.
+        foreign_pre_chain=shared_processors,
+        # These run on ALL entries after the pre_chain is done.
+        processors=[
+            # Remove _record & _from_structlog.
+            structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+            structlog.dev.ConsoleRenderer(),
+        ],
+    )
+
     configure_sqlalchemy_logging()
     configure_uvicorn_logging()
 

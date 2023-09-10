@@ -161,7 +161,7 @@ async def test_merge_request_returns_commit_id_of_source_branch(local_hoster):
 
     # THEN
     assert mr_commit_sha == commit_sha
-    assert mr_id == "0"
+    assert mr_id == "1"
 
     assert await local_hoster.get_merge_request_status(repo_name, mr_id) == MergeRequestStatus.OPEN
 
@@ -195,7 +195,7 @@ async def test_merge_request_supports_automerge(local_hoster):
 
     # THEN
     assert mr_commit_sha == commit_sha
-    assert mr_id == "0"
+    assert mr_id == "1"
 
     assert await local_hoster.get_merge_request_status(repo_name, mr_id) == MergeRequestStatus.MERGED
     async with local_hoster.cloned_repository(repo_name) as repo:

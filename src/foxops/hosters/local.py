@@ -1,10 +1,9 @@
 import re
 import tempfile
-from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from pathlib import Path
-from typing import AsyncIterator
+from typing import AsyncIterator, Iterator
 
 from pydantic import BaseModel
 
@@ -26,11 +25,53 @@ class MergeRequest(BaseModel):
     status: MergeRequestStatus
 
 
+class MergeRequestManager:
+    def __init__(self, directory: Path):
+        self.directory = directory
+
+        # adding [0] to the max() call ensures that if the directory is empty, the next id will be 1
+        self._next_id = 1 + max([0] + [int(p.name.removesuffix(".json")) for p in self.directory.glob("*.json")])
+
+    def add(self, title: str, description: str, source_branch: str) -> int:
+        mr = MergeRequest(
+            id=self._next_id,
+            title=title,
+            description=description,
+            source_branch=source_branch,
+            target_branch="main",
+            status=MergeRequestStatus.OPEN,
+        )
+
+        self._mr_file_path(mr.id).write_text(mr.json())
+        self._next_id += 1
+
+        return mr.id
+
+    def delete(self, id_: int) -> None:
+        self._mr_file_path(id_).unlink()
+
+    def get(self, id_: int) -> MergeRequest:
+        return MergeRequest.parse_file(self._mr_file_path(id_))
+
+    def update_status(self, id_: int, status: MergeRequestStatus) -> None:
+        mr = self.get(id_)
+        mr.status = status
+        self._mr_file_path(mr.id).write_text(mr.json())
+
+    def __iter__(self) -> Iterator[MergeRequest]:
+        yield from [MergeRequest.parse_file(p) for p in self.directory.glob("*.json")]
+
+    def _mr_file_path(self, id_: int) -> Path:
+        return self.directory / f"{id_}.json"
+
+
 class LocalHoster(Hoster):
+    GIT_PATH = "git"
+    MERGE_REQUESTS_PATH = "merge_requests"
+
     def __init__(self, directory: Path, push_delay_seconds: int = 0):
         self.directory = directory
 
-        self._merge_requests: dict[str, list[MergeRequest]] = defaultdict(list)
         self.push_delay_seconds = push_delay_seconds
 
     async def validate(self) -> None:
@@ -43,12 +84,12 @@ class LocalHoster(Hoster):
         if not re.fullmatch(r"^[a-z0-9-_]+$", repository):
             raise ValueError("Invalid repository name, must only contain lowercase letters, numbers and dashes.")
 
-        git_directory = self.directory / repository
-        git_directory.mkdir(parents=False, exist_ok=False)
+        self._repo_path(repository).mkdir(parents=True, exist_ok=False)
+        self._mr_path(repository).mkdir(parents=True, exist_ok=False)
 
         # we're creating a bare repository because "clients" of this hoster will be cloning and pushing to it
         # git doesn't allow pushing to the checked-out branch of a repository
-        await git_exec("init", "--bare", cwd=git_directory)
+        await git_exec("init", "--bare", cwd=self._repo_path(repository))
 
     async def get_incarnation_state(
         self, incarnation_repository: str, target_directory: str
@@ -67,34 +108,25 @@ class LocalHoster(Hoster):
     async def merge_request(
         self, *, incarnation_repository: str, source_branch: str, title: str, description: str, with_automerge=False
     ) -> tuple[GitSha, MergeRequestId]:
-        existing_merge_requests = self._merge_requests[incarnation_repository]
-
-        new_merge_request = MergeRequest(
-            id=len(existing_merge_requests),
-            title=title,
-            description=description,
-            source_branch=source_branch,
-            target_branch="main",
-            status=MergeRequestStatus.OPEN,
-        )
+        mr_manager = self._mr_manager(incarnation_repository)
 
         commit_id = await self.has_pending_incarnation_branch(incarnation_repository, source_branch)
         if commit_id is None:
             raise ValueError("Branch does not exist")
 
-        existing_merge_requests.append(new_merge_request)
+        mr_id = mr_manager.add(title, description, source_branch)
 
         if with_automerge:
-            await self.merge_merge_request(incarnation_repository, str(new_merge_request.id))
+            await self.merge_merge_request(incarnation_repository, str(mr_id))
 
-        return commit_id, str(new_merge_request.id)
+        return commit_id, str(mr_id)
 
     def get_merge_request(self, incarnation_repository: str, merge_request_id: str) -> MergeRequest:
-        return self._merge_requests[incarnation_repository][int(merge_request_id)]
+        return self._mr_manager(incarnation_repository).get(int(merge_request_id))
 
     def close_merge_request(self, incarnation_repository: str, merge_request_id: str) -> None:
         mr = self.get_merge_request(incarnation_repository, merge_request_id)
-        mr.status = MergeRequestStatus.CLOSED
+        self._mr_manager(incarnation_repository).update_status(mr.id, MergeRequestStatus.CLOSED)
 
     async def merge_merge_request(self, incarnation_repository: str, merge_request_id: str):
         mr = self.get_merge_request(incarnation_repository, merge_request_id)
@@ -104,7 +136,7 @@ class LocalHoster(Hoster):
             await repo.merge(f"origin/{mr.source_branch}", ff_only=False)
             await repo.push()
 
-        mr.status = MergeRequestStatus.MERGED
+        self._mr_manager(incarnation_repository).update_status(mr.id, MergeRequestStatus.MERGED)
 
     @asynccontextmanager
     async def cloned_repository(
@@ -138,7 +170,7 @@ class LocalHoster(Hoster):
 
     async def has_pending_incarnation_branch(self, project_identifier: str, branch: str) -> GitSha | None:
         try:
-            result = await git_exec("rev-parse", f"refs/heads/{branch}", cwd=self.directory / project_identifier)
+            result = await git_exec("rev-parse", f"refs/heads/{branch}", cwd=self._repo_path(project_identifier))
         except GitError as e:
             if e.message.index("unknown revision or path not in the working tree") >= 0:
                 return None
@@ -154,7 +186,7 @@ class LocalHoster(Hoster):
     async def has_pending_incarnation_merge_request(
         self, project_identifier: str, branch: str
     ) -> MergeRequestId | None:
-        for mr in self._merge_requests[project_identifier]:
+        for mr in self._mr_manager(project_identifier):
             if mr.source_branch == branch and mr.status == MergeRequestStatus.OPEN:
                 return str(mr.id)
 
@@ -178,7 +210,7 @@ class LocalHoster(Hoster):
 
     async def does_commit_exist(self, incarnation_repository: str, commit_sha: GitSha) -> bool:
         try:
-            result = await git_exec("cat-file", "commit", commit_sha, cwd=self.directory / incarnation_repository)
+            result = await git_exec("cat-file", "commit", commit_sha, cwd=self._repo_path(incarnation_repository))
         except GitError as e:
             if e.message.index("bad file") >= 0:
                 return False
@@ -190,19 +222,19 @@ class LocalHoster(Hoster):
         raise RuntimeError(f"Unexpected return code from git cat-file: {result.returncode}")
 
     async def get_commit_url(self, incarnation_repository: str, commit_sha: GitSha) -> str:
-        return f"{self.directory / incarnation_repository}:commit/{commit_sha}"
+        return f"file://{self._repo_path(incarnation_repository)}:commit/{commit_sha}"
 
     async def get_merge_request_url(self, incarnation_repository: str, merge_request_id: str) -> str:
-        return f"{self.directory / incarnation_repository}:merge_requests/{merge_request_id}"
+        return f"file://{self._repo_path(incarnation_repository)}:merge_requests/{merge_request_id}"
 
     async def get_merge_request_status(self, incarnation_repository: str, merge_request_id: str) -> MergeRequestStatus:
-        merge_request_index = int(merge_request_id)
-
-        existing_merge_requests = self._merge_requests[incarnation_repository]
-        if merge_request_index >= len(existing_merge_requests):
-            raise ValueError("Merge request does not exist")
-
-        return existing_merge_requests[merge_request_index].status
+        return self.get_merge_request(incarnation_repository, merge_request_id).status
 
     def _repo_path(self, repository: str) -> Path:
-        return (self.directory / repository).absolute()
+        return (self.directory / repository / self.GIT_PATH).absolute()
+
+    def _mr_path(self, repository: str) -> Path:
+        return (self.directory / repository / self.MERGE_REQUESTS_PATH).absolute()
+
+    def _mr_manager(self, repository: str) -> MergeRequestManager:
+        return MergeRequestManager(self._mr_path(repository))

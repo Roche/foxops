@@ -15,18 +15,48 @@ docker run --rm -v "$(pwd)"/foxops_db:/database \
     alembic upgrade head
 ```
 
-With the database in place, we can now start the foxops API server:
+With the database in place, we can now start the foxops API server. Two options exist for running it locally:
+
+### Run FoxOps Connected to an Existing Gitlab Instance
+
+If you already have a running Gitlab instance where you want to host your templates and incarnations, you can run foxops connected to that instance:
 
 ```bash
-export GITLAB_TOKEN=my-gitlab-token
+export FOXOPS_HOSTER_GITLAB_ADDRESS=https://gitlab.com
+export FOXOPS_HOSTER_GITLAB_TOKEN=glpat-abcdefgh123456
 
 docker run --rm -p 8000:8000 -v "$(pwd)"/foxops_db:/database \
     -e FOXOPS_DATABASE_URL=sqlite+aiosqlite:////database/foxops.sqlite \
     -e FOXOPS_STATIC_TOKEN=dummy-token \
-    -e FOXOPS_GITLAB_ADDRESS=https://gitlab.com/api/v4 \
-    -e FOXOPS_GITLAB_TOKEN=$GITLAB_TOKEN \
+    -e FOXOPS_HOSTER_TYPE=gitlab \
+    -e FOXOPS_HOSTER_GITLAB_ADDRESS=$FOXOPS_HOSTER_GITLAB_ADDRESS \
+    -e FOXOPS_HOSTER_GITLAB_TOKEN=$FOXOPS_HOSTER_GITLAB_TOKEN \
     ghcr.io/roche/foxops:latest
 ```
+
+### Run FoxOps Without Gitlab
+
+For the very first steps (development only), foxops can also be run without a Gitlab instance connected. This is not only useful for getting started quickly, but also when running tests in other systems that require a running foxops instance.
+
+Be aware that Gitlab in this is the replaced with a very basic implementation that creates all repositories/merge requests in a local folder. There is no UI for viewing or interacting with these repositories, except for your file browser.
+
+```bash
+# put a folder here where foxops should create the repositories
+export FOXOPS_HOSTER_LOCAL_DIRECTORY=/tmp/foxops_hoster
+
+docker run --rm -p 8000:8000 -v "$(pwd)"/foxops_db:/database \
+    -e FOXOPS_DATABASE_URL=sqlite+aiosqlite:////database/foxops.sqlite \
+    -e FOXOPS_STATIC_TOKEN=dummy-token \
+    -e FOXOPS_HOSTER_TYPE=local \
+    -e FOXOPS_HOSTER_LOCAL_DIRECTORY=$FOXOPS_HOSTER_LOCAL_DIRECTORY \
+    ghcr.io/roche/foxops:latest
+```
+
+```{note}
+In this setup, your template repositories must also be placed in the `/tmp/foxops_hoster` folder. Place the git repositories of your templates in a folder called `/tmp/foxops_hoster/<template_name>/git` to make them usable by foxops.
+```
+
+### Accessing FoxOps
 
 Then, you can open your browser and go to the following URLs:
 * <http://localhost:8000/> - the foxops web UI (login with `dummy-token` when prompted for the password)
@@ -69,8 +99,9 @@ The following is needed to run foxops:
 * Set the following environment variables:
   * `FOXOPS_STATIC_TOKEN` - Set to a (long) random and **secret** string. This secret is used to authenticate all users of the foxops UI & API
   * `FOXOPS_DATABASE_URL` - Set to the database URL
-  * `FOXOPS_GITLAB_ADDRESS` - Set to the address of your GitLab instance (e.g. `https://gitlab.com/api/v4`)
-  * `FOXOPS_GITLAB_TOKEN` - Set to a GitLab access token that has access to all repositories (incarnations & templates) that foxops should manage
+  * `FOXOPS_HOSTER_TYPE` - Set to `gitlab` for a production deployment
+  * `FOXOPS_HOSTER_GITLAB_ADDRESS` - Set to the address of your GitLab instance (e.g. `https://gitlab.com`) (if hoster type is set to `gitlab`)
+  * `FOXOPS_HOSTER_GITLAB_TOKEN` - Set to a GitLab access token that has access to all repositories (incarnations & templates) that foxops should manage (if hoster type is set to `gitlab`)
 
 #### Kubernetes Example
 
@@ -109,9 +140,11 @@ spec:
         - name: foxops
           image: ghcr.io/roche/foxops:v2.0.0
           env:
-            - name: FOXOPS_GITLAB_ADDRESS
-              value: https://gitlab.com/api/v4
-            - name: FOXOPS_GITLAB_TOKEN
+            - name: FOXOPS_HOSTER_TYPE
+              value: gitlab
+            - name: FOXOPS_HOSTER_GITLAB_ADDRESS
+              value: https://gitlab.com
+            - name: FOXOPS_HOSTER_GITLAB_TOKEN
               value: <dummy>
             - name: FOXOPS_STATIC_TOKEN
               value: <dummy>
