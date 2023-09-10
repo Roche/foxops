@@ -3,8 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse
 
-from foxops import __version__
-from foxops.dependencies import get_hoster, get_settings, static_token_auth_scheme
+from foxops.dependencies import get_settings, static_token_auth_scheme
 from foxops.error_handlers import __error_handlers__
 from foxops.logger import get_logger, setup_logging
 from foxops.middlewares import request_id_middleware, request_time_middleware
@@ -21,19 +20,10 @@ FRONTEND_SUBDIRS = ["assets", "favicons"]
 
 
 def create_app():
-    app = FastAPI()
-
     settings = get_settings()
+    setup_logging(level=settings.log_level)
 
-    @app.on_event("startup")
-    async def startup():
-        setup_logging(level=settings.log_level)
-
-        # validate hoster
-        hoster = get_hoster(get_settings())
-        await hoster.validate()
-
-        logger.info(f"Started foxops {__version__}")
+    app = FastAPI()
 
     # Add middlewares
     app.middleware("http")(request_id_middleware)

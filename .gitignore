@@ -8,3 +8,4 @@ docs/build/
 test.db
 **/.DS_Store
 .dmypy.json
+.env.test

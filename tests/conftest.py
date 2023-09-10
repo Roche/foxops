@@ -16,9 +16,18 @@ from foxops.__main__ import FRONTEND_SUBDIRS, create_app
 from foxops.database.repositories.change import ChangeRepository
 from foxops.database.repositories.incarnation.repository import IncarnationRepository
 from foxops.database.schema import meta
-from foxops.dependencies import get_change_repository, get_incarnation_repository, get_hoster
+from foxops.dependencies import (
+    get_change_repository,
+    get_hoster,
+    get_incarnation_repository,
+)
 from foxops.hosters.local import LocalHoster
 from foxops.logger import setup_logging
+
+pytest_plugins = [
+    "tests._plugins.fixtures_database",
+    "tests._plugins.fixtures_gitlab",
+]
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -66,7 +75,7 @@ async def test_async_engine() -> AsyncGenerator[AsyncEngine, None]:
     yield async_engine
 
 
-@pytest.fixture(name="frontend", scope="module", autouse=True)
+@pytest.fixture(name="frontend", scope="module")
 def create_dummy_frontend(tmp_path_factory: pytest.TempPathFactory):
     frontend_dir = tmp_path_factory.mktemp("frontend")
     for frontend_subdir in FRONTEND_SUBDIRS:
@@ -76,15 +85,10 @@ def create_dummy_frontend(tmp_path_factory: pytest.TempPathFactory):
     return frontend_dir
 
 
-@pytest.fixture(scope="module", autouse=True)
-def set_settings_env(static_api_token: str):
-    os.environ["FOXOPS_GITLAB_ADDRESS"] = "https://nonsense.com/api/v4"
-    os.environ["FOXOPS_GITLAB_TOKEN"] = "nonsense"
-    os.environ["FOXOPS_STATIC_TOKEN"] = static_api_token
-
-
 @pytest.fixture(name="app")
-def create_foxops_app() -> FastAPI:
+def create_foxops_app(static_api_token: str, monkeypatch) -> FastAPI:
+    monkeypatch.setenv("FOXOPS_STATIC_TOKEN", static_api_token)
+
     return create_app()
 
 
@@ -113,7 +117,7 @@ async def create_unauthenticated_client(
     app: FastAPI,
     incarnation_repository: IncarnationRepository,
     change_repository: ChangeRepository,
-        local_hoster: LocalHoster,
+    local_hoster: LocalHoster,
 ) -> AsyncGenerator[AsyncClient, None]:
     app.dependency_overrides[get_incarnation_repository] = lambda: incarnation_repository
     app.dependency_overrides[get_change_repository] = lambda: change_repository

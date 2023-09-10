@@ -1,36 +1,21 @@
-# by default gitlab will run on localhost (i.e. same host where tests are run) listening on port 5002
-# this can be overriden with environment variables: GITLAB_HOST & GITLAB_PORT & GITLAB_ADDRESS
-# Eg: 
-# env GITLAB_HOST="myserver.example.com" GITLAB_PORT="8002" docker-compose up -d
-# env GITLAB_HOST="myserver.example.com" GITLAB_PORT="8002" ./script/await-healthy.sh
-# env GITLAB_ADDRESS="http://myserver.example.com:8002/api/v4" poetry run pytest -m 'e2e'
-
 version: '3'
 
 services:
-  gitlab-ce:
-    image: gitlab/gitlab-ce:${GITLAB_CE_VERSION:-15.8.3-ce.0}
-    restart: always
+  foxops:
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
-      - ${GITLAB_PORT:-5002}:80
-    environment:
-      GITLAB_ROOT_PASSWORD: dvqMom4ruD9oqcErwtij
-      GITLAB_OMNIBUS_CONFIG: |
-        external_url "http://${GITLAB_HOST:-127.0.0.1}:${GITLAB_PORT:-5002}"
-        nginx['listen_port'] = 80
-    labels:
-      foxops-gitlab/owned: ''
+      - 8000:8000
     volumes:
-      - config-ce:/etc/gitlab
-      - logs-ce:/var/log/gitlab
-      - data-ce:/var/opt/gitlab
-      - ${PWD}/scripts/healthcheck-and-setup.sh:/healthcheck-and-setup.sh:Z
-    healthcheck:
-      test: /healthcheck-and-setup.sh
-      interval: 10s
-      timeout: 2m
+      - database:/app/database
+      - hoster:/app/hoster
+    environment:
+      FOXOPS_DATABASE_URL: sqlite+aiosqlite:////app/database/foxops.db
+      FOXOPS_HOSTER_TYPE: local
+      FOXOPS_HOSTER_LOCAL_DIRECTORY: /app/hoster
+      FOXOPS_STATIC_TOKEN: dummy
 
 volumes:
-  config-ce:
-  logs-ce:
-  data-ce:
+  database:
+  hoster:

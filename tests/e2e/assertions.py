@@ -1,10 +1,10 @@
 from urllib.parse import quote_plus
 
-from httpx import AsyncClient
+from httpx import AsyncClient, Client
 
 
-async def assert_file_in_repository(
-    gitlab_test_client: AsyncClient,
+def assert_file_in_repository(
+    gitlab_client: Client,
     repository: str,
     file_path: str,
     file_content: str,
@@ -14,7 +14,7 @@ async def assert_file_in_repository(
     if branch is not None:
         params["ref"] = branch
 
-    response = await gitlab_test_client.get(
+    response = gitlab_client.get(
         f"/projects/{quote_plus(repository)}/repository/files/{quote_plus(file_path)}/raw",
         params=params,
     )
@@ -43,12 +43,12 @@ async def assert_initialization_merge_request_exists(
     return merge_request["source_branch"]
 
 
-async def assert_update_merge_request_exists(
-    gitlab_test_client: AsyncClient,
+def assert_update_merge_request_exists(
+    gitlab_client: Client,
     repository: str,
 ):
     params = {"state": "opened", "target_branch": "main"}
-    response = await gitlab_test_client.get(f"/projects/{quote_plus(repository)}/merge_requests", params=params)
+    response = gitlab_client.get(f"/projects/{quote_plus(repository)}/merge_requests", params=params)
     response.raise_for_status()
     merge_requests = response.json()
 
@@ -62,11 +62,11 @@ async def assert_update_merge_request_exists(
     return merge_request["source_branch"]
 
 
-async def assert_update_merge_request_with_conflicts_exists(
-    gitlab_test_client: AsyncClient, repository: str, files_with_conflicts: list[str]
+def assert_update_merge_request_with_conflicts_exists(
+    gitlab_client: Client, repository: str, files_with_conflicts: list[str]
 ):
     params = {"state": "opened", "target_branch": "main"}
-    response = await gitlab_test_client.get(f"/projects/{quote_plus(repository)}/merge_requests", params=params)
+    response = gitlab_client.get(f"/projects/{quote_plus(repository)}/merge_requests", params=params)
     response.raise_for_status()
     merge_requests = response.json()
 
@@ -79,9 +79,7 @@ async def assert_update_merge_request_with_conflicts_exists(
     assert merge_request["title"].startswith("🚧 - CONFLICT: Update to")
 
     # Assert that there is a rejection file in the Merge Request changes
-    response = await gitlab_test_client.get(
-        f"/projects/{quote_plus(repository)}/merge_requests/{merge_request['iid']}/changes"
-    )
+    response = gitlab_client.get(f"/projects/{quote_plus(repository)}/merge_requests/{merge_request['iid']}/changes")
     response.raise_for_status()
     changes = response.json()["changes"]
 

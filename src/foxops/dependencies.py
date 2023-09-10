@@ -1,4 +1,3 @@
-from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
@@ -24,43 +23,35 @@ from foxops.settings import (
 
 logger = get_logger(__name__)
 
-#: Holding singletons
-async_engine: AsyncEngine | None = None
-_hoster: Hoster | None = None
 
-
-@lru_cache
 def get_settings() -> Settings:
     return Settings()  # type: ignore
 
 
-@lru_cache
 def get_database_settings() -> DatabaseSettings:
     return DatabaseSettings()
 
 
-def get_database_engine(settings: DatabaseSettings = Depends(get_database_settings)) -> AsyncEngine:
-    global async_engine
+######
+# Global Dependencies (those that are only created once and then cached for later requests)
+######
 
-    if async_engine is None:
-        async_engine = create_async_engine(settings.url.get_secret_value(), future=True, echo=False, pool_pre_ping=True)
 
+def get_database_engine(request: Request, settings: DatabaseSettings = Depends(get_database_settings)) -> AsyncEngine:
+    if hasattr(request.app.state, "database"):
+        return request.app.state.database
+
+    async_engine = create_async_engine(settings.url.get_secret_value(), future=True, echo=False, pool_pre_ping=True)
+
+    request.app.state.database = async_engine
     return async_engine
 
 
-def get_incarnation_repository(database_engine: AsyncEngine = Depends(get_database_engine)) -> IncarnationRepository:
-    return IncarnationRepository(database_engine)
+def get_hoster(request: Request, settings: Annotated[Settings, Depends(get_settings)]) -> Hoster:
+    if hasattr(request.app.state, "hoster"):
+        return request.app.state.hoster
 
-
-def get_change_repository(database_engine: AsyncEngine = Depends(get_database_engine)) -> ChangeRepository:
-    return ChangeRepository(database_engine)
-
-
-def get_hoster(settings: Annotated[Settings, Depends(get_settings)]) -> Hoster:
-    global _hoster
-    if _hoster is not None:
-        return _hoster
-
+    hoster: Hoster
     match settings.hoster_type:
         case HosterType.LOCAL:
             local_settings = LocalHosterSettings()
@@ -69,16 +60,30 @@ def get_hoster(settings: Annotated[Settings, Depends(get_settings)]) -> Hoster:
                 "Using local hoster. This is for DEVELOPMENT use only!", directory=str(local_settings.directory)
             )
 
-            _hoster = LocalHoster(local_settings.directory)
+            hoster = LocalHoster(local_settings.directory)
         case HosterType.GITLAB:
             gitlab_settings = GitlabHosterSettings()
             logger.info("Using GitLab hoster", address=gitlab_settings.address)
 
-            _hoster = GitlabHoster(gitlab_settings.address, gitlab_settings.token.get_secret_value())
+            hoster = GitlabHoster(gitlab_settings.address, gitlab_settings.token.get_secret_value())
         case _:
             raise NotImplementedError(f"Unknown hoster type {settings.hoster_type}")
 
-    return _hoster
+    request.app.state.hoster = hoster
+    return hoster
+
+
+######
+# Per-Request Dependencies
+######
+
+
+def get_incarnation_repository(database_engine: AsyncEngine = Depends(get_database_engine)) -> IncarnationRepository:
+    return IncarnationRepository(database_engine)
+
+
+def get_change_repository(database_engine: AsyncEngine = Depends(get_database_engine)) -> ChangeRepository:
+    return ChangeRepository(database_engine)
 
 
 def get_incarnation_service(

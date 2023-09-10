@@ -23,7 +23,7 @@ fastapi = "^0.103.1"
 # Auxiliary
 httpx = "^0.24.1"
 tenacity = "^8.2.1"
-pydantic = "^1.9.0"
+pydantic = {version = "1.10.12", extras = ["dotenv"]}
 structlog = "^23.1.0"
 aiopath = "^0.6.10"
 
@@ -70,6 +70,7 @@ pytest-alembic = "^0.10.0"
 [tool.poetry.group.dev.dependencies]
 black = {extras = ["d"], version = "^23.3.0"}
 coverage = "^7.3.1"
+pytest-xdist = "^3.3.1"
 
 [tool.black]
 line-length = 120
@@ -88,7 +89,6 @@ markers = [
     "db: tests involving the database",
 ]
 asyncio_mode = "auto"
-python_functions = "should_* test_*"
 
 [tool.mypy]
 plugins = [

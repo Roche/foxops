@@ -4,45 +4,80 @@ This project uses [Poetry](https://python-poetry.org/)
 and [poetry-dynamic-versioning](https://pypi.org/project/poetry-dynamic-versioning/)
 for dependency management and the package building process.
 
-## Running tests
+## Run foxops locally
+
+### With docker-compose
+
+The easiest way to get started is to run foxops locally via docker-compose. Just execute this command in the root folder of the project:
+
+```shell
+docker compose up
+```
+
+It will build the docker image and run foxops with an SQlite database and a local hoster configuration.
+
+Now foxops can be accessed at `http://localhost:8000` with `dummy` as the token.
+
+### Directly with Python
+
+First, start by making sure that your virtual Python environment is up to date by running
+
+```shell
+poetry install
+```
+
+Then, you can run foxops with
+
+```shell
+export FOXOPS_DATABASE_URL=sqlite+aiosqlite:///./foxops.db
+export FOXOPS_HOSTER_TYPE=local
+export FOXOPS_HOSTER_LOCAL_DIRECTORY=<path to a local directory where foxops can store the repositories>
+export FOXOPS_STATIC_TOKEN=dummy
+
+# initialize sqlite database in ./foxops.db
+poetry run alembic upgrade head
+
+# run foxops webserver
+poetry run uvicorn foxops.__main__:create_app --host localhost --port 5001 --reload --factory
+```
+
+## Running Tests
 
 The test suite uses `pytest` as a test runner and it's located under `tests/`.
 
-The unit tests can be executed by excluding the `e2e` tests:
+Simply execute the following commands to run the entire foxops test suite:
 
-```
-pytest -m 'not e2e'
-```
-
-which doesn't require any external database nor GitLab instance.
-
-To run the `e2e` tests a test GitLab instance needs to be available. It can be started using `docker compose`:
-
-```
-docker compose up -d
+```shell
+pytest
 ```
 
-Be aware that an **initial startup of the Gitlab instance can take some time** (5 minutes). Check the logs with `docker-compose logs` to verify it if reached a stable state.
+Tests can also run with parallelization enabled to speed up execution. To do so, simply add the `-n` flag with the number of parallel processes to use:
 
-Then, the tests can be run using `pytest`:
-
-```
-pytest -m 'e2e'
+```shell
+pytest -n 4
 ```
 
-## Running foxops locally
+Some tests require a Gitlab instance to be available and will be skipped automatically if it's not the case.
 
-The foxops API can be run locally using `uvicorn`:
+### Run Tests that Require Gitlab
 
-```
-uvicorn foxops.__main__:create_app --host localhost --port 5001 --reload --factory
-```
+To run tests that require a Gitlab instance, you can either [run one locally](https://docs.gitlab.com/ee/install/docker.html) or use the public [gitlab.com](https://gitlab.com) instance. The latter is typically recommended for ease of use.
 
-For this to work foxops needs a few configuration settings to be available.
-These are at least a GitLab address and token. To use the test instance you can run the following
+On that Gitlab instance, a "root group" is required, in which foxops can create temporary projects for test templates and incarnations (these will be automatically cleaned after the test execution). Also an access token is required that has access to that group.
 
-```
-FOXOPS_STATIC_TOKEN=dummy FOXOPS_GITLAB_ADDRESS=http://localhost:5002/api/v4 FOXOPS_GITLAB_TOKEN=ACCTEST1234567890123 uvicorn foxops.__main__:create_app --host localhost --port 5001 --reload --factory
+Once you have all this, add the following environment variables and rerun the tests:
+
+```shell
+# defaults to "https://gitlab.com" if not specified
+export FOXOPS_TESTS_GITLAB_ADDRESS=<address of the Gitlab instance>
+# defaults to 73622910, which is the "foxops-e2e" group on gitlab.com
+export FOXOPS_TESTS_GITLAB_ROOT_GROUP_ID=<id of the root group>
+export FOXOPS_TESTS_GITLAB_TOKEN=<access token with access to the root group>
+
+# these variables can also be set in a file called `.env.test` in the root folder of the project
+
+# execute tests (parallelization is recommended)
+pytest -n 4
 ```
 
 ### Documentation

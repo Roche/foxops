@@ -1,153 +1,27 @@
 import base64
-import os
-import uuid
+from typing import Callable
 from urllib.parse import quote_plus
 
-import httpx
 import pytest
-from httpx import AsyncClient, Client, Timeout
+from httpx import AsyncClient, Client
+from sqlalchemy.ext.asyncio import create_async_engine
 
-#: Holds default settings for the GitLab test instance
-#: can be overriden by environment variable
-GITLAB_ADDRESS = "http://127.0.0.1:5002/api/v4"
-GITLAB_ADMIN_TOKEN = "ACCTEST1234567890123"
-
-
-@pytest.fixture(scope="session")
-def gitlab_test_address() -> str:
-    return os.environ.get("GITLAB_ADDRESS", GITLAB_ADDRESS)
+from foxops.__main__ import create_app
+from foxops.database.schema import meta
+from tests._plugins.fixtures_gitlab import GitlabTestSettings
 
 
 @pytest.fixture(scope="session")
-def gitlab_test_admin_token() -> str:
-    return os.environ.get("GITLAB_ADMIN_TOKEN", GITLAB_ADMIN_TOKEN)
+def gitlab_template_repository(gitlab_client: Client, gitlab_project_factory: Callable[[str], dict]) -> str:
+    project = gitlab_project_factory("template")
 
-
-@pytest.fixture(scope="session", name="gitlab_test_user_token")
-def create_gitlab_test_user(test_run_id: str, gitlab_test_address: str, gitlab_test_admin_token: str):
-    client = Client(
-        base_url=gitlab_test_address, headers={"PRIVATE-TOKEN": gitlab_test_admin_token}, timeout=Timeout(120)
-    )
-
-    test_user_name = f"foxops-test-{test_run_id}"
-    response = client.post(
-        "/users",
-        json={
-            "name": test_user_name,
-            "username": test_user_name,
-            "password": str(uuid.uuid4()),
-            "email": f"{test_user_name}@foxops.io",
-            "skip_confirmation": True,
-        },
-    )
-    response.raise_for_status()
-    user_id = response.json()["id"]
-
-    try:
-        response = client.post(
-            f"/users/{user_id}/personal_access_tokens",
+    (
+        gitlab_client.post(
+            f"/projects/{project['id']}/repository/files/{quote_plus('fengine.yaml')}",
             json={
-                "name": test_user_name,
-                "scopes": ["api", "read_repository", "write_repository"],
-            },
-        )
-        response.raise_for_status()
-        test_user_token = response.json()["token"]
-
-        yield test_user_token
-    finally:
-        response = client.delete(f"/users/{user_id}")
-        response.raise_for_status()
-
-
-@pytest.fixture(scope="session", autouse=True)
-def set_settings_env(gitlab_test_address: str, gitlab_test_user_token: str, static_api_token: str):
-    os.environ["FOXOPS_GITLAB_ADDRESS"] = gitlab_test_address
-    os.environ["FOXOPS_GITLAB_TOKEN"] = gitlab_test_user_token
-    os.environ["FOXOPS_STATIC_TOKEN"] = static_api_token
-
-
-@pytest.fixture(name="gitlab_test_client")
-async def create_test_gitlab_client(gitlab_test_address: str, gitlab_test_user_token: str) -> AsyncClient:
-    return AsyncClient(
-        base_url=gitlab_test_address, headers={"PRIVATE-TOKEN": gitlab_test_user_token}, timeout=Timeout(120)
-    )
-
-
-@pytest.fixture(scope="function")
-async def gitlab_project_factory(gitlab_test_client: AsyncClient):
-    async def _factory(name: str):
-        response = await gitlab_test_client.post("/projects", json={"name": name})
-        response.raise_for_status()
-        project = response.json()
-
-        created_project_ids.append(project["id"])
-
-        return project
-
-    created_project_ids: list[int] = []
-
-    yield _factory
-
-    # cleanup all projects that were created during the test, ignoring those that were already remove in the test
-    for project_id in created_project_ids:
-        response = await gitlab_test_client.delete(f"/projects/{project_id}")
-        try:
-            response.raise_for_status()
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code != 404:
-                raise
-
-
-@pytest.fixture(name="empty_incarnation_gitlab_repository")
-async def create_empty_incarnation_gitlab_repository(gitlab_test_client: AsyncClient):
-    response = await gitlab_test_client.post("/projects", json={"name": f"incarnation-{str(uuid.uuid4())}"})
-    response.raise_for_status()
-    project = response.json()
-    try:
-        # TODO: considering returning `project`, annotated with a `TypedDict` for the fields
-        #       required for the tests.
-        yield project["path_with_namespace"]
-    finally:
-        (await gitlab_test_client.delete(f"/projects/{project['id']}")).raise_for_status()
-
-
-@pytest.fixture(name="incarnation_gitlab_repository_in_v1")
-async def create_incarnation_gitlab_repository_in_v1(
-    api_client: AsyncClient,
-    empty_incarnation_gitlab_repository: str,
-    template_repository: str,
-):
-    response = await api_client.post(
-        "/incarnations",
-        json={
-            "incarnation_repository": empty_incarnation_gitlab_repository,
-            "template_repository": template_repository,
-            "template_repository_version": "v1.0.0",
-            "template_data": {"name": "Jon", "age": 18},
-        },
-    )
-    response.raise_for_status()
-    incarnation = response.json()
-
-    return empty_incarnation_gitlab_repository, str(incarnation["id"])
-
-
-@pytest.fixture(name="template_repository")
-async def create_template_gitlab_repository(gitlab_test_client: AsyncClient):
-    response = await gitlab_test_client.post("/projects", json={"name": f"template-{str(uuid.uuid4())}"})
-    response.raise_for_status()
-    project = response.json()
-    try:
-        # TODO: considering returning `project`, annotated with a `TypedDict` for the fields
-        #       required for the tests.
-        (
-            await gitlab_test_client.post(
-                f"/projects/{project['id']}/repository/files/{quote_plus('fengine.yaml')}",
-                json={
-                    "encoding": "base64",
-                    "content": base64.b64encode(
-                        b"""
+                "encoding": "base64",
+                "content": base64.b64encode(
+                    b"""
 variables:
     name:
         type: str
@@ -157,51 +31,94 @@ variables:
         type: int
         description: The age of the person
 """
-                    ).decode("utf-8"),
-                    "commit_message": "Initial commit",
-                    "branch": project["default_branch"],
-                },
-            )
-        ).raise_for_status()
+                ).decode("utf-8"),
+                "commit_message": "Initial commit",
+                "branch": project["default_branch"],
+            },
+        )
+    ).raise_for_status()
 
-        # VERSION v1.0.0
-        (
-            await gitlab_test_client.post(
-                f"/projects/{project['id']}/repository/files/{quote_plus('template/README.md')}",
-                json={
-                    "encoding": "base64",
-                    "content": base64.b64encode(b"{{ name }} is of age {{ age }}").decode("utf-8"),
-                    "commit_message": "Add template README",
-                    "branch": project["default_branch"],
-                },
-            )
-        ).raise_for_status()
-        (
-            await gitlab_test_client.post(
-                f"/projects/{project['id']}/repository/tags",
-                json={"tag_name": "v1.0.0", "ref": project["default_branch"]},
-            )
-        ).raise_for_status()
+    # VERSION v1.0.0
+    (
+        gitlab_client.post(
+            f"/projects/{project['id']}/repository/files/{quote_plus('template/README.md')}",
+            json={
+                "encoding": "base64",
+                "content": base64.b64encode(b"{{ name }} is of age {{ age }}").decode("utf-8"),
+                "commit_message": "Add template README",
+                "branch": project["default_branch"],
+            },
+        )
+    ).raise_for_status()
+    (
+        gitlab_client.post(
+            f"/projects/{project['id']}/repository/tags",
+            json={"tag_name": "v1.0.0", "ref": project["default_branch"]},
+        )
+    ).raise_for_status()
 
-        # VERSION: v2.0.0
-        (
-            await gitlab_test_client.put(
-                f"/projects/{project['id']}/repository/files/{quote_plus('template/README.md')}",
-                json={
-                    "encoding": "base64",
-                    "content": base64.b64encode(b"Hello {{ name }}, age: {{ age }}").decode("utf-8"),
-                    "commit_message": "Change template README",
-                    "branch": project["default_branch"],
-                },
-            )
-        ).raise_for_status()
-        (
-            await gitlab_test_client.post(
-                f"/projects/{project['id']}/repository/tags",
-                json={"tag_name": "v2.0.0", "ref": project["default_branch"]},
-            )
-        ).raise_for_status()
+    # VERSION: v2.0.0
+    (
+        gitlab_client.put(
+            f"/projects/{project['id']}/repository/files/{quote_plus('template/README.md')}",
+            json={
+                "encoding": "base64",
+                "content": base64.b64encode(b"Hello {{ name }}, age: {{ age }}").decode("utf-8"),
+                "commit_message": "Change template README",
+                "branch": project["default_branch"],
+            },
+        )
+    ).raise_for_status()
+    (
+        gitlab_client.post(
+            f"/projects/{project['id']}/repository/tags",
+            json={"tag_name": "v2.0.0", "ref": project["default_branch"]},
+        )
+    ).raise_for_status()
 
-        yield project["path_with_namespace"]
-    finally:
-        (await gitlab_test_client.delete(f"/projects/{project['id']}")).raise_for_status()
+    return project["path_with_namespace"]
+
+
+@pytest.fixture
+async def foxops_client(gitlab_settings: GitlabTestSettings, foxops_database: str, monkeypatch):
+    static_token = "test-token"
+
+    assert gitlab_settings.token is not None
+
+    monkeypatch.setenv("FOXOPS_DATABASE_URL", foxops_database)
+    monkeypatch.setenv("FOXOPS_HOSTER_TYPE", "gitlab")
+    monkeypatch.setenv("FOXOPS_HOSTER_GITLAB_ADDRESS", gitlab_settings.address)
+    monkeypatch.setenv("FOXOPS_HOSTER_GITLAB_TOKEN", gitlab_settings.token.get_secret_value())
+    monkeypatch.setenv("FOXOPS_STATIC_TOKEN", static_token)
+    monkeypatch.setenv("FOXOPS_LOG_LEVEL", "DEBUG")
+
+    async with AsyncClient(
+        app=create_app(),
+        base_url="http://test",
+    ) as client:
+        client.headers["Authorization"] = f"Bearer {static_token}"
+
+        yield client
+
+
+@pytest.fixture
+async def gitlab_incarnation_repository_in_v1(
+    foxops_client: AsyncClient,
+    gitlab_project_factory: Callable[[str], dict],
+    gitlab_template_repository: str,
+):
+    incarnation_repo = gitlab_project_factory("incarnation")["path_with_namespace"]
+
+    response = await foxops_client.post(
+        "/api/incarnations",
+        json={
+            "incarnation_repository": incarnation_repo,
+            "template_repository": gitlab_template_repository,
+            "template_repository_version": "v1.0.0",
+            "template_data": {"name": "Jon", "age": 18},
+        },
+    )
+    response.raise_for_status()
+    incarnation = response.json()
+
+    return incarnation_repo, str(incarnation["id"])
