@@ -87,7 +87,7 @@ jobs:
           poetry self add "poetry-dynamic-versioning[plugin]"
           poetry install
 
-      - run: coverage run -m pytest
+      - run: coverage run -m pytest -n 4
         env:
           # FoxOps test configuration
           FOXOPS_TESTS_GITLAB_ADDRESS: https://gitlab.com
