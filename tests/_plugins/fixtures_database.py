@@ -1,5 +1,5 @@
 import pytest
-from sqlalchemy import event, Engine
+from sqlalchemy import Engine, event
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from foxops.database.schema import meta

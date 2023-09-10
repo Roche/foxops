@@ -4,10 +4,8 @@ from urllib.parse import quote_plus
 
 import pytest
 from httpx import AsyncClient, Client
-from sqlalchemy.ext.asyncio import create_async_engine
 
 from foxops.__main__ import create_app
-from foxops.database.schema import meta
 from tests._plugins.fixtures_gitlab import GitlabTestSettings
 
 
