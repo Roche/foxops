@@ -17,8 +17,8 @@ build:
       - asdf global poetry latest
       - poetry config virtualenvs.create false
     post_install:
-      - poetry env use ${READTHEDOCS_VIRTUALENV_PATH}/bin/python
-      - poetry install
+      - poetry export --with=dev -o requirements.txt
+      - pip install -r requirements.txt
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
