@@ -99,8 +99,9 @@ The following is needed to run foxops:
 * Set the following environment variables:
   * `FOXOPS_STATIC_TOKEN` - Set to a (long) random and **secret** string. This secret is used to authenticate all users of the foxops UI & API
   * `FOXOPS_DATABASE_URL` - Set to the database URL
-  * `FOXOPS_GITLAB_ADDRESS` - Set to the address of your GitLab instance (e.g. `https://gitlab.com`)
-  * `FOXOPS_GITLAB_TOKEN` - Set to a GitLab access token that has access to all repositories (incarnations & templates) that foxops should manage
+  * `FOXOPS_HOSTER_TYPE` - Set to `gitlab` for a production deployment
+  * `FOXOPS_HOSTER_GITLAB_ADDRESS` - Set to the address of your GitLab instance (e.g. `https://gitlab.com`) (if hoster type is set to `gitlab`)
+  * `FOXOPS_HOSTER_GITLAB_TOKEN` - Set to a GitLab access token that has access to all repositories (incarnations & templates) that foxops should manage (if hoster type is set to `gitlab`)
 
 #### Kubernetes Example
 
@@ -139,9 +140,11 @@ spec:
         - name: foxops
           image: ghcr.io/roche/foxops:v2.0.0
           env:
-            - name: FOXOPS_GITLAB_ADDRESS
+            - name: FOXOPS_HOSTER_TYPE
+              value: gitlab
+            - name: FOXOPS_HOSTER_GITLAB_ADDRESS
               value: https://gitlab.com
-            - name: FOXOPS_GITLAB_TOKEN
+            - name: FOXOPS_HOSTER_GITLAB_TOKEN
               value: <dummy>
             - name: FOXOPS_STATIC_TOKEN
               value: <dummy>
