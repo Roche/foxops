@@ -12,7 +12,7 @@ from httpx import AsyncClient
 from sqlalchemy import Engine, event
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
-from foxops.__main__ import FRONTEND_SUBDIRS, create_app
+from foxops.__main__ import create_app
 from foxops.database.repositories.change import ChangeRepository
 from foxops.database.repositories.incarnation.repository import IncarnationRepository
 from foxops.database.schema import meta
@@ -73,16 +73,6 @@ async def test_async_engine() -> AsyncGenerator[AsyncEngine, None]:
         await conn.run_sync(meta.create_all)
 
     yield async_engine
-
-
-@pytest.fixture(name="frontend", scope="module")
-def create_dummy_frontend(tmp_path_factory: pytest.TempPathFactory):
-    frontend_dir = tmp_path_factory.mktemp("frontend")
-    for frontend_subdir in FRONTEND_SUBDIRS:
-        (frontend_dir / frontend_subdir).mkdir(parents=True)
-    (frontend_dir / "index.html").write_text("Hello World")
-    os.environ["FOXOPS_FRONTEND_DIST_DIR"] = str(frontend_dir)
-    return frontend_dir
 
 
 @pytest.fixture(name="app")

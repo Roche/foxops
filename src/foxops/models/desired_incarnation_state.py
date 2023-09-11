@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 import foxops.engine as fengine
 
@@ -13,8 +13,7 @@ class DesiredIncarnationState(BaseModel):
     template_data: fengine.TemplateData
     automerge: bool = False
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
     def __eq__(self, other) -> bool:
         if isinstance(other, fengine.IncarnationState):

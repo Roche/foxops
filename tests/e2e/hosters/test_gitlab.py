@@ -1,10 +1,9 @@
 import base64
-import uuid
 from collections import namedtuple
 from datetime import timedelta
 
 import pytest
-from httpx import AsyncClient, HTTPStatusError
+from httpx import Client, HTTPStatusError
 from tenacity import retry
 from tenacity.retry import retry_if_exception_type
 from tenacity.stop import stop_after_delay
@@ -13,6 +12,7 @@ from tenacity.wait import wait_fixed
 from foxops.hosters import Hoster, ReconciliationStatus
 from foxops.hosters.gitlab import GitlabHoster
 from foxops.hosters.types import MergeRequestStatus
+from tests._plugins.fixtures_gitlab import GitlabTestSettings
 
 # mark all tests in this module as e2e
 pytestmark = pytest.mark.e2e
@@ -25,20 +25,12 @@ RepositoryTestData = namedtuple(
 )
 
 
-@pytest.fixture(name="test_repository")
-async def create_test_repository(gitlab_test_client: AsyncClient) -> RepositoryTestData:
-    response = await gitlab_test_client.post(
-        "/projects",
-        json={
-            "name": f"gitlab-hoster-test-{uuid.uuid4()}",
-            "initialize_with_readme": True,
-        },
-    )
-    response.raise_for_status()
-    project = response.json()
+@pytest.fixture
+def gitlab_project(gitlab_client: Client, gitlab_project_factory) -> RepositoryTestData:
+    project = gitlab_project_factory("gitlab-hoster-test", initialize_with_readme=True)
 
     # Create new commit with new file in new branch without a pipeline
-    response = await gitlab_test_client.post(
+    response = gitlab_client.post(
         f"/projects/{project['id']}/repository/files/test.txt",
         json={
             "branch": "without-pipeline",
@@ -51,7 +43,7 @@ async def create_test_repository(gitlab_test_client: AsyncClient) -> RepositoryT
     commit_sha_branch_without_pipeline = "without-pipeline"
 
     # Create new commit with pipeline in new branch
-    response = await gitlab_test_client.post(
+    response = gitlab_client.post(
         f"/projects/{project['id']}/repository/files/.gitlab-ci.yml",
         json={
             "branch": "with-pipeline",
@@ -75,19 +67,21 @@ build:
     return RepositoryTestData(project, "main", commit_sha_branch_without_pipeline, commit_sha_branch_with_pipeline)
 
 
-@pytest.fixture(name="test_gitlab_hoster")
-async def create_test_gitlab_hoster(gitlab_test_address: str, gitlab_test_user_token: str) -> Hoster:
-    return GitlabHoster(gitlab_test_address, gitlab_test_user_token)
+@pytest.fixture
+async def gitlab_hoster(gitlab_settings: GitlabTestSettings) -> Hoster:
+    assert gitlab_settings.token is not None
+
+    return GitlabHoster(address=gitlab_settings.address, token=gitlab_settings.token.get_secret_value())
 
 
-async def should_return_success_reconciliation_status_for_default_branch_commit_without_pipeline(
-    test_gitlab_hoster: Hoster, test_repository: RepositoryTestData
+async def test_get_reconciliation_status_returns_success_for_default_branch_commit_without_pipeline(
+    gitlab_hoster: Hoster, gitlab_project: RepositoryTestData
 ):
     # WHEN
-    status = await test_gitlab_hoster.get_reconciliation_status(
-        incarnation_repository=test_repository.project["path_with_namespace"],
+    status = await gitlab_hoster.get_reconciliation_status(
+        incarnation_repository=gitlab_project.project["path_with_namespace"],
         target_directory=".",
-        commit_sha=test_repository.commit_sha_main,
+        commit_sha=gitlab_project.commit_sha_main,
         merge_request_id=None,
     )
 
@@ -95,14 +89,14 @@ async def should_return_success_reconciliation_status_for_default_branch_commit_
     assert status == ReconciliationStatus.SUCCESS
 
 
-async def should_return_pending_reconciliation_status_for_default_branch_commit_with_pending_pipeline(
-    test_gitlab_hoster: Hoster, test_repository: RepositoryTestData
+async def test_get_reconciliation_status_returns_pending_for_default_branch_commit_with_pending_pipeline(
+    gitlab_hoster: Hoster, gitlab_project: RepositoryTestData
 ):
     # WHEN
-    status = await test_gitlab_hoster.get_reconciliation_status(
-        incarnation_repository=test_repository.project["path_with_namespace"],
+    status = await gitlab_hoster.get_reconciliation_status(
+        incarnation_repository=gitlab_project.project["path_with_namespace"],
         target_directory=".",
-        commit_sha=test_repository.commit_sha_branch_with_pipeline,
+        commit_sha=gitlab_project.commit_sha_branch_with_pipeline,
         merge_request_id=None,
         pipeline_timeout=timedelta(seconds=10),
     )
@@ -111,15 +105,15 @@ async def should_return_pending_reconciliation_status_for_default_branch_commit_
     assert status == ReconciliationStatus.PENDING
 
 
-async def should_return_open_merge_request_status_for_open_merge_request(
-    test_gitlab_hoster: Hoster, gitlab_test_client: AsyncClient, test_repository: RepositoryTestData
+async def test_get_merge_request_status_returns_open_for_open_merge_request(
+    gitlab_hoster: Hoster, gitlab_client: Client, gitlab_project: RepositoryTestData
 ):
     # GIVEN
-    response = await gitlab_test_client.post(
-        f"/projects/{test_repository.project['id']}/merge_requests",
+    response = gitlab_client.post(
+        f"/projects/{gitlab_project.project['id']}/merge_requests",
         json={
             "source_branch": "without-pipeline",
-            "target_branch": test_repository.project["default_branch"],
+            "target_branch": gitlab_project.project["default_branch"],
             "title": "Some merge request",
         },
     )
@@ -127,8 +121,8 @@ async def should_return_open_merge_request_status_for_open_merge_request(
     merge_request = response.json()
 
     # WHEN
-    status = await test_gitlab_hoster.get_merge_request_status(
-        incarnation_repository=test_repository.project["path_with_namespace"],
+    status = await gitlab_hoster.get_merge_request_status(
+        incarnation_repository=gitlab_project.project["path_with_namespace"],
         merge_request_id=merge_request["iid"],
     )
 
@@ -136,15 +130,15 @@ async def should_return_open_merge_request_status_for_open_merge_request(
     assert status == MergeRequestStatus.OPEN
 
 
-async def should_return_merged_merge_request_status_for_merged_merge_request(
-    test_gitlab_hoster: Hoster, gitlab_test_client: AsyncClient, test_repository: RepositoryTestData
+async def test_get_merge_request_status_returns_merged_for_merged_merge_request(
+    gitlab_hoster: Hoster, gitlab_client: Client, gitlab_project: RepositoryTestData
 ):
     # GIVEN
-    response = await gitlab_test_client.post(
-        f"/projects/{test_repository.project['id']}/merge_requests",
+    response = gitlab_client.post(
+        f"/projects/{gitlab_project.project['id']}/merge_requests",
         json={
             "source_branch": "without-pipeline",
-            "target_branch": test_repository.project["default_branch"],
+            "target_branch": gitlab_project.project["default_branch"],
             "title": "Some merge request",
         },
     )
@@ -158,16 +152,16 @@ async def should_return_merged_merge_request_status_for_merged_merge_request(
     )
     async def __merge():
         (
-            await gitlab_test_client.put(
-                f"/projects/{test_repository.project['id']}/merge_requests/{merge_request['iid']}/merge",
+            gitlab_client.put(
+                f"/projects/{gitlab_project.project['id']}/merge_requests/{merge_request['iid']}/merge",
             )
         ).raise_for_status()
 
     await __merge()
 
     # WHEN
-    status = await test_gitlab_hoster.get_merge_request_status(
-        incarnation_repository=test_repository.project["path_with_namespace"],
+    status = await gitlab_hoster.get_merge_request_status(
+        incarnation_repository=gitlab_project.project["path_with_namespace"],
         merge_request_id=merge_request["iid"],
     )
 
@@ -175,23 +169,23 @@ async def should_return_merged_merge_request_status_for_merged_merge_request(
     assert status == MergeRequestStatus.MERGED
 
 
-async def should_return_closed_merge_request_status_for_closed_merge_request(
-    test_gitlab_hoster: Hoster, gitlab_test_client: AsyncClient, test_repository: RepositoryTestData
+async def test_get_merge_request_status_returns_closed_for_closed_merge_request(
+    gitlab_hoster: Hoster, gitlab_client: Client, gitlab_project: RepositoryTestData
 ):
     # GIVEN
-    response = await gitlab_test_client.post(
-        f"/projects/{test_repository.project['id']}/merge_requests",
+    response = gitlab_client.post(
+        f"/projects/{gitlab_project.project['id']}/merge_requests",
         json={
             "source_branch": "without-pipeline",
-            "target_branch": test_repository.project["default_branch"],
+            "target_branch": gitlab_project.project["default_branch"],
             "title": "Some merge request",
         },
     )
     response.raise_for_status()
     merge_request = response.json()
 
-    response = await gitlab_test_client.put(
-        f"/projects/{test_repository.project['id']}/merge_requests/{merge_request['iid']}",
+    response = gitlab_client.put(
+        f"/projects/{gitlab_project.project['id']}/merge_requests/{merge_request['iid']}",
         json={
             "state_event": "close",
         },
@@ -199,8 +193,8 @@ async def should_return_closed_merge_request_status_for_closed_merge_request(
     response.raise_for_status()
 
     # WHEN
-    status = await test_gitlab_hoster.get_merge_request_status(
-        incarnation_repository=test_repository.project["path_with_namespace"],
+    status = await gitlab_hoster.get_merge_request_status(
+        incarnation_repository=gitlab_project.project["path_with_namespace"],
         merge_request_id=merge_request["iid"],
     )
 
@@ -208,15 +202,15 @@ async def should_return_closed_merge_request_status_for_closed_merge_request(
     assert status == MergeRequestStatus.CLOSED
 
 
-async def should_return_pending_reconciliation_status_for_open_merge_request(
-    test_gitlab_hoster: Hoster, gitlab_test_client: AsyncClient, test_repository: RepositoryTestData
+async def test_get_reconciliation_status_returns_pending_for_open_merge_request(
+    gitlab_hoster: Hoster, gitlab_client: Client, gitlab_project: RepositoryTestData
 ):
     # GIVEN
-    response = await gitlab_test_client.post(
-        f"/projects/{test_repository.project['id']}/merge_requests",
+    response = gitlab_client.post(
+        f"/projects/{gitlab_project.project['id']}/merge_requests",
         json={
             "source_branch": "without-pipeline",
-            "target_branch": test_repository.project["default_branch"],
+            "target_branch": gitlab_project.project["default_branch"],
             "title": "Some merge request",
         },
     )
@@ -224,10 +218,10 @@ async def should_return_pending_reconciliation_status_for_open_merge_request(
     merge_request = response.json()
 
     # WHEN
-    status = await test_gitlab_hoster.get_reconciliation_status(
-        incarnation_repository=test_repository.project["path_with_namespace"],
+    status = await gitlab_hoster.get_reconciliation_status(
+        incarnation_repository=gitlab_project.project["path_with_namespace"],
         target_directory=".",
-        commit_sha=test_repository.commit_sha_branch_without_pipeline,
+        commit_sha=gitlab_project.commit_sha_branch_without_pipeline,
         merge_request_id=merge_request["iid"],
     )
 
@@ -235,15 +229,15 @@ async def should_return_pending_reconciliation_status_for_open_merge_request(
     assert status == ReconciliationStatus.PENDING
 
 
-async def should_return_success_reconciliation_status_for_merged_merge_request_without_pipeline_in_target_branch(
-    test_gitlab_hoster: Hoster, gitlab_test_client: AsyncClient, test_repository: RepositoryTestData
+async def test_get_reconciliation_status_return_success_for_merged_merge_request_without_pipeline_in_target_branch(
+    gitlab_hoster: Hoster, gitlab_client: Client, gitlab_project: RepositoryTestData
 ):
     # GIVEN
-    response = await gitlab_test_client.post(
-        f"/projects/{test_repository.project['id']}/merge_requests",
+    response = gitlab_client.post(
+        f"/projects/{gitlab_project.project['id']}/merge_requests",
         json={
             "source_branch": "without-pipeline",
-            "target_branch": test_repository.project["default_branch"],
+            "target_branch": gitlab_project.project["default_branch"],
             "title": "Some merge request",
         },
     )
@@ -257,18 +251,18 @@ async def should_return_success_reconciliation_status_for_merged_merge_request_w
     )
     async def __merge():
         (
-            await gitlab_test_client.put(
-                f"/projects/{test_repository.project['id']}/merge_requests/{merge_request['iid']}/merge",
+            gitlab_client.put(
+                f"/projects/{gitlab_project.project['id']}/merge_requests/{merge_request['iid']}/merge",
             )
         ).raise_for_status()
 
     await __merge()
 
     # WHEN
-    status = await test_gitlab_hoster.get_reconciliation_status(
-        incarnation_repository=test_repository.project["path_with_namespace"],
+    status = await gitlab_hoster.get_reconciliation_status(
+        incarnation_repository=gitlab_project.project["path_with_namespace"],
         target_directory=".",
-        commit_sha=test_repository.commit_sha_branch_without_pipeline,
+        commit_sha=gitlab_project.commit_sha_branch_without_pipeline,
         merge_request_id=merge_request["iid"],
     )
 
@@ -276,19 +270,17 @@ async def should_return_success_reconciliation_status_for_merged_merge_request_w
     assert status == ReconciliationStatus.SUCCESS
 
 
-async def should_return_success_reconciliation_status_for_merged_merge_request_without_merge_commit_and_without_pipeline_in_target_branch(  # noqa: B950
-    test_gitlab_hoster: Hoster, gitlab_test_client: AsyncClient, test_repository: RepositoryTestData
+async def test_get_reconciliation_status_return_success_for_merged_merge_request_without_merge_commit_and_without_pipeline_in_target_branch(  # noqa: B950
+    gitlab_hoster: Hoster, gitlab_client: Client, gitlab_project: RepositoryTestData
 ):
     # GIVEN
-    (
-        await gitlab_test_client.put(f"/projects/{test_repository.project['id']}", json={"merge_method": "ff"})
-    ).raise_for_status()
+    (gitlab_client.put(f"/projects/{gitlab_project.project['id']}", json={"merge_method": "ff"})).raise_for_status()
 
-    response = await gitlab_test_client.post(
-        f"/projects/{test_repository.project['id']}/merge_requests",
+    response = gitlab_client.post(
+        f"/projects/{gitlab_project.project['id']}/merge_requests",
         json={
             "source_branch": "without-pipeline",
-            "target_branch": test_repository.project["default_branch"],
+            "target_branch": gitlab_project.project["default_branch"],
             "title": "Some merge request",
         },
     )
@@ -302,18 +294,18 @@ async def should_return_success_reconciliation_status_for_merged_merge_request_w
     )
     async def __merge():
         (
-            await gitlab_test_client.put(
-                f"/projects/{test_repository.project['id']}/merge_requests/{merge_request['iid']}/merge",
+            gitlab_client.put(
+                f"/projects/{gitlab_project.project['id']}/merge_requests/{merge_request['iid']}/merge",
             )
         ).raise_for_status()
 
     await __merge()
 
     # WHEN
-    status = await test_gitlab_hoster.get_reconciliation_status(
-        incarnation_repository=test_repository.project["path_with_namespace"],
+    status = await gitlab_hoster.get_reconciliation_status(
+        incarnation_repository=gitlab_project.project["path_with_namespace"],
         target_directory=".",
-        commit_sha=test_repository.commit_sha_branch_without_pipeline,
+        commit_sha=gitlab_project.commit_sha_branch_without_pipeline,
         merge_request_id=merge_request["iid"],
     )
 
@@ -321,32 +313,32 @@ async def should_return_success_reconciliation_status_for_merged_merge_request_w
     assert status == ReconciliationStatus.SUCCESS
 
 
-async def should_return_failed_reconciliation_status_for_closed_merge_request(
-    test_gitlab_hoster: Hoster, gitlab_test_client: AsyncClient, test_repository: RepositoryTestData
+async def test_get_reconciliation_status_returns_failed_for_closed_merge_request(
+    gitlab_hoster: Hoster, gitlab_client: Client, gitlab_project: RepositoryTestData
 ):
     # GIVEN
-    response = await gitlab_test_client.post(
-        f"/projects/{test_repository.project['id']}/merge_requests",
+    response = gitlab_client.post(
+        f"/projects/{gitlab_project.project['id']}/merge_requests",
         json={
             "source_branch": "without-pipeline",
-            "target_branch": test_repository.project["default_branch"],
+            "target_branch": gitlab_project.project["default_branch"],
             "title": "Some merge request",
         },
     )
     response.raise_for_status()
     merge_request = response.json()
     (
-        await gitlab_test_client.put(
-            f"/projects/{test_repository.project['id']}/merge_requests/{merge_request['iid']}",
+        gitlab_client.put(
+            f"/projects/{gitlab_project.project['id']}/merge_requests/{merge_request['iid']}",
             json={"state_event": "close"},
         )
     ).raise_for_status()
 
     # WHEN
-    status = await test_gitlab_hoster.get_reconciliation_status(
-        incarnation_repository=test_repository.project["path_with_namespace"],
+    status = await gitlab_hoster.get_reconciliation_status(
+        incarnation_repository=gitlab_project.project["path_with_namespace"],
         target_directory=".",
-        commit_sha=test_repository.commit_sha_branch_without_pipeline,
+        commit_sha=gitlab_project.commit_sha_branch_without_pipeline,
         merge_request_id=merge_request["iid"],
     )
 

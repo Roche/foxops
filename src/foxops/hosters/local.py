@@ -42,7 +42,7 @@ class MergeRequestManager:
             status=MergeRequestStatus.OPEN,
         )
 
-        self._mr_file_path(mr.id).write_text(mr.json())
+        self._mr_file_path(mr.id).write_text(mr.model_dump_json())
         self._next_id += 1
 
         return mr.id
@@ -51,15 +51,15 @@ class MergeRequestManager:
         self._mr_file_path(id_).unlink()
 
     def get(self, id_: int) -> MergeRequest:
-        return MergeRequest.parse_file(self._mr_file_path(id_))
+        return MergeRequest.model_validate_json(self._mr_file_path(id_).read_text())
 
     def update_status(self, id_: int, status: MergeRequestStatus) -> None:
         mr = self.get(id_)
         mr.status = status
-        self._mr_file_path(mr.id).write_text(mr.json())
+        self._mr_file_path(mr.id).write_text(mr.model_dump_json())
 
     def __iter__(self) -> Iterator[MergeRequest]:
-        yield from [MergeRequest.parse_file(p) for p in self.directory.glob("*.json")]
+        yield from [MergeRequest.model_validate_json(p.read_text()) for p in self.directory.glob("*.json")]
 
     def _mr_file_path(self, id_: int) -> Path:
         return self.directory / f"{id_}.json"

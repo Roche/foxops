@@ -479,7 +479,7 @@ class ChangeService:
         )
 
         return ChangeWithMergeRequest(
-            **change_basic.dict(),
+            **change_basic.model_dump(),
             merge_request_id=change_in_db.merge_request_id,
             merge_request_branch_name=change_in_db.merge_request_branch_name,
             merge_request_status=status,

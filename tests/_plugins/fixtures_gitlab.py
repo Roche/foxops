@@ -2,7 +2,8 @@ import uuid
 
 import pytest
 from httpx import Client, HTTPStatusError, Timeout
-from pydantic import BaseSettings, SecretStr
+from pydantic import SecretStr
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class GitlabTestSettings(BaseSettings):
@@ -12,9 +13,7 @@ class GitlabTestSettings(BaseSettings):
     # "foxops-e2e" group on gitlab.com
     root_group_id: int = 73622910
 
-    class Config:
-        env_prefix = "FOXOPS_TESTS_GITLAB_"
-        env_file = ".env.test"
+    model_config = SettingsConfigDict(env_prefix="FOXOPS_TESTS_GITLAB_", env_file=".env.test")
 
 
 @pytest.fixture(scope="session")
@@ -42,10 +41,15 @@ def gitlab_client(gitlab_settings: GitlabTestSettings) -> Client:
 
 @pytest.fixture(scope="session")
 def gitlab_project_factory(gitlab_client: Client, gitlab_settings: GitlabTestSettings):
-    def _factory(name: str):
+    def _factory(name: str, initialize_with_readme: bool = False):
         suffix = str(uuid.uuid4())[:8]
         response = gitlab_client.post(
-            "/projects", json={"name": f"{name}-{suffix}", "namespace_id": gitlab_settings.root_group_id}
+            "/projects",
+            json={
+                "name": f"{name}-{suffix}",
+                "namespace_id": gitlab_settings.root_group_id,
+                "initialize_with_readme": initialize_with_readme,
+            },
         )
         response.raise_for_status()
         project = response.json()

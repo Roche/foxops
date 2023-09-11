@@ -23,7 +23,7 @@ fastapi = "^0.103.1"
 # Auxiliary
 httpx = "^0.24.1"
 tenacity = "^8.2.1"
-pydantic = {version = "1.10.12", extras = ["dotenv"]}
+pydantic = "^2.3.0"
 structlog = "^23.1.0"
 aiopath = "^0.6.10"
 
@@ -40,6 +40,7 @@ typer = "^0.9.0"
 # Business
 "ruamel.yaml" = "^0.17.20"
 Jinja2 = "^3.0.3"
+pydantic-settings = "^2.0.3"
 
 [tool.poetry.dev-dependencies]
 # Linting

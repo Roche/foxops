@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class IncarnationInDB(BaseModel):
@@ -6,6 +6,4 @@ class IncarnationInDB(BaseModel):
     incarnation_repository: str
     target_directory: str
     template_repository: str
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
