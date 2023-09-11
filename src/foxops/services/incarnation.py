@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from foxops.database.repositories.incarnation.repository import IncarnationRepository
 from foxops.hosters import Hoster
@@ -10,8 +10,7 @@ class Incarnation(BaseModel):
     target_directory: str
     template_repository: str
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class IncarnationService:
@@ -36,11 +35,11 @@ class IncarnationService:
             target_directory=target_directory,
             template_repository=template_repository,
         )
-        return Incarnation.from_orm(incarnation_in_db)
+        return Incarnation.model_validate(incarnation_in_db)
 
     async def get_by_id(self, id_: int) -> Incarnation:
         incarnation_in_db = await self.incarnation_repository.get_by_id(id_)
-        return Incarnation.from_orm(incarnation_in_db)
+        return Incarnation.model_validate(incarnation_in_db)
 
     async def delete(self, incarnation: Incarnation) -> None:
         await self.incarnation_repository.delete_by_id(incarnation.id)

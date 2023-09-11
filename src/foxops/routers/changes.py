@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Annotated, Self
 
 from fastapi import APIRouter, Depends, HTTPException, Path, status
-from pydantic import BaseModel, root_validator
+from pydantic import BaseModel, model_validator
 
 from foxops.database.repositories.change import ChangeNotFoundError
 from foxops.dependencies import get_change_service
@@ -34,16 +34,16 @@ class CreateChangeType(enum.Enum):
 
 
 class CreateChangeRequest(BaseModel):
-    requested_version: str | None
-    requested_data: dict[str, str] | None
+    requested_version: str | None = None
+    requested_data: dict[str, str] | None = None
     change_type: CreateChangeType = CreateChangeType.DIRECT
 
-    @root_validator
-    def check_either_version_or_data_change_requested(cls, values):
-        if values["requested_version"] is None and values["requested_data"] is None:
+    @model_validator(mode="after")
+    def check_either_version_or_data_change_requested(self) -> Self:
+        if self.requested_version is None and self.requested_data is None:
             raise ValueError("Either requested_version or requested_data must be set")
 
-        return values
+        return self
 
 
 class ChangeType(enum.Enum):
@@ -65,17 +65,17 @@ class ChangeDetails(BaseModel):
     created_at: datetime
     commit_sha: str
 
-    merge_request_id: str | None
-    merge_request_branch_name: str | None
-    merge_request_status: MergeRequestStatus | None
+    merge_request_id: str | None = None
+    merge_request_branch_name: str | None = None
+    merge_request_status: MergeRequestStatus | None = None
 
     @classmethod
     def from_service_object(cls, obj: Change | ChangeWithMergeRequest) -> Self:
         match obj:
             case ChangeWithMergeRequest():
-                return cls(type=ChangeType.MERGE_REQUEST, **obj.dict())
+                return cls(type=ChangeType.MERGE_REQUEST, **obj.model_dump())
             case Change():
-                return cls(type=ChangeType.DIRECT, **obj.dict())
+                return cls(type=ChangeType.DIRECT, **obj.model_dump())
             case _:
                 raise NotImplementedError(f"Unknown change type {type(obj)}")
 

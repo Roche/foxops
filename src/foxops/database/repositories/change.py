@@ -2,7 +2,7 @@ import enum
 from datetime import datetime, timezone
 from typing import AsyncIterator, Self
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import and_, delete, desc, insert, select, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -56,13 +56,11 @@ class ChangeInDB(BaseModel):
 
     merge_request_id: str | None
     merge_request_branch_name: str | None
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
     @classmethod
     def from_database_row(cls, obj) -> Self:
-        change_in_db = cls.from_orm(obj)
+        change_in_db = cls.model_validate(obj)
         change_in_db.created_at = change_in_db.created_at.replace(tzinfo=timezone.utc)
 
         return change_in_db
@@ -83,9 +81,7 @@ class IncarnationWithChangesSummary(BaseModel):
     requested_version: str
     merge_request_id: str | None
     created_at: datetime
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ChangeRepository:
@@ -141,7 +137,7 @@ class ChangeRepository:
             row = result.one()
             await conn.commit()
 
-        return ChangeInDB.from_orm(row)
+        return ChangeInDB.model_validate(row)
 
     async def create_incarnation_with_first_change(
         self,
@@ -186,7 +182,7 @@ class ChangeRepository:
             row = result.one()
             await conn.commit()
 
-        return ChangeInDB.from_orm(row)
+        return ChangeInDB.model_validate(row)
 
     async def delete_incarnation(self, id_: int) -> None:
         async with self.engine.connect() as conn:
@@ -229,7 +225,7 @@ class ChangeRepository:
             except NoResultFound:
                 raise IncarnationHasNoChangesError(incarnation_id)
             else:
-                return ChangeInDB.from_orm(row)
+                return ChangeInDB.model_validate(row)
 
     def _incarnations_with_changes_summary_query(self):
         alias_change = change.alias("change")
@@ -274,7 +270,7 @@ class ChangeRepository:
 
         async with self.engine.connect() as conn:
             for row in await conn.execute(query):
-                yield IncarnationWithChangesSummary.from_orm(row)
+                yield IncarnationWithChangesSummary.model_validate(row)
 
     async def get_incarnation_by_repo_and_target_dir(
         self, incarnation_repository: str, target_directory: str
@@ -291,7 +287,7 @@ class ChangeRepository:
             except NoResultFound:
                 raise IncarnationNotFoundError(0)
 
-        return IncarnationWithChangesSummary.from_orm(row)
+        return IncarnationWithChangesSummary.model_validate(row)
 
     async def list_changes(self, incarnation_id: int) -> list[ChangeInDB]:
         query = select(change).where(change.c.incarnation_id == incarnation_id).order_by(desc(change.c.revision))
@@ -331,7 +327,7 @@ class ChangeRepository:
             row = result.one()
             await conn.commit()
 
-        return ChangeInDB.from_orm(row)
+        return ChangeInDB.model_validate(row)
 
     async def update_commit_pushed(self, id_: int, commit_pushed: bool) -> ChangeInDB:
         return await self._update_one(id_, commit_pushed=commit_pushed)
@@ -347,4 +343,4 @@ class ChangeRepository:
             row = result.one()
             await conn.commit()
 
-        return ChangeInDB.from_orm(row)
+        return ChangeInDB.model_validate(row)

@@ -6,7 +6,7 @@ from httpx import AsyncClient
 pytestmark = [pytest.mark.api]
 
 
-async def should_err_with_404_for_unknown_uri(api_client: AsyncClient):
+async def test_returns_err_with_404_for_unknown_uri(api_client: AsyncClient):
     # WHEN
     response = await api_client.get("/unknown")
 

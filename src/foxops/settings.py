@@ -1,7 +1,8 @@
 from enum import Enum
 from pathlib import Path
 
-from pydantic import BaseSettings, DirectoryPath, SecretStr
+from pydantic import DirectoryPath, SecretStr
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 # extracted database-related settings into a separate class, as they are also needed by alembic
@@ -9,9 +10,7 @@ from pydantic import BaseSettings, DirectoryPath, SecretStr
 class DatabaseSettings(BaseSettings):
     url: SecretStr = SecretStr("sqlite+aiosqlite:///./test.db")
 
-    class Config:
-        env_prefix = "foxops_database_"
-        secrets_dir = "/var/run/secrets/foxops"
+    model_config = SettingsConfigDict(env_prefix="foxops_database_", secrets_dir="/var/run/secrets/foxops")
 
 
 class HosterType(Enum):
@@ -23,17 +22,13 @@ class GitlabHosterSettings(BaseSettings):
     address: str
     token: SecretStr
 
-    class Config:
-        env_prefix: str = "foxops_hoster_gitlab_"
-        secrets_dir: str = "/var/run/secrets/foxops"
+    model_config = SettingsConfigDict(env_prefix="foxops_hoster_gitlab_", secrets_dir="/var/run/secrets/foxops")
 
 
 class LocalHosterSettings(BaseSettings):
     directory: DirectoryPath
 
-    class Config:
-        env_prefix: str = "foxops_hoster_local_"
-        secrets_dir: str = "/var/run/secrets/foxops"
+    model_config = SettingsConfigDict(env_prefix="foxops_hoster_local_", secrets_dir="/var/run/secrets/foxops")
 
 
 class Settings(BaseSettings):
@@ -43,6 +38,4 @@ class Settings(BaseSettings):
 
     hoster_type: HosterType = HosterType.LOCAL
 
-    class Config:
-        env_prefix = "foxops_"
-        secrets_dir = "/var/run/secrets/foxops"
+    model_config = SettingsConfigDict(env_prefix="foxops_", secrets_dir="/var/run/secrets/foxops")

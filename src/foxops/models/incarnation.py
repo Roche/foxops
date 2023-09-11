@@ -1,6 +1,6 @@
 from typing import Mapping
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from foxops.engine.models import TemplateDataValue
 from foxops.hosters import ReconciliationStatus
@@ -17,8 +17,7 @@ class Incarnation(BaseModel):
     commit_sha: str
     merge_request_id: str | None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class IncarnationBasic(BaseModel):
@@ -32,8 +31,7 @@ class IncarnationBasic(BaseModel):
     merge_request_id: str | None
     merge_request_url: str | None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class IncarnationWithDetails(IncarnationBasic):
@@ -45,5 +43,4 @@ class IncarnationWithDetails(IncarnationBasic):
     template_repository_version_hash: str | None
     template_data: Mapping[str, TemplateDataValue] | None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

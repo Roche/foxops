@@ -3,7 +3,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Annotated, Mapping
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from ruamel.yaml import YAML
 
 from foxops.logger import get_logger
@@ -70,11 +70,10 @@ class VariableDefinition(BaseModel):
         Field(help="The default value for this variable (setting this makes the variable optional)"),
     ] = None
 
+    model_config = ConfigDict(frozen=True)
+
     def is_required(self) -> bool:
         return self.default is None
-
-    class Config:
-        allow_mutation = False
 
 
 class TemplateRenderingConfig(BaseModel):
@@ -84,8 +83,7 @@ class TemplateRenderingConfig(BaseModel):
         "Glob patterns are supported, but must match the individual files. Use '**/*' to match everything recursively.",
     )
 
-    class Config:
-        allow_mutation = False
+    model_config = ConfigDict(frozen=True)
 
 
 class TemplateConfig(BaseModel):
@@ -112,6 +110,8 @@ class TemplateConfig(BaseModel):
 
     variables: dict[str, VariableDefinition] = Field(default_factory=dict)
 
+    model_config = ConfigDict(frozen=True)
+
     @property
     def required_variables(self) -> dict[str, VariableDefinition]:
         return {k: v for k, v in self.variables.items() if v.is_required()}
@@ -122,10 +122,7 @@ class TemplateConfig(BaseModel):
 
     def to_yaml(self, target: Path) -> None:
         with target.open("w") as f:
-            yaml.dump(self.dict(), f)
-
-    class Config:
-        allow_mutation = False
+            yaml.dump(self.model_dump(), f)
 
 
 def load_template_config(template_config_path: Path) -> TemplateConfig:
