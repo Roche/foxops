@@ -1,6 +1,5 @@
 import base64
 from collections import namedtuple
-from datetime import timedelta
 
 import pytest
 from httpx import Client, HTTPStatusError
@@ -9,7 +8,7 @@ from tenacity.retry import retry_if_exception_type
 from tenacity.stop import stop_after_delay
 from tenacity.wait import wait_fixed
 
-from foxops.hosters import Hoster, ReconciliationStatus
+from foxops.hosters import Hoster
 from foxops.hosters.gitlab import GitlabHoster
 from foxops.hosters.types import MergeRequestStatus
 from tests._plugins.fixtures_gitlab import GitlabTestSettings
