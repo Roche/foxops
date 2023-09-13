@@ -74,11 +74,11 @@ jobs:
       matrix:
         python-version: ["3.11"]
 
+    container:
+      image: python:${{ matrix.python-version }}
+
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
       - uses: snok/install-poetry@v1
         with:
           version: ${{ env.POETRY_VERSION }}
