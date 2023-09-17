@@ -83,8 +83,9 @@ jobs:
           GITLAB_ROOT_PASSWORD: dvqMom4ruD9oqcErwtij
           GITLAB_OMNIBUS_CONFIG: |
             external_url 'http://gitlab:8929'
+            nginx['listen_port'] = 80
         ports:
-          - 8929:8929
+          - 8929:80
         volumes:
           - ${{ github.workspace }}/build/gitlab/config:/etc/gitlab
           - ${{ github.workspace }}/build/gitlab/logs:/var/log/gitlab
@@ -103,7 +104,7 @@ jobs:
           git config --global --add safe.directory $(pwd)
           poetry self add "poetry-dynamic-versioning[plugin]"
           poetry install
-          sleep 300
+          sleep 60
 
       - run: coverage run -m pytest
         env:
