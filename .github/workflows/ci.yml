@@ -74,10 +74,11 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.11"]
+        gitlab-version: ["16.3.3-ce.0"]
 
     services:
       gitlab:
-        image: gitlab/gitlab-ce:${{ env.GITLAB_CE_VERSION }}
+        image: gitlab/gitlab-ce:${{ matrix.gitlab-version }}
         env:
           GITLAB_OMNIBUS_CONFIG: |
             external_url 'https://gitlab:8929'
