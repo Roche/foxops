@@ -67,10 +67,8 @@ build:
 
 
 @pytest.fixture
-async def gitlab_hoster(gitlab_settings: GitlabTestSettings) -> Hoster:
-    assert gitlab_settings.token is not None
-
-    return GitlabHoster(address=gitlab_settings.address, token=gitlab_settings.token.get_secret_value())
+async def gitlab_hoster(gitlab_address, gitlab_access_token) -> Hoster:
+    return GitlabHoster(address=gitlab_address, token=gitlab_access_token)
 
 
 async def test_get_merge_request_status_returns_open_for_open_merge_request(

@@ -74,7 +74,7 @@ class GitlabHoster(Hoster):
         self.web_address, self.api_address = evaluate_gitlab_address(address)
         self.token = token
         self.client = httpx.AsyncClient(
-            base_url=self.api_address, headers={"PRIVATE-TOKEN": self.token}, timeout=httpx.Timeout(120)
+            base_url=self.api_address, headers={"Authorization": f"Bearer {self.token}"}, timeout=httpx.Timeout(120)
         )
 
     async def validate(self) -> None:

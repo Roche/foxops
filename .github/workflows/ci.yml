@@ -107,8 +107,8 @@ jobs:
         env:
           # FoxOps test configuration
           FOXOPS_TESTS_GITLAB_ADDRESS: https://gitlab:8929
-          FOXOPS_TESTS_GITLAB_ROOT_GROUP_ID: 73622910
-          FOXOPS_TESTS_GITLAB_TOKEN: ${{ secrets.FOXOPS_TESTS_GITLAB_TOKEN }}
+          FOXOPS_TESTS_GITLAB_USERNAME: root
+          FOXOPS_TESTS_GITLAB_PASSWORD: dvqMom4ruD9oqcErwtij
 
       - name: Check test coverage
         run: coverage report
