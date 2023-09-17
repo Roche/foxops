@@ -78,15 +78,13 @@ variables:
 
 
 @pytest.fixture
-async def foxops_client(gitlab_settings: GitlabTestSettings, foxops_database: str, monkeypatch):
+async def foxops_client(gitlab_address: str, gitlab_access_token: str, foxops_database: str, monkeypatch):
     static_token = "test-token"
-
-    assert gitlab_settings.token is not None
 
     monkeypatch.setenv("FOXOPS_DATABASE_URL", foxops_database)
     monkeypatch.setenv("FOXOPS_HOSTER_TYPE", "gitlab")
-    monkeypatch.setenv("FOXOPS_HOSTER_GITLAB_ADDRESS", gitlab_settings.address)
-    monkeypatch.setenv("FOXOPS_HOSTER_GITLAB_TOKEN", gitlab_settings.token.get_secret_value())
+    monkeypatch.setenv("FOXOPS_HOSTER_GITLAB_ADDRESS", gitlab_address)
+    monkeypatch.setenv("FOXOPS_HOSTER_GITLAB_TOKEN", gitlab_access_token)
     monkeypatch.setenv("FOXOPS_STATIC_TOKEN", static_token)
     monkeypatch.setenv("FOXOPS_LOG_LEVEL", "DEBUG")
 
