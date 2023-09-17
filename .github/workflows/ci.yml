@@ -100,6 +100,7 @@ jobs:
           version: ${{ env.POETRY_VERSION }}
       - name: Install dependencies
         run: |
+          git config --global --add safe.directory $(pwd)
           poetry self add "poetry-dynamic-versioning[plugin]"
           poetry install
 
