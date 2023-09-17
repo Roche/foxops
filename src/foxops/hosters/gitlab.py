@@ -168,7 +168,7 @@ class GitlabHoster(Hoster):
             metadata = await self.get_repository_metadata(repository)
             repository = metadata["http_url"]
 
-        clone_url = add_authentication_to_git_clone_url(repository, "__token__", self.token)
+        clone_url = add_authentication_to_git_clone_url(repository, "oauth2", self.token)
 
         # we assume that `repository` is already a proper HTTP(S) URL
         local_clone_directory = Path(mkdtemp())
