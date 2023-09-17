@@ -103,7 +103,7 @@ jobs:
           git config --global --add safe.directory $(pwd)
           poetry self add "poetry-dynamic-versioning[plugin]"
           poetry install
-          sleep 120
+          sleep 300
 
       - run: coverage run -m pytest
         env:
