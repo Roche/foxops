@@ -90,7 +90,7 @@ jobs:
           version: ${{ env.POETRY_VERSION }}
       - name: Start GitLab
         run: |
-          docker compose -f docker-compose.ci.yml up -d
+          docker compose -f docker-compose.tests.yml up -d --wait
           ./scripts/await-healthy.sh
       - name: Install dependencies
         run: |
@@ -100,7 +100,7 @@ jobs:
 
       - run: coverage run -m pytest
         env:
-          FOXOPS_TESTS_GITLAB_ADDRESS: http://localhost:8929
+          FOXOPS_TESTS_GITLAB_ADDRESS: http://127.0.0.1:8929
           FOXOPS_TESTS_GITLAB_USERNAME: root
           FOXOPS_TESTS_GITLAB_PASSWORD: ${{ env.GITLAB_ROOT_PASSWORD }}
 
