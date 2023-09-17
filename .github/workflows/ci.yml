@@ -68,7 +68,7 @@ jobs:
 
 
   tests:
-    name: tests on ${{ matrix.python-version }}
+    name: tests on Python ${{ matrix.python-version }} / Gitlab ${{ matrix.gitlab-version }}
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
