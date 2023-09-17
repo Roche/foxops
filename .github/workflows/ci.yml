@@ -67,12 +67,17 @@ jobs:
 
 
   tests:
-    name: tests on ${{ matrix.python-version }}
+    name: tests on Python ${{ matrix.python-version }} / Gitlab ${{ matrix.gitlab-version }}
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.11"]
+        gitlab-version: ["16.3.3-ce.0"]
+
+    env:
+      GITLAB_CE_VERSION: ${{ matrix.gitlab-version }}
+      GITLAB_ROOT_PASSWORD: dvqMom4ruD9oqcErwtij
 
     steps:
       - uses: actions/checkout@v4
@@ -82,6 +87,8 @@ jobs:
       - uses: snok/install-poetry@v1
         with:
           version: ${{ env.POETRY_VERSION }}
+      - name: Start GitLab
+        run: docker compose -f docker-compose.tests.yml up -d --wait
       - name: Install dependencies
         run: |
           poetry self add "poetry-dynamic-versioning[plugin]"
@@ -89,10 +96,9 @@ jobs:
 
       - run: coverage run -m pytest
         env:
-          # FoxOps test configuration
-          FOXOPS_TESTS_GITLAB_ADDRESS: https://gitlab.com
-          FOXOPS_TESTS_GITLAB_ROOT_GROUP_ID: 73622910
-          FOXOPS_TESTS_GITLAB_TOKEN: ${{ secrets.FOXOPS_TESTS_GITLAB_TOKEN }}
+          FOXOPS_TESTS_GITLAB_ADDRESS: http://127.0.0.1:8929
+          FOXOPS_TESTS_GITLAB_USERNAME: root
+          FOXOPS_TESTS_GITLAB_PASSWORD: ${{ env.GITLAB_ROOT_PASSWORD }}
 
       - name: Check test coverage
         run: coverage report
