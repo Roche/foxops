@@ -13,7 +13,6 @@ permissions:
 
 env:
   FORCE_COLOR: "1"  # Make tools pretty.
-  GITLAB_CE_VERSION: "16.3.3-ce.0"
   PYTHON_LATEST: "3.11"
   POETRY_VERSION: "1.4.0"
   POETRY_VIRTUALENVS_CREATE: false
@@ -89,12 +88,9 @@ jobs:
         with:
           version: ${{ env.POETRY_VERSION }}
       - name: Start GitLab
-        run: |
-          docker compose -f docker-compose.tests.yml up -d --wait
-          ./scripts/await-healthy.sh
+        run: docker compose -f docker-compose.tests.yml up -d --wait
       - name: Install dependencies
         run: |
-          git config --global --add safe.directory $(pwd)
           poetry self add "poetry-dynamic-versioning[plugin]"
           poetry install
 
