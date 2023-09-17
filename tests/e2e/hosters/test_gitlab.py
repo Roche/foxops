@@ -11,7 +11,6 @@ from tenacity.wait import wait_fixed
 from foxops.hosters import Hoster
 from foxops.hosters.gitlab import GitlabHoster
 from foxops.hosters.types import MergeRequestStatus
-from tests._plugins.fixtures_gitlab import GitlabTestSettings
 
 # mark all tests in this module as e2e
 pytestmark = pytest.mark.e2e

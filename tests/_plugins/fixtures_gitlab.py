@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 
 import pytest
 from httpx import Client, HTTPStatusError, Timeout
-from pydantic import SecretStr, model_validator, ValidationError, field_validator
+from pydantic import SecretStr, ValidationError, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -53,8 +53,10 @@ def gitlab_settings():
     try:
         gitlab_settings = GitlabTestSettings()
     except ValidationError:
-        pytest.skip("No information provided about a Gitlab instance that can be used for tests "
-                    "(via FOXOPS_TESTS_GITLAB_* environment variables). Skipping.")
+        pytest.skip(
+            "No information provided about a Gitlab instance that can be used for tests "
+            "(via FOXOPS_TESTS_GITLAB_* environment variables). Skipping."
+        )
 
     return gitlab_settings
 
