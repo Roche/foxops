@@ -90,7 +90,7 @@ jobs:
       - name: Start gitlab
         run: |
           docker compose -f docker-compose.ci.yml up -d
-          ../scripts/await-healthy.sh
+          ./scripts/await-healthy.sh
       - name: Install dependencies
         run: |
           git config --global --add safe.directory $(pwd)
