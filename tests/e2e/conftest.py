@@ -6,7 +6,6 @@ import pytest
 from httpx import AsyncClient, Client
 
 from foxops.__main__ import create_app
-from tests._plugins.fixtures_gitlab import GitlabTestSettings
 
 
 @pytest.fixture(scope="session")
