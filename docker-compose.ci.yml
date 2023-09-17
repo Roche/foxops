@@ -1,0 +1,21 @@
+services:
+  gitlab-ce:
+    image: gitlab/gitlab-ce:${GITLAB_CE_VERSION}
+    restart: always
+    ports:
+      - 8929:8929
+    environment:
+      GITLAB_ROOT_PASSWORD: dvqMom4ruD9oqcErwtij
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://127.0.0.1:8929'
+    labels:
+      foxops-gitlab/owned: ''
+    volumes:
+      - config-ce:/etc/gitlab
+      - logs-ce:/var/log/gitlab
+      - data-ce:/var/opt/gitlab
+
+volumes:
+  config-ce:
+  logs-ce:
+  data-ce:

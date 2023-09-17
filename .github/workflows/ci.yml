@@ -76,35 +76,26 @@ jobs:
         python-version: ["3.11"]
         gitlab-version: ["16.3.3-ce.0"]
 
-    services:
-      gitlab:
-        image: gitlab/gitlab-ce:${{ matrix.gitlab-version }}
-        env:
-          GITLAB_ROOT_PASSWORD: dvqMom4ruD9oqcErwtij
-          GITLAB_OMNIBUS_CONFIG: |
-            external_url 'http://gitlab:8929'
-            nginx['listen_port'] = 80
-        ports:
-          - 8929:80
-        volumes:
-          - ${{ github.workspace }}/build/gitlab/config:/etc/gitlab
-          - ${{ github.workspace }}/build/gitlab/logs:/var/log/gitlab
-          - ${{ github.workspace }}/build/gitlab/opt:/var/opt/gitlab
-
-    container:
-      image: python:${{ matrix.python-version }}
+    env:
+      GITLAB_CE_VERSION: ${{ matrix.gitlab-version }}
 
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
       - uses: snok/install-poetry@v1
         with:
           version: ${{ env.POETRY_VERSION }}
+      - name: Start gitlab
+        run: |
+          docker compose up -d -f docker-compose.ci.yml
+          ../scripts/await-healthy.sh
       - name: Install dependencies
         run: |
           git config --global --add safe.directory $(pwd)
           poetry self add "poetry-dynamic-versioning[plugin]"
           poetry install
-          sleep 60
 
       - run: coverage run -m pytest
         env:
