@@ -78,6 +78,7 @@ jobs:
 
     env:
       GITLAB_CE_VERSION: ${{ matrix.gitlab-version }}
+      GITLAB_ROOT_PASSWORD: dvqMom4ruD9oqcErwtij
 
     steps:
       - uses: actions/checkout@v4
@@ -87,7 +88,7 @@ jobs:
       - uses: snok/install-poetry@v1
         with:
           version: ${{ env.POETRY_VERSION }}
-      - name: Start gitlab
+      - name: Start GitLab
         run: |
           docker compose -f docker-compose.ci.yml up -d
           ./scripts/await-healthy.sh
@@ -99,10 +100,9 @@ jobs:
 
       - run: coverage run -m pytest
         env:
-          # FoxOps test configuration
           FOXOPS_TESTS_GITLAB_ADDRESS: http://localhost:8929
           FOXOPS_TESTS_GITLAB_USERNAME: root
-          FOXOPS_TESTS_GITLAB_PASSWORD: dvqMom4ruD9oqcErwtij
+          FOXOPS_TESTS_GITLAB_PASSWORD: ${{ env.GITLAB_ROOT_PASSWORD }}
 
       - name: Check test coverage
         run: coverage report
