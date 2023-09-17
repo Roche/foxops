@@ -153,6 +153,24 @@ class GitlabHoster(Hoster):
             with_automerge=with_automerge,
         )
 
+        # wait until Gitlab finished mergability checks
+        for _ in range(5):
+            if merge_request["merge_status"] != "checking":
+                break
+
+            response = await self.client.get(
+                f"/projects/{quote_plus(incarnation_repository)}/merge_requests/{merge_request['iid']}"
+            )
+            response.raise_for_status()
+            merge_request = response.json()
+
+            await asyncio.sleep(5)
+        else:
+            logger.warning(
+                f"Merge request {merge_request['web_url']} is still in state 'checking' after 5 retries, "
+                f"continuing with the assumption that it is mergeable"
+            )
+
         if with_automerge:
             logger.info(f"Triggering automerge for the new Merge Request {merge_request['web_url']}")
             merge_request = await self._automerge_merge_request(merge_request)
