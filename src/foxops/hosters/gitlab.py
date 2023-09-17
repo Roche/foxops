@@ -156,7 +156,7 @@ class GitlabHoster(Hoster):
 
         # wait until Gitlab finished mergability checks
         for _ in range(5):
-            if merge_request["detailed_merge_status"] not in ["checking", "unchecked"]:
+            if merge_request["detailed_merge_status"] not in ["preparing", "checking", "unchecked"]:
                 break
 
             response = await self.client.get(

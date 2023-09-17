@@ -34,6 +34,9 @@ def configure_uvicorn_logging():
 
 
 def setup_logging(level: int | str) -> None:
+    if structlog.is_configured():
+        return
+
     shared_processors: Sequence[Processor] = [
         merge_contextvars,
         structlog.stdlib.add_log_level,
