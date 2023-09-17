@@ -13,6 +13,7 @@ permissions:
 
 env:
   FORCE_COLOR: "1"  # Make tools pretty.
+  GITLAB_CE_VERSION: "16.3.3-ce.0"
   PYTHON_LATEST: "3.11"
   POETRY_VERSION: "1.4.0"
   POETRY_VIRTUALENVS_CREATE: false
@@ -74,6 +75,19 @@ jobs:
       matrix:
         python-version: ["3.11"]
 
+    services:
+      gitlab:
+        image: gitlab/gitlab-ce:${{ env.GITLAB_CE_VERSION }}
+        env:
+          GITLAB_OMNIBUS_CONFIG: |
+            external_url 'https://gitlab:8929'
+        ports:
+          - 8929:8929
+        volumes:
+          - ${{ env.GITHUB_WORKSPACE }}/gitlab/config:/etc/gitlab
+          - ${{ env.GITHUB_WORKSPACE }}/gitlab/logs:/var/log/gitlab
+          - ${{ env.GITHUB_WORKSPACE }}/gitlab/opt:/var/opt/gitlab
+
     container:
       image: python:${{ matrix.python-version }}
 
@@ -90,7 +104,7 @@ jobs:
       - run: coverage run -m pytest
         env:
           # FoxOps test configuration
-          FOXOPS_TESTS_GITLAB_ADDRESS: https://gitlab.com
+          FOXOPS_TESTS_GITLAB_ADDRESS: https://gitlab:8929
           FOXOPS_TESTS_GITLAB_ROOT_GROUP_ID: 73622910
           FOXOPS_TESTS_GITLAB_TOKEN: ${{ secrets.FOXOPS_TESTS_GITLAB_TOKEN }}
 
