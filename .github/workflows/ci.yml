@@ -84,9 +84,9 @@ jobs:
         ports:
           - 8929:8929
         volumes:
-          - ${{ env.GITHUB_WORKSPACE }}/gitlab/config:/etc/gitlab
-          - ${{ env.GITHUB_WORKSPACE }}/gitlab/logs:/var/log/gitlab
-          - ${{ env.GITHUB_WORKSPACE }}/gitlab/opt:/var/opt/gitlab
+          - ${{ github.workspace }}/build/gitlab/config:/etc/gitlab
+          - ${{ github.workspace }}/build/gitlab/logs:/var/log/gitlab
+          - ${{ github.workspace }}/build/gitlab/opt:/var/opt/gitlab
 
     container:
       image: python:${{ matrix.python-version }}
