@@ -80,8 +80,9 @@ jobs:
       gitlab:
         image: gitlab/gitlab-ce:${{ matrix.gitlab-version }}
         env:
+          GITLAB_ROOT_PASSWORD: dvqMom4ruD9oqcErwtij
           GITLAB_OMNIBUS_CONFIG: |
-            external_url 'https://gitlab:8929'
+            external_url 'http://gitlab:8929'
         ports:
           - 8929:8929
         volumes:
