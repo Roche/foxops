@@ -21,7 +21,7 @@ uvicorn = "^0.23.2"
 fastapi = "^0.103.1"
 
 # Auxiliary
-httpx = "^0.24.1"
+httpx = ">=0.24.1,<0.26.0"
 tenacity = "^8.2.1"
 pydantic = "^2.3.0"
 structlog = "^23.1.0"
