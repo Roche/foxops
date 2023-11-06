@@ -203,6 +203,13 @@ async def reset_incarnation(
 
     try:
         change = await change_service.reset_incarnation(incarnation_id, to_version, to_data)
+    except ProvidedTemplateDataInvalidError as e:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        error_messages = e.get_readable_error_messages()
+        return ApiError(
+            message=f"could not initialize the incarnation as the provided template data "
+            f"is invalid: {'; '.join(error_messages)}"
+        )
     except IncarnationNotFoundError:
         response.status_code = status.HTTP_404_NOT_FOUND
         return ApiError(message="The incarnation was not found in the inventory")
@@ -268,6 +275,13 @@ async def update_incarnation(
             requested_version=desired_incarnation_state_patch.template_repository_version,
             requested_data=desired_incarnation_state_patch.template_data,
             automerge=desired_incarnation_state_patch.automerge,
+        )
+    except ProvidedTemplateDataInvalidError as e:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        error_messages = e.get_readable_error_messages()
+        return ApiError(
+            message=f"could not initialize the incarnation as the provided template data "
+            f"is invalid: {'; '.join(error_messages)}"
         )
     except IncarnationNotFoundError as exc:
         response.status_code = status.HTTP_404_NOT_FOUND
