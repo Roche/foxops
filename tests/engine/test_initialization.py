@@ -233,7 +233,7 @@ variables:
     assert (incarnation_dir / "README.md").read_text() == "John Doe knows that 1+2 = 42"
 
 
-async def test_initialize_template_ignores_but_warns_about_additional_variables(tmp_path, mocker):
+async def test_initialize_template_adds_additional_variables_to_state(tmp_path):
     # GIVEN
     (tmp_path / "fengine.yaml").write_text(
         """
@@ -272,3 +272,5 @@ variables:
 
     # THEN
     assert incarnation_state is not None
+    assert "additional_variable_1" not in incarnation_state.template_data
+    assert "additional_variable_2" not in incarnation_state.template_data
