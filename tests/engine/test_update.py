@@ -2,9 +2,15 @@ import shutil
 from pathlib import Path
 
 import pytest
+from ruamel.yaml import YAML
 
 from foxops import utils
-from foxops.engine import diff_and_patch, initialize_incarnation, update_incarnation
+from foxops.engine import (
+    IncarnationState,
+    diff_and_patch,
+    initialize_incarnation,
+    update_incarnation,
+)
 from foxops.engine.models.template_config import (
     StringVariableDefinition,
     TemplateConfig,
@@ -576,3 +582,74 @@ async def test_update_incarnation_with_change_of_default_values_in_template(tmp_
     # THEN
     assert (incarnation_directory / "var1.txt").read_text() == "value: user-specified-value"
     assert (incarnation_directory / "var2.txt").read_text() == "value: 2"
+
+
+async def test_update_incarnation_from_legacy_state_without_full_template_data(tmp_path):
+    """
+    Old foxops versions (pre v2.2) stored the template status without the additional "template_data_full" field.
+    This test verifies that an incarnation can still be updated from such a legacy state.
+    """
+
+    # GIVEN
+    # ... a template with a single variable
+    template_directory = tmp_path / "template"
+    template_directory.mkdir()
+
+    TemplateConfig(
+        variables={
+            "var1": StringVariableDefinition(description="dummy", default="abc"),
+        }
+    ).save(template_directory / "fengine.yaml")
+    (template_directory / "template").mkdir()
+    (template_directory / "template" / "var1.txt").write_text("value: {{ var1 }}")
+    await init_repository(template_directory)
+
+    # ... and an updated version of that template
+    template_updated_directory = tmp_path / "template-updated"
+    shutil.copytree(template_directory, template_updated_directory)
+
+    (template_updated_directory / "template" / "var1.txt").write_text("value: {{ var1 }} (updated)")
+
+    # ... and an incarnation of the original template version
+    incarnation_directory = tmp_path / "incarnation"
+    incarnation_directory.mkdir()
+
+    incarnation_state = await initialize_incarnation(
+        template_root_dir=template_directory,
+        template_repository="any-repository-url",
+        template_repository_version="any-version",
+        template_data={
+            "var1": "user-specified-value",
+        },
+        incarnation_root_dir=incarnation_directory,
+    )
+
+    # ... with the incarnation state modified to not contain the full template data
+    incarnation_state_path = incarnation_directory / ".fengine.yaml"
+    with incarnation_state_path.open("r") as f:
+        y = YAML(typ="safe").load(f)
+
+    del y["template_data_full"]
+
+    with incarnation_state_path.open("w") as f:
+        yaml = YAML(typ="safe")
+        yaml.default_flow_style = False
+
+        yaml.dump(y, f)
+
+    await init_repository(incarnation_directory)
+
+    # WHEN
+    # ... the incarnation is updated to the new template version
+    await update_incarnation(
+        original_template_root_dir=template_directory,
+        updated_template_root_dir=template_updated_directory,
+        updated_template_repository_version=incarnation_state.template_repository_version,
+        updated_template_data=incarnation_state.template_data,
+        incarnation_root_dir=incarnation_directory,
+        diff_patch_func=diff_and_patch,
+    )
+
+    # THEN
+    assert (incarnation_directory / "var1.txt").read_text() == "value: user-specified-value (updated)"
+    assert IncarnationState.from_file(incarnation_state_path).template_data_full["fengine"]

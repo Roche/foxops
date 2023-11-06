@@ -128,9 +128,6 @@ def test_object_variable_parsing():
                                 "description": "testdescription",
                             },
                         },
-                        "default": {
-                            "test_string": "test",
-                        },
                     },
                 },
             },
@@ -148,8 +145,6 @@ def test_object_variable_parsing():
         parsed.variables["varname"].children["test_object"].children["test_string"],
         StringVariableDefinition,
     )
-
-    assert parsed.variables["varname"].children["test_object"].default == {"test_string": "test"}
 
 
 def test_object_variable_parsing_fails_for_invalid_default():
@@ -269,3 +264,29 @@ def test_template_config_rejects_invalid_variable_names():
                 ),
             }
         )
+
+
+def test_template_data_validation_for_nested_objects_with_defaults_inside():
+    # GIVEN
+    template_config = TemplateConfig(
+        variables={
+            "test_object": ObjectVariableDefinition(
+                description="test object",
+                children={
+                    "test_string": StringVariableDefinition(
+                        description="test string",
+                        default="test",
+                    ),
+                },
+            ),
+        }
+    )
+    template_data = {}
+    parsed_config = TemplateConfig.model_validate(template_config)
+
+    # WHEN
+    data_model = parsed_config.data_model()
+    parsed_data = data_model.model_validate(template_data)
+
+    # THEN
+    assert parsed_data.test_object.test_string == "test"

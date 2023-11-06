@@ -7,26 +7,23 @@ import re
 from pathlib import Path
 from typing import Annotated, Any, Literal, Self, Type, Union
 
-from pydantic import (
-    AfterValidator,
-    BaseModel,
-    Field,
-    ValidationError,
-    create_model,
-    model_validator,
-)
+from pydantic import AfterValidator, BaseModel, Field, ValidationError, create_model
 from ruamel.yaml import YAML
 
 
 class BaseVariableDefinition(BaseModel, abc.ABC):
     description: str
-    default: Any | None = None
-
-    def is_required(self) -> bool:
-        return self.default is None
 
     @abc.abstractmethod
-    def value_model(self) -> Any:
+    def pydantic_field_default(self) -> Any:
+        """
+        Returns the default value that can be used in a pydantic model field definition for this variable.
+        """
+
+        ...
+
+    @abc.abstractmethod
+    def pydantic_field_model(self) -> Any:
         """
         Returns the object that can be used in a pydantic model field definition for representing the data
         of this variable.
@@ -35,31 +32,38 @@ class BaseVariableDefinition(BaseModel, abc.ABC):
         ...
 
 
-class StringVariableDefinition(BaseVariableDefinition):
+class BaseFlatVariableDefinition(BaseVariableDefinition):
+    default: Any | None = None
+
+    def pydantic_field_default(self) -> Any:
+        return self.default if self.default is not None else ...
+
+
+class StringVariableDefinition(BaseFlatVariableDefinition):
     type: Literal["str", "string"] = "string"
     default: str | None = None
 
-    def value_model(self) -> Any:
+    def pydantic_field_model(self) -> Any:
         return str
 
 
-class IntegerVariableDefinition(BaseVariableDefinition):
+class IntegerVariableDefinition(BaseFlatVariableDefinition):
     type: Literal["int", "integer"] = "integer"
     default: int | None = None
 
-    def value_model(self) -> Any:
+    def pydantic_field_model(self) -> Any:
         return int
 
 
-class BooleanVariableDefinition(BaseVariableDefinition):
+class BooleanVariableDefinition(BaseFlatVariableDefinition):
     type: Literal["boolean"] = "boolean"
     default: bool | None = None
 
-    def value_model(self) -> Any:
+    def pydantic_field_model(self) -> Any:
         return bool
 
 
-class BaseListVariableDefinition(BaseVariableDefinition):
+class BaseListVariableDefinition(BaseFlatVariableDefinition):
     type: Literal["list"] = "list"
 
 
@@ -68,7 +72,7 @@ class StringListVariableDefinition(BaseListVariableDefinition):
 
     default: list[str] | None = None
 
-    def value_model(self) -> Any:
+    def pydantic_field_model(self) -> Any:
         return list[str]
 
 
@@ -103,24 +107,18 @@ class ObjectVariableDefinition(BaseVariableDefinition):
     type: Literal["object"] = "object"
     children: VariableDefinitions
 
-    default: dict[str, Any] | None = None
+    def pydantic_field_default(self) -> Any:
+        try:
+            return self.pydantic_field_model()()
+        except ValidationError:
+            return ...
 
-    def value_model(self) -> Type[BaseModel]:
+    def pydantic_field_model(self) -> Type[BaseModel]:
         fields: dict[str, Any] = {
-            name: (child.value_model(), ... if child.default is None else child.default)
+            name: (child.pydantic_field_model(), child.pydantic_field_default())
             for name, child in self.children.items()
         }
         return create_model("ObjectVariable", **fields)
-
-    @model_validator(mode="after")
-    def validate_default(self) -> Self:
-        if self.default is not None:
-            try:
-                self.value_model().model_validate(self.default)
-            except ValidationError as e:
-                raise ValueError(f"default value does not match the specified children schema ({e.errors()})") from e
-
-        return self
 
 
 class TemplateRenderingConfig(BaseModel):
@@ -153,8 +151,7 @@ class TemplateConfig(BaseModel):
         """
 
         fields: dict[str, Any] = {
-            name: (var.value_model(), ... if var.default is None else var.default)
-            for name, var in self.variables.items()
+            name: (var.pydantic_field_model(), var.pydantic_field_default()) for name, var in self.variables.items()
         }
         return create_model("TemplateDataModel", **fields)
 

@@ -43,7 +43,13 @@ class IncarnationState(BaseModel):
 
     @classmethod
     def from_string(cls, content: str) -> Self:
-        return cls.model_validate(YAML(typ="safe").load(content))
+        obj = YAML(typ="safe").load(content)
+
+        # support reading legacy incarnation state files (<= foxops v2.2)
+        if "template_data_full" not in obj:
+            obj["template_data_full"] = obj["template_data"]
+
+        return cls.model_validate(obj)
 
     def save(self, path: Path) -> None:
         yaml = YAML(typ="safe")
