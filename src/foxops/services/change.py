@@ -96,6 +96,7 @@ class _PreparedChangeEnvironment:
     to_version_hash: str
     to_version: str
     to_data: TemplateData
+    to_data_full: TemplateData
     expected_revision: int
 
     branch_name: str
@@ -188,6 +189,7 @@ class ChangeService:
                 requested_version_hash=incarnation_state.template_repository_version_hash,
                 requested_version=template_repository_version,
                 requested_data=json.dumps(template_data),
+                template_data_full=json.dumps(incarnation_state.template_data_full),
             )
 
             try:
@@ -255,6 +257,7 @@ class ChangeService:
                 requested_version_hash=incarnation_state.template_repository_version_hash,
                 requested_version=incarnation_state.template_repository_version,
                 requested_data=json.dumps(incarnation_state.template_data),
+                template_data_full=json.dumps(incarnation_state.template_data),
                 merge_request_branch_name=reset_branch_name,
             )
 
@@ -311,6 +314,7 @@ class ChangeService:
                 requested_version_hash=env.to_version_hash,
                 requested_version=env.to_version,
                 requested_data=json.dumps(env.to_data),
+                template_data_full=json.dumps(env.to_data_full),
             )
 
             # if some failure happens after this point, the database object can be cleaned
@@ -345,6 +349,7 @@ class ChangeService:
                 requested_version_hash=env.to_version_hash,
                 requested_version=env.to_version,
                 requested_data=json.dumps(env.to_data),
+                template_data_full=json.dumps(env.to_data_full),
                 merge_request_branch_name=env.branch_name,
             )
 
@@ -458,6 +463,7 @@ class ChangeService:
             requested_version_hash=change.requested_version_hash,
             requested_version=change.requested_version,
             requested_data=json.loads(change.requested_data),
+            template_data_full=json.loads(change.template_data_full),
             created_at=change.created_at,
             commit_sha=change.commit_sha,
         )
@@ -567,6 +573,7 @@ class ChangeService:
             template_repository_version=change.requested_version,
             template_repository_version_hash=change.requested_version_hash,
             template_data=change.requested_data,
+            template_data_full=change.template_data_full,
         )
 
     @asynccontextmanager
@@ -632,6 +639,7 @@ class ChangeService:
                 to_version_hash=await local_template_repository.head(),
                 to_version=to_version,
                 to_data=incarnation_state.template_data,
+                to_data_full=incarnation_state.template_data_full,
                 expected_revision=last_change.revision + 1,
                 branch_name=branch_name,
                 commit_sha=commit_sha,

@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from foxops.database.repositories.incarnation.errors import IncarnationNotFoundError
 from foxops.dependencies import get_change_service, get_hoster, get_incarnation_service
 from foxops.engine import TemplateData
+from foxops.engine.errors import ProvidedTemplateDataInvalidError
 from foxops.errors import IncarnationNotFoundError as IncarnationNotFoundLegacyError
 from foxops.hosters import Hoster
 from foxops.logger import bind, get_logger
@@ -79,6 +80,10 @@ async def list_incarnations(
             "description": "The incarnation has been successfully initialized and was added to the inventory.",
             "model": IncarnationWithDetails,
         },
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "The desired incarnation state is invalid",
+            "model": ApiError,
+        },
         status.HTTP_409_CONFLICT: {
             "description": "There is already a foxops incarnation with the same repository and target directory",
             "model": ApiError,
@@ -92,7 +97,6 @@ async def list_incarnations(
 async def create_incarnation(
     response: Response,
     desired_incarnation_state: DesiredIncarnationState,
-    allow_import: bool = False,
     change_service: ChangeService = Depends(get_change_service),
 ):
     """Initializes a new incarnation and adds it to the inventory.
@@ -101,10 +105,6 @@ async def create_incarnation(
     """
     bind(incarnation_repository=desired_incarnation_state.incarnation_repository)
     bind(target_directory=desired_incarnation_state.target_directory)
-
-    if allow_import is True:
-        response.status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
-        return ApiError(message="The `allow_import` parameter is no longer supported")
 
     template_data = desired_incarnation_state.template_data or {}
 
@@ -115,6 +115,13 @@ async def create_incarnation(
             template_repository=desired_incarnation_state.template_repository,
             template_repository_version=desired_incarnation_state.template_repository_version,
             template_data=template_data,
+        )
+    except ProvidedTemplateDataInvalidError as e:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        error_messages = e.get_readable_error_messages()
+        return ApiError(
+            message=f"could not initialize the incarnation as the provided template data "
+            f"is invalid: {'; '.join(error_messages)}"
         )
     except IncarnationAlreadyExists:
         response.status_code = status.HTTP_409_CONFLICT

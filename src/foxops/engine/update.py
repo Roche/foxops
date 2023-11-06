@@ -2,9 +2,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from foxops import utils
-from foxops.engine.fvars import merge_template_data_with_fvars
-from foxops.engine.initialization import _initialize_incarnation
-from foxops.engine.models import IncarnationState, TemplateData, load_incarnation_state
+from foxops.engine import initialize_incarnation
+from foxops.engine.models.incarnation_state import IncarnationState, TemplateData
 from foxops.engine.patching.git_diff_patch import PatchResult
 from foxops.logger import get_logger
 
@@ -19,6 +18,14 @@ async def update_incarnation_from_git_template_repository(
     incarnation_root_dir: Path,
     diff_patch_func,
 ) -> tuple[bool, IncarnationState, PatchResult | None]:
+    """
+    Update an incarnation with a new version of a template.
+
+    The process works roughly like this:
+    * create a git worktree from the template repository version ('v1') that is currently in use by the incarnation
+    * create a git worktree from the template repository version ('v2') that the incarnation should be updated to
+
+    """
     if update_template_repository_version.startswith("-"):
         raise ValueError(
             f"update_template_repository_version must ba a valid git refspec and "
@@ -26,8 +33,7 @@ async def update_incarnation_from_git_template_repository(
         )
 
     # initialize pristine incarnation from current incarnation state
-    current_incarnation_state_path = incarnation_root_dir / ".fengine.yaml"
-    current_incarnation_state = load_incarnation_state(current_incarnation_state_path)
+    current_incarnation_state = IncarnationState.from_file(incarnation_root_dir / ".fengine.yaml")
 
     with TemporaryDirectory() as original_template_root_dir, TemporaryDirectory() as updated_template_root_dir:
         logger.debug(
@@ -74,22 +80,23 @@ async def update_incarnation(
     diff_patch_func,
 ) -> tuple[bool, IncarnationState, PatchResult | None]:
     """Update an incarnation with a new version of a template."""
-    # initialize pristine incarnation from current incarnation state
-    current_incarnation_state_path = incarnation_root_dir / ".fengine.yaml"
-    current_incarnation_state = load_incarnation_state(current_incarnation_state_path)
 
-    with TemporaryDirectory() as tmp_pristine_incarnation_dir, TemporaryDirectory() as tmp_updated_incarnation_dir:
+    # initialize pristine incarnation from current incarnation state
+    incarnation_state_path = incarnation_root_dir / ".fengine.yaml"
+    incarnation_state = IncarnationState.from_file(incarnation_state_path)
+
+    with TemporaryDirectory() as incarnation_v1_dir, TemporaryDirectory() as incarnation_v2_dir:
         logger.debug(
             "initialize pristine incarnation from current incarnation state",
             template_dir=original_template_root_dir,
-            incarnation_dir=tmp_pristine_incarnation_dir,
+            incarnation_dir=incarnation_v1_dir,
         )
-        await _initialize_incarnation(
+        await initialize_incarnation(
             template_root_dir=original_template_root_dir,
-            template_repository=current_incarnation_state.template_repository,
-            template_repository_version=current_incarnation_state.template_repository_version,
-            template_data=current_incarnation_state.template_data,
-            incarnation_root_dir=Path(tmp_pristine_incarnation_dir),
+            template_repository=incarnation_state.template_repository,
+            template_repository_version=incarnation_state.template_repository_version,
+            template_data=incarnation_state.template_data,
+            incarnation_root_dir=Path(incarnation_v1_dir),
         )
 
         # copy over .fengine.yaml from the actual incarnation, just to make sure there are no formatting differences
@@ -97,40 +104,37 @@ async def update_incarnation(
         #
         # there were unclear cases where the YAML rending was slightly different (e.g. strings starting on a newline)
         # during updates, compared to the original incarnation rendering (reason unclear)
-        (Path(tmp_pristine_incarnation_dir) / ".fengine.yaml").write_bytes(current_incarnation_state_path.read_bytes())
+        (Path(incarnation_v1_dir) / ".fengine.yaml").write_bytes(incarnation_state_path.read_bytes())
 
         logger.debug(
             "initialize new incarnation from update incarnation state",
             template_dir=updated_template_root_dir,
-            incarnation_dir=tmp_updated_incarnation_dir,
+            incarnation_dir=incarnation_v2_dir,
         )
-        updated_incarnation_state = await _initialize_incarnation(
+        incarnation_v2_state = await initialize_incarnation(
             template_root_dir=updated_template_root_dir,
-            template_repository=current_incarnation_state.template_repository,
+            template_repository=incarnation_state.template_repository,
             template_repository_version=updated_template_repository_version,
-            template_data=merge_template_data_with_fvars(
-                updated_template_data,
-                incarnation_root_dir,
-            ),
-            incarnation_root_dir=Path(tmp_updated_incarnation_dir),
+            template_data=updated_template_data,
+            incarnation_root_dir=Path(incarnation_v2_dir),
         )
 
         # diff pristine and new incarnations
         # apply patch on incarnation to update
         logger.debug(
             "applying patch on pristine and new incarnations",
-            diff_a_directory=tmp_pristine_incarnation_dir,
-            diff_b_directory=tmp_updated_incarnation_dir,
+            diff_a_directory=incarnation_v1_dir,
+            diff_b_directory=incarnation_v2_dir,
             patch_directory=incarnation_root_dir,
         )
-        if (
-            patch_result := await diff_patch_func(
-                diff_a_directory=tmp_pristine_incarnation_dir,
-                diff_b_directory=tmp_updated_incarnation_dir,
-                patch_directory=incarnation_root_dir,
-            )
-        ) is not None:
-            return True, updated_incarnation_state, patch_result
+        patch_result = await diff_patch_func(
+            diff_a_directory=incarnation_v1_dir,
+            diff_b_directory=incarnation_v2_dir,
+            patch_directory=incarnation_root_dir,
+        )
+
+        if patch_result is not None:
+            return True, incarnation_v2_state, patch_result
         else:
             logger.debug("Update didn't change anything")
-            return False, updated_incarnation_state, None
+            return False, incarnation_v2_state, None

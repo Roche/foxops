@@ -54,6 +54,8 @@ class ChangeInDB(BaseModel):
     requested_version: str
     requested_data: str
 
+    template_data_full: str
+
     merge_request_id: str | None
     merge_request_branch_name: str | None
     model_config = ConfigDict(from_attributes=True)
@@ -98,6 +100,7 @@ class ChangeRepository:
         requested_version_hash: str,
         requested_version: str,
         requested_data: str,
+        template_data_full: str,
         merge_request_id: str | None = None,
         merge_request_branch_name: str | None = None,
     ) -> ChangeInDB:
@@ -122,6 +125,7 @@ class ChangeRepository:
                     requested_version_hash=requested_version_hash,
                     requested_version=requested_version,
                     requested_data=requested_data,
+                    template_data_full=template_data_full,
                     commit_sha=commit_sha,
                     commit_pushed=commit_pushed,
                     merge_request_id=merge_request_id,
@@ -148,6 +152,7 @@ class ChangeRepository:
         requested_version_hash: str,
         requested_version: str,
         requested_data: str,
+        template_data_full: str,
     ) -> ChangeInDB:
         async with self.engine.begin() as conn:
             query_insert_incarnation = (
@@ -172,6 +177,7 @@ class ChangeRepository:
                     requested_version_hash=requested_version_hash,
                     requested_version=requested_version,
                     requested_data=requested_data,
+                    template_data_full=template_data_full,
                     commit_sha=commit_sha,
                     commit_pushed=False,
                 )

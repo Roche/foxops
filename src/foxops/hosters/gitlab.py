@@ -17,7 +17,6 @@ from tenacity.stop import stop_after_delay
 from tenacity.wait import wait_fixed
 
 from foxops.engine import IncarnationState
-from foxops.engine.models import load_incarnation_state_from_string
 from foxops.errors import IncarnationRepositoryNotFound
 from foxops.external.git import (
     GitRepository,
@@ -106,7 +105,7 @@ class GitlabHoster(Hoster):
         response.raise_for_status()
         file_data = response.json()
 
-        return file_data["last_commit_id"], load_incarnation_state_from_string(
+        return file_data["last_commit_id"], IncarnationState.from_string(
             base64.b64decode(file_data["content"]).decode("utf-8")
         )
 

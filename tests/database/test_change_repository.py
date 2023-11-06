@@ -35,12 +35,14 @@ async def test_create_change_persists_all_data(change_repository: ChangeReposito
         requested_version_hash="dummy template sha",
         requested_version="v99",
         requested_data="dummy data (should be json)",
+        template_data_full="dummy data (should be json)",
         merge_request_id="123",
         merge_request_branch_name="mybranch",
     )
 
     assert change.id is not None
     assert change.type == ChangeType.DIRECT
+    assert change.template_data_full == "dummy data (should be json)"
 
 
 async def test_create_change_rejects_double_revision(change_repository: ChangeRepository, incarnation: IncarnationInDB):
@@ -52,6 +54,7 @@ async def test_create_change_rejects_double_revision(change_repository: ChangeRe
         requested_version_hash="dummy template sha",
         requested_version="v2",
         requested_data=json.dumps({"foo": "bar"}),
+        template_data_full=json.dumps({"foo": "bar"}),
         commit_sha="dummy sha",
         commit_pushed=False,
     )
@@ -65,6 +68,7 @@ async def test_create_change_rejects_double_revision(change_repository: ChangeRe
             requested_version_hash="dummy template sha2",
             requested_version="v3",
             requested_data=json.dumps({"foo": "bar"}),
+            template_data_full=json.dumps({"foo": "bar"}),
             commit_sha="dummy sha",
             commit_pushed=False,
         )
@@ -89,6 +93,7 @@ async def test_get_latest_change_for_incarnation_succeeds(
         requested_version_hash="dummy template sha",
         requested_version="v1",
         requested_data=json.dumps({"foo": "bar"}),
+        template_data_full=json.dumps({"foo": "bar"}),
     )
     await change_repository.create_change(
         incarnation_id=incarnation.id,
@@ -99,6 +104,7 @@ async def test_get_latest_change_for_incarnation_succeeds(
         requested_version_hash="dummy template sha2",
         requested_version="v2",
         requested_data=json.dumps({"foo": "bar"}),
+        template_data_full=json.dumps({"foo": "bar"}),
     )
 
     # WHEN
@@ -119,6 +125,7 @@ async def test_list_changes(change_repository: ChangeRepository, incarnation: In
         requested_version_hash="dummy template sha",
         requested_version="v1",
         requested_data=json.dumps({"foo": "bar"}),
+        template_data_full=json.dumps({"foo": "bar"}),
     )
     await change_repository.create_change(
         incarnation_id=incarnation.id,
@@ -129,6 +136,7 @@ async def test_list_changes(change_repository: ChangeRepository, incarnation: In
         requested_version_hash="dummy template sha2",
         requested_version="v2",
         requested_data=json.dumps({"foo": "bar"}),
+        template_data_full=json.dumps({"foo": "bar"}),
     )
 
     # WHEN
@@ -151,6 +159,7 @@ async def test_get_change_by_revision(change_repository: ChangeRepository, incar
         requested_version_hash="dummy template sha",
         requested_version="v1",
         requested_data=json.dumps({"foo": "bar"}),
+        template_data_full=json.dumps({"foo": "bar"}),
     )
 
     # WHEN
@@ -181,6 +190,7 @@ async def test_list_incarnations_with_change_summary_returns_all_incarnations_wi
         requested_version_hash="dummy template sha",
         requested_version="v1",
         requested_data=json.dumps({"foo": "bar"}),
+        template_data_full=json.dumps({"foo": "bar"}),
     )
     incarnation1_change2 = await change_repository.create_change(
         incarnation_id=incarnation1_change1.id,
@@ -191,6 +201,7 @@ async def test_list_incarnations_with_change_summary_returns_all_incarnations_wi
         requested_version_hash="dummy template sha2",
         requested_version="v2",
         requested_data=json.dumps({"foo": "bar"}),
+        template_data_full=json.dumps({"foo": "bar"}),
         merge_request_id="123",
         merge_request_branch_name="mybranch",
     )
@@ -203,6 +214,7 @@ async def test_list_incarnations_with_change_summary_returns_all_incarnations_wi
         requested_version_hash="dummy template sha",
         requested_version="v1",
         requested_data=json.dumps({"foo": "bar"}),
+        template_data_full=json.dumps({"foo": "bar"}),
     )
 
     # WHEN
@@ -234,6 +246,7 @@ async def test_update_change_commit_pushed_succeeds(change_repository: ChangeRep
         requested_version_hash="dummy template sha",
         requested_version="v1",
         requested_data=json.dumps({"foo": "bar"}),
+        template_data_full=json.dumps({"foo": "bar"}),
     )
 
     # WHEN
@@ -255,6 +268,7 @@ async def test_update_change_commit_sha_succeeds(change_repository: ChangeReposi
         requested_version_hash="dummy template sha",
         requested_version="v1",
         requested_data=json.dumps({"foo": "bar"}),
+        template_data_full=json.dumps({"foo": "bar"}),
     )
 
     # WHEN
@@ -278,6 +292,7 @@ async def test_update_change_commit_sha_fails_when_commit_is_already_pushed(
         requested_version_hash="dummy template sha",
         requested_version="v1",
         requested_data=json.dumps({"foo": "bar"}),
+        template_data_full=json.dumps({"foo": "bar"}),
     )
 
     # WHEN
@@ -296,6 +311,7 @@ async def test_delete_change_succeeds_in_deleting(change_repository: ChangeRepos
         requested_version_hash="dummy template sha",
         requested_version="v1",
         requested_data=json.dumps({"foo": "bar"}),
+        template_data_full=json.dumps({"foo": "bar"}),
     )
 
     # WHEN
@@ -322,6 +338,7 @@ async def test_create_incarnation_with_first_change(change_repository: ChangeRep
         requested_version_hash="dummy template sha",
         requested_version="v1",
         requested_data=json.dumps({"foo": "bar"}),
+        template_data_full=json.dumps({"foo": "bar"}),
     )
 
     # THEN
@@ -331,6 +348,7 @@ async def test_create_incarnation_with_first_change(change_repository: ChangeRep
     assert change.revision == 1
     assert change.requested_version == "v1"
     assert json.loads(change.requested_data) == {"foo": "bar"}
+    assert json.loads(change.template_data_full) == {"foo": "bar"}
     assert change.commit_sha == "commit_sha"
     assert change.commit_pushed is False
 
@@ -345,6 +363,7 @@ async def test_delete_incarnation_also_deletes_associated_changes(change_reposit
         requested_version_hash="dummy template sha",
         requested_version="v1",
         requested_data=json.dumps({"foo": "bar"}),
+        template_data_full=json.dumps({"foo": "bar"}),
     )
     incarnation_id = change.incarnation_id
 

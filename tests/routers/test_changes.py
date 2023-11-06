@@ -30,6 +30,7 @@ async def test_create_change(api_client: AsyncClient, change_service_mock: Chang
             requested_version="1.0.0",
             requested_version_hash="template_commit_sha",
             requested_data={},
+            template_data_full={},
             created_at=datetime.now(timezone.utc),
             commit_sha="commit_sha",
         )
@@ -56,6 +57,7 @@ async def test_list_changes(api_client: AsyncClient, change_service_mock: Change
                 requested_version="1.1.0",
                 requested_version_hash="template_commit_sha",
                 requested_data={},
+                template_data_full={},
                 created_at=datetime.now(timezone.utc),
                 commit_sha="commit_sha",
                 merge_request_id="1",
@@ -69,6 +71,7 @@ async def test_list_changes(api_client: AsyncClient, change_service_mock: Change
                 requested_version="1.0.0",
                 requested_version_hash="template_commit_sha",
                 requested_data={},
+                template_data_full={},
                 created_at=datetime.now(timezone.utc),
                 commit_sha="commit_sha",
             ),

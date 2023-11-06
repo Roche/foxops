@@ -7,7 +7,7 @@ from typing import AsyncIterator, Iterator
 
 from pydantic import BaseModel
 
-from foxops.engine import IncarnationState, load_incarnation_state
+from foxops.engine import IncarnationState
 from foxops.external.git import GitError, GitRepository, git_exec
 from foxops.hosters import GitSha, Hoster, MergeRequestId, ReconciliationStatus
 from foxops.hosters.types import MergeRequestStatus, RepositoryMetadata
@@ -101,7 +101,7 @@ class LocalHoster(Hoster):
                 return None
 
             commit_id = await repo.last_commit_id_that_changed_file(str(fengine_path))
-            incarnation_state = load_incarnation_state(fengine_path)
+            incarnation_state = IncarnationState.from_file(fengine_path)
 
         return commit_id, incarnation_state
 

@@ -70,6 +70,7 @@ Once you have all this, add the following environment variables and rerun the te
 ```shell
 # defaults to "https://gitlab.com" if not specified
 export FOXOPS_TESTS_GITLAB_ADDRESS=<address of the Gitlab instance>
+export FOXOPS_TESTS_GITLAB_ROOT_GROUP_ID=<ID of the root group>
 export FOXOPS_TESTS_GITLAB_TOKEN=<access token that can create projects>
 
 # these variables can also be set in a file called `.env.test` in the root folder of the project

@@ -34,6 +34,7 @@ change = Table(
     Column("requested_version_hash", String, nullable=False),
     Column("requested_version", String, nullable=False),
     Column("requested_data", String, nullable=False),
+    Column("template_data_full", String, nullable=False),
     Column("commit_sha", String, nullable=False),
     Column("commit_pushed", Boolean, nullable=False),
     # fields for merge request changes

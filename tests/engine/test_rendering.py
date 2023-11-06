@@ -192,11 +192,21 @@ async def test_rendering_an_entire_template_directory_with_excluded_file(
         "README.md",
     ]
 
+    template_data = {
+        "data": "Hello World",
+        "fengine": {
+            "template": {
+                "repository": "repo_url",
+                "repository_version": "repo_version",
+            },
+        },
+    }
+
     # WHEN
     await render_template(
         template_dir,
         incarnation_dir,
-        {"data": "Hello World"},
+        template_data,
         rendering_filename_exclude_patterns=excludes,
     )
 
@@ -223,11 +233,22 @@ async def test_rendering_an_entire_template_directory_with_excluded_file_in_rend
         "{{ package_name }}/*",
     ]
 
+    template_data = {
+        "data": "Hello World",
+        "package_name": "test",
+        "fengine": {
+            "template": {
+                "repository": "repo_url",
+                "repository_version": "repo_version",
+            },
+        },
+    }
+
     # WHEN
     await render_template(
         template_dir,
         incarnation_dir,
-        {"data": "Hello World", "package_name": "test"},
+        template_data,
         rendering_filename_exclude_patterns=excludes,
     )
 
@@ -251,11 +272,22 @@ async def test_rendering_an_entire_template_directory(tmp_path: Path):
     incarnation_dir = tmp_path / "incarnation"
     incarnation_dir.mkdir()
 
+    template_data = {
+        "name": "jon",
+        "data": "Hello World",
+        "fengine": {
+            "template": {
+                "repository": "repo_url",
+                "repository_version": "repo_version",
+            },
+        },
+    }
+
     # WHEN
     await render_template(
         template_dir,
         incarnation_dir,
-        {"name": "jon", "data": "Hello World"},
+        template_data,
         [],
     )
 
@@ -362,8 +394,17 @@ async def test_rendering_a_template_directory_inherits_file_permissions(tmp_path
     template_file.chmod(template_file.stat().st_mode | stat.S_IXUSR)
     expected_file_mode = stat.S_IMODE(file_mode_before_xusr | stat.S_IXUSR)
 
+    template_data = {
+        "fengine": {
+            "template": {
+                "repository": "repo_url",
+                "repository_version": "repo_version",
+            },
+        },
+    }
+
     # WHEN
-    await render_template(template_dir, incarnation_dir, {}, [])
+    await render_template(template_dir, incarnation_dir, template_data, [])
 
     # THEN
     assert (incarnation_dir / "subdir").exists()

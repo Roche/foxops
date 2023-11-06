@@ -5,6 +5,10 @@ import pytest
 
 from foxops import utils
 from foxops.engine import diff_and_patch, initialize_incarnation, update_incarnation
+from foxops.engine.models.template_config import (
+    StringVariableDefinition,
+    TemplateConfig,
+)
 
 
 async def init_repository(repository_dir: Path) -> None:
@@ -403,67 +407,6 @@ mychange
 
 
 @pytest.mark.parametrize("diff_patch_func", [diff_and_patch])
-async def test_diff_and_patch_success_when_update_in_fvars_file(
-    diff_patch_func,
-    tmp_path: Path,
-):
-    """
-    Verify that a incarnation can successfully be updated with new variable
-    values from fvars file.
-    """
-    # GIVEN
-    template_directory = tmp_path / "template"
-    template_directory.mkdir()
-    (template_directory / "fengine.yaml").write_text(
-        """
-variables:
-  author:
-    type: str
-    description: dummy"""
-    )
-
-    (template_directory / "template").mkdir()
-    (template_directory / "template" / "myfile.txt").write_text("From: {{ author }}")
-    await init_repository(tmp_path)
-    incarnation_directory = tmp_path / "incarnation"
-    incarnation_directory.mkdir()
-    (incarnation_directory / "default.fvars").write_text(
-        """
-        author=John Doe
-        """
-    )
-
-    incarnation_state = await initialize_incarnation(
-        template_root_dir=template_directory,
-        template_repository="any-repository-url",
-        template_repository_version="any-version",
-        template_data={},
-        incarnation_root_dir=incarnation_directory,
-    )
-
-    # WHEN
-    # update fvars in incarnation
-    (incarnation_directory / "default.fvars").write_text(
-        """
-        author=Updated John Doe
-        """
-    )
-    await init_repository(incarnation_directory)
-
-    await update_incarnation(
-        original_template_root_dir=template_directory,
-        updated_template_root_dir=template_directory,
-        updated_template_repository_version=incarnation_state.template_repository_version,
-        updated_template_data={},
-        incarnation_root_dir=incarnation_directory,
-        diff_patch_func=diff_patch_func,
-    )
-
-    # THEN
-    assert (incarnation_directory / "myfile.txt").read_text() == "From: Updated John Doe"
-
-
-@pytest.mark.parametrize("diff_patch_func", [diff_and_patch])
 async def test_diff_and_patch_success_when_deleting_file_in_template(
     diff_patch_func,
     tmp_path,
@@ -569,3 +512,67 @@ async def test_diff_and_patch_success_when_changed_file_is_deleted_in_incarnatio
     assert (incarnation_directory / "myfile1.txt").exists()
     assert not (incarnation_directory / "myfile2.txt").exists()
     # `git apply --reject` does not keep .rej files when the target file was deleted (unfortunately)
+
+
+async def test_update_incarnation_with_change_of_default_values_in_template(tmp_path):
+    """
+    When updating an incarnation to a newer template version, a change of the default value of template variables
+    should be reflected in the updated incarnation (if the user did not explicitly specify a value) for those vars.
+    """
+
+    # GIVEN
+    # ... a template with variables that have defaults
+    template_directory = tmp_path / "template"
+    template_directory.mkdir()
+
+    TemplateConfig(
+        variables={
+            "variable_specified": StringVariableDefinition(description="dummy", default="abc"),
+            "variable_not_specified": StringVariableDefinition(description="dummy", default="1"),
+        }
+    ).save(template_directory / "fengine.yaml")
+    (template_directory / "template").mkdir()
+    (template_directory / "template" / "var1.txt").write_text("value: {{ variable_specified }}")
+    (template_directory / "template" / "var2.txt").write_text("value: {{ variable_not_specified }}")
+    await init_repository(template_directory)
+
+    # ... an updated version of the template where the variable defaults changed
+    template_updated_directory = tmp_path / "template-updated"
+    shutil.copytree(template_directory, template_updated_directory)
+
+    template_updated_config = TemplateConfig.from_path(template_updated_directory / "fengine.yaml")
+    template_updated_config.variables["variable_specified"].default = "xyz"
+    template_updated_config.variables["variable_not_specified"].default = "2"
+    template_updated_config.save(template_updated_directory / "fengine.yaml")
+
+    # ... and an incarnation of the original template version, where only one of the variables is specified by the user
+    incarnation_directory = tmp_path / "incarnation"
+    incarnation_directory.mkdir()
+    incarnation_state = await initialize_incarnation(
+        template_root_dir=template_directory,
+        template_repository="any-repository-url",
+        template_repository_version="any-version",
+        template_data={
+            "variable_specified": "user-specified-value",
+        },
+        incarnation_root_dir=incarnation_directory,
+    )
+    await init_repository(incarnation_directory)
+
+    assert (incarnation_directory / "var1.txt").read_text() == "value: user-specified-value"
+    assert (incarnation_directory / "var2.txt").read_text() == "value: 1"
+
+    # WHEN
+    # ... the incarnation is updated to the new template version
+    await update_incarnation(
+        original_template_root_dir=template_directory,
+        updated_template_root_dir=template_updated_directory,
+        updated_template_repository_version=incarnation_state.template_repository_version,
+        updated_template_data=incarnation_state.template_data,
+        incarnation_root_dir=incarnation_directory,
+        diff_patch_func=diff_and_patch,
+    )
+
+    # THEN
+    assert (incarnation_directory / "var1.txt").read_text() == "value: user-specified-value"
+    assert (incarnation_directory / "var2.txt").read_text() == "value: 2"

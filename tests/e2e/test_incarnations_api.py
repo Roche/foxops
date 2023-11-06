@@ -70,54 +70,6 @@ async def test_post_incarnations_creates_incarnation_in_root_of_empty_repository
     )
 
 
-async def test_post_incarnations_creates_incarnation_in_root_of_repository_with_fvars_file(
-    foxops_client: AsyncClient,
-    gitlab_client: Client,
-    gitlab_template_repository: str,
-    gitlab_incarnation_repository: str,
-    mocker: MockFixture,
-):
-    # GIVEN
-    (
-        gitlab_client.post(
-            f"/projects/{quote_plus(gitlab_incarnation_repository)}/repository/files/{quote_plus('default.fvars')}",
-            json={
-                "encoding": "base64",
-                "content": base64.b64encode(b"name=Jon").decode("utf-8"),
-                "commit_message": "Add fvars file",
-                "branch": "main",
-            },
-        )
-    ).raise_for_status()
-
-    # WHEN
-    response = await foxops_client.post(
-        "/api/incarnations",
-        json={
-            "incarnation_repository": gitlab_incarnation_repository,
-            "template_repository": gitlab_template_repository,
-            "template_repository_version": "v1.0.0",
-            "template_data": {"age": 18},
-        },
-    )
-    response.raise_for_status()
-    incarnation = response.json()
-
-    # THEN
-    assert incarnation["incarnation_repository"] == gitlab_incarnation_repository
-    assert incarnation["target_directory"] == "."
-    assert incarnation["status"] == mocker.ANY
-    assert incarnation["commit_url"] == mocker.ANY
-    assert incarnation["merge_request_id"] is None
-
-    assert_file_in_repository(
-        gitlab_client,
-        gitlab_incarnation_repository,
-        "README.md",
-        "Jon is of age 18",
-    )
-
-
 async def test_post_incarnations_creates_incarnation_in_root_of_nonempty_repository_with_a_direct_commit(
     foxops_client: AsyncClient,
     gitlab_client: Client,
@@ -158,65 +110,13 @@ async def test_post_incarnations_creates_incarnation_in_root_of_nonempty_reposit
     assert incarnation["commit_url"] == mocker.ANY
     assert incarnation["merge_request_id"] is None
     assert incarnation["merge_request_status"] is None
+    assert incarnation["template_data"] == {"name": "Jon", "age": 18}
 
-    assert_file_in_repository(
-        gitlab_client,
-        gitlab_incarnation_repository,
-        "README.md",
-        "Jon is of age 18",
-    )
+    assert incarnation["template_data_full"]["name"] == "Jon"
+    assert incarnation["template_data_full"]["age"] == 18
+    assert incarnation["template_data_full"]["country"] == "Switzerland"
+    assert incarnation["template_data_full"]["fengine"]
 
-
-async def test_post_incarnations_creates_incarnation_in_root_of_nonempty_repository_with_fvars_file(
-    foxops_client: AsyncClient,
-    gitlab_client: Client,
-    gitlab_template_repository: str,
-    gitlab_incarnation_repository: str,
-    mocker: MockFixture,
-):
-    # GIVEN
-    (
-        gitlab_client.post(
-            f"/projects/{quote_plus(gitlab_incarnation_repository)}/repository/files/{quote_plus('default.fvars')}",
-            json={
-                "encoding": "base64",
-                "content": base64.b64encode(b"name=Jon").decode("utf-8"),
-                "commit_message": "Add fvars file",
-                "branch": "main",
-            },
-        )
-    ).raise_for_status()
-    (
-        gitlab_client.post(
-            f"/projects/{quote_plus(gitlab_incarnation_repository)}/repository/files/{quote_plus('test.md')}",
-            json={
-                "encoding": "base64",
-                "content": base64.b64encode(b"Hello World").decode("utf-8"),
-                "commit_message": "Initial commit",
-                "branch": "main",
-            },
-        )
-    ).raise_for_status()
-
-    # WHEN
-    response = await foxops_client.post(
-        "/api/incarnations",
-        json={
-            "incarnation_repository": gitlab_incarnation_repository,
-            "template_repository": gitlab_template_repository,
-            "template_repository_version": "v1.0.0",
-            "template_data": {"age": 18},
-        },
-    )
-    response.raise_for_status()
-    incarnation = response.json()
-
-    # THEN
-    assert incarnation["incarnation_repository"] == gitlab_incarnation_repository
-    assert incarnation["target_directory"] == "."
-    assert incarnation["status"] == "success"
-    assert incarnation["commit_url"] == mocker.ANY
-    assert incarnation["merge_request_url"] == mocker.ANY
     assert_file_in_repository(
         gitlab_client,
         gitlab_incarnation_repository,
@@ -280,10 +180,7 @@ async def test_post_incarnations_returns_error_if_variable_is_missing(
 
     # THEN
     assert response.status_code == HTTPStatus.BAD_REQUEST
-    assert (
-        "the template required the variables ['age', 'name'] but the provided template data "
-        "for the incarnation where ['name']." in response.json()["message"]
-    )
+    assert "'age' - no value was provided for this required template variable" in response.json()["message"]
 
 
 async def test_post_incarnations_returns_error_if_template_repository_version_does_not_exist(
@@ -399,55 +296,12 @@ async def test_put_incarnation_updates_incarnation_with_merge_request(
     assert incarnation["status"] == "pending"
     assert incarnation["commit_url"] == mocker.ANY
     assert incarnation["merge_request_url"] == mocker.ANY
+    assert incarnation["template_data"] == {"name": "Jon", "age": 18}
 
-    update_branch_name = assert_update_merge_request_exists(gitlab_client, incarnation_repository)
-    assert_file_in_repository(
-        gitlab_client,
-        incarnation_repository,
-        "README.md",
-        "Hello Jon, age: 18",
-        branch=update_branch_name,
-    )
-
-
-async def test_put_incarnation_updates_incarnation_with_merge_request_when_fvars_changed(
-    foxops_client: AsyncClient,
-    gitlab_client: Client,
-    gitlab_incarnation_repository_in_v1: tuple[str, str],
-    mocker: MockFixture,
-):
-    # GIVEN
-    incarnation_repository, incarnation_id = gitlab_incarnation_repository_in_v1
-    (
-        gitlab_client.post(
-            f"/projects/{quote_plus(incarnation_repository)}/repository/files/{quote_plus('default.fvars')}",
-            json={
-                "encoding": "base64",
-                "content": base64.b64encode(b"name=Jon").decode("utf-8"),
-                "commit_message": "Add fvars file",
-                "branch": "main",
-            },
-        )
-    ).raise_for_status()
-
-    # WHEN
-    response = await foxops_client.put(
-        f"/api/incarnations/{incarnation_id}",
-        json={
-            "template_repository_version": "v2.0.0",
-            "template_data": {"age": 18},
-            "automerge": False,
-        },
-    )
-    response.raise_for_status()
-    incarnation = response.json()
-
-    # THEN
-    assert incarnation["incarnation_repository"] == incarnation_repository
-    assert incarnation["target_directory"] == "."
-    assert incarnation["status"] == "pending"
-    assert incarnation["commit_url"] == mocker.ANY
-    assert incarnation["merge_request_url"] == mocker.ANY
+    assert incarnation["template_data_full"]["name"] == "Jon"
+    assert incarnation["template_data_full"]["age"] == 18
+    assert incarnation["template_data_full"]["country"] == "Switzerland"
+    assert incarnation["template_data_full"]["fengine"]
 
     update_branch_name = assert_update_merge_request_exists(gitlab_client, incarnation_repository)
     assert_file_in_repository(

@@ -16,6 +16,8 @@ class Change(BaseModel):
     requested_version_hash: str
     requested_data: TemplateData
 
+    template_data_full: TemplateData
+
     created_at: datetime
     commit_sha: str
 

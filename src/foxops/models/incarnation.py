@@ -1,8 +1,6 @@
-from typing import Mapping
-
 from pydantic import BaseModel, ConfigDict, Field
 
-from foxops.engine.models import TemplateDataValue
+from foxops.engine import TemplateData
 from foxops.hosters import ReconciliationStatus
 from foxops.hosters.types import MergeRequestStatus
 
@@ -41,6 +39,7 @@ class IncarnationWithDetails(IncarnationBasic):
     template_repository: str | None
     template_repository_version: str | None
     template_repository_version_hash: str | None
-    template_data: Mapping[str, TemplateDataValue] | None
+    template_data: TemplateData | None
+    template_data_full: TemplateData | None
 
     model_config = ConfigDict(from_attributes=True)
