@@ -10,7 +10,7 @@ Specifying the `default` effectively makes the variable *optional*.
 ```yaml
 variables:
   new_var:
-    type: str
+    type: string
     description: New variable for the template
     default: "Hello"
 ```

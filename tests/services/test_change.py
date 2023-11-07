@@ -596,7 +596,7 @@ async def test_reset_incarnation_succeeds_when_overriding_version_and_data(
 ):
     # WHEN
     change = await change_service.reset_incarnation(
-        initialized_incarnation_with_customizations.id, override_version="v1.1.0", override_data={"foo": "bar"}
+        initialized_incarnation_with_customizations.id, override_version="v1.3.0", override_data={"author": "bar"}
     )
 
     # THEN
@@ -608,12 +608,12 @@ async def test_reset_incarnation_succeeds_when_overriding_version_and_data(
         initialized_incarnation_with_customizations.incarnation_repository,
         refspec=merge_request.source_branch,
     ) as repo:
-        assert (repo.directory / "README.md").read_text() == "Hello, world2!"
+        assert (repo.directory / "README.md").read_text() == "Hello, world3!"
         assert not (repo.directory / "CONTRIBUTING.md").exists()
 
         incarnation_state = IncarnationState.from_file(repo.directory / ".fengine.yaml")
-        assert incarnation_state.template_repository_version == "v1.1.0"
-        assert incarnation_state.template_data == {"foo": "bar"}
+        assert incarnation_state.template_repository_version == "v1.3.0"
+        assert incarnation_state.template_data == {"author": "bar"}
 
 
 async def test_reset_incarnation_fails_when_no_customizations_were_made(

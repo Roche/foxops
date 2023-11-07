@@ -257,7 +257,7 @@ class ChangeService:
                 requested_version_hash=incarnation_state.template_repository_version_hash,
                 requested_version=incarnation_state.template_repository_version,
                 requested_data=json.dumps(incarnation_state.template_data),
-                template_data_full=json.dumps(incarnation_state.template_data),
+                template_data_full=json.dumps(incarnation_state.template_data_full),
                 merge_request_branch_name=reset_branch_name,
             )
 
