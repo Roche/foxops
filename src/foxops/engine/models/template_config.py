@@ -56,7 +56,7 @@ class IntegerVariableDefinition(BaseFlatVariableDefinition):
 
 
 class BooleanVariableDefinition(BaseFlatVariableDefinition):
-    type: Literal["boolean"] = "boolean"
+    type: Literal["bool", "boolean"] = "boolean"
     default: bool | None = None
 
     def pydantic_field_model(self) -> Any:
