@@ -36,6 +36,7 @@ class ChangeServiceMock(Mock):
             requested_version_hash="template_commit_sha",
             requested_version=template_repository_version,
             requested_data=template_data,
+            template_data_full=template_data,
             created_at=datetime.now(),
             commit_sha="commit_sha",
         )
@@ -75,6 +76,7 @@ async def test_api_get_incarnations_returns_incarnations_from_inventory(
         requested_version="v1.0",
         requested_version_hash="template_commit_sha",
         requested_data=json.dumps({"foo": "bar"}),
+        template_data_full=json.dumps({"foo": "bar"}),
     )
 
     # WHEN
@@ -148,26 +150,6 @@ async def test_api_create_incarnation_returns_conflict_when_incarnation_already_
 
     # THEN
     assert response.status_code == HTTPStatus.CONFLICT
-
-
-async def test_api_create_incarnation_fails_when_called_with_allow_import(
-    api_client: AsyncClient,
-):
-    # WHEN
-    response = await api_client.post(
-        "/incarnations",
-        params={"allow_import": "true"},
-        json={
-            "incarnation_repository": "test",
-            "target_directory": "test",
-            "template_repository": "test",
-            "template_repository_version": "test",
-            "template_data": {"foo": "bar"},
-        },
-    )
-
-    # THEN
-    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
 
 async def test_api_delete_incarnation_removes_incarnation_from_inventory(

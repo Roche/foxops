@@ -1,20 +1,17 @@
 import asyncio
 import copy
 import logging
-from dataclasses import asdict
 from pathlib import Path
 from subprocess import PIPE, check_output
-from typing import Optional
+from typing import Annotated, Any, Optional
 
 import typer
 
+from foxops.engine import IncarnationState, TemplateData
 from foxops.engine.initialization import initialize_incarnation
-from foxops.engine.models import (
-    IncarnationState,
+from foxops.engine.models.template_config import (
+    StringVariableDefinition,
     TemplateConfig,
-    TemplateData,
-    VariableDefinition,
-    load_incarnation_state,
 )
 from foxops.engine.patching.git_diff_patch import diff_and_patch
 from foxops.engine.update import update_incarnation_from_git_template_repository
@@ -48,40 +45,54 @@ def cmd_new(
     # Create sample fengine.yaml
     template_config = TemplateConfig(
         variables={
-            "author": VariableDefinition(
-                type="str",
+            "author": StringVariableDefinition(
                 description="The author of the project",
             )
         }
     )
-    template_config.to_yaml(target_directory / "fengine.yaml")
+    template_config.save(target_directory / "fengine.yaml")
 
     # Create sample README in template directory
     (target_directory / "template").mkdir(0o755)
     (target_directory / "template" / "README.md").write_text("Created by {{ author }}\n")
 
 
+def parse_template_data_arguments(raw_template_data: list[str]) -> TemplateData:
+    template_data: dict[str, Any] = {}
+    for arg in raw_template_data:
+        key, value = arg.split("=", maxsplit=1)
+
+        key_elements = key.split(".")
+
+        # descend into the correct sub-dict of the template data object
+        current_level = template_data
+        for key_element in key_elements[:-1]:
+            current_level = current_level.setdefault(key_element, {})
+
+        # now we can inject the value to the "current level"
+        if key_elements[-1].endswith("[]"):  # in case we need to append to a list
+            current_level.setdefault(key_elements[-1][:-2], []).append(value)
+        else:  # or we just want to add a "flat" value
+            current_level[key_elements[-1]] = value
+
+    return template_data
+
+
 @app.command(name="initialize")
 def cmd_initialize(
-    template_repository: Path = typer.Argument(  # noqa: B008
-        ...,
-        exists=True,
-        file_okay=False,
-        dir_okay=True,
-        readable=True,
-        resolve_path=True,
-    ),
-    incarnation_dir: Path = typer.Argument(  # noqa: B008
-        ...,
-        exists=False,
-        file_okay=False,
-        dir_okay=False,
-    ),
+    template_repository: Annotated[
+        Path, typer.Argument(..., exists=True, file_okay=False, dir_okay=True, readable=True, resolve_path=True)
+    ],
+    incarnation_dir: Annotated[
+        Path, typer.Argument(..., exists=False, file_okay=False, dir_okay=False, resolve_path=True)
+    ],
     raw_template_data: list[str] = typer.Option(  # noqa: B008
         [],
         "--data",
         "-d",
-        help="Template data variables in the format of `key=value`",
+        help="Template data variables in the format of `key=value`. "
+        "To add to list values, use -d key[]=value1 -d key[]=value2. "
+        "To add to nested values, use -d key.subkey=value.",
     ),
     template_repository_version: Optional[str] = typer.Option(  # noqa: B008
         None,
@@ -90,7 +101,7 @@ def cmd_initialize(
     ),
 ):
     """Initialize an incarnation repository with a version of a template and some data."""
-    template_data: TemplateData = dict(tuple(x.split("=", maxsplit=1)) for x in raw_template_data)  # type: ignore
+    template_data: TemplateData = parse_template_data_arguments(raw_template_data)
 
     bind(template_repository=template_repository)
     bind(incarnation_dir=incarnation_dir)
@@ -153,7 +164,9 @@ def cmd_update(
         [],
         "--data",
         "-d",
-        help="Template data variables in the format of `key=value`",
+        help="Template data variables in the format of `key=value`. "
+        "To add to list values, use -d key[]=value1 -d key[]=value2. "
+        "To add to nested values, use -d key.subkey=value.",
     ),
     remove_template_data: list[str] = typer.Option(  # noqa: B008
         [],
@@ -174,11 +187,11 @@ def cmd_update(
     ),
 ):
     """Initialize an incarnation repository with a version of a template and some data."""
-    template_data: dict[str, str] = dict(tuple(x.split("=", maxsplit=1)) for x in raw_template_data)  # type: ignore
+    template_data: TemplateData = parse_template_data_arguments(raw_template_data)
 
     incarnation_state_path = incarnation_dir / ".fengine.yaml"
     logger.debug(f"getting template repository path from incarnation state at {incarnation_state_path}")
-    incarnation_state = load_incarnation_state(incarnation_state_path)
+    incarnation_state = IncarnationState.from_file(incarnation_state_path)
 
     logger.debug(
         f"loaded incarnation state from incarnation repository {incarnation_state_path}",
@@ -187,12 +200,7 @@ def cmd_update(
 
     if overridden_template_repository is not None:
         logger.debug(f"overriding template repository with {overridden_template_repository}")
-        incarnation_state = IncarnationState(
-            **{
-                **asdict(incarnation_state),  # type: ignore
-                "template_repository": str(overridden_template_repository),
-            }
-        )
+        incarnation_state.template_repository = str(overridden_template_repository)
 
     if not Path(incarnation_state.template_repository).is_dir():
         logger.error(

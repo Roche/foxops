@@ -8,7 +8,7 @@ from jinja2 import FileSystemLoader, StrictUndefined
 from jinja2.sandbox import SandboxedEnvironment
 
 from foxops.engine.custom_filters import base64encode, ip_add_integer
-from foxops.engine.models import TemplateData
+from foxops.engine.models.incarnation_state import TemplateData
 from foxops.logger import get_logger
 
 #: Holds the module logger
@@ -49,6 +49,11 @@ async def render_template(
     :param rendering_filename_exclude_patterns: A list of glob patterns matching files which contents should not be
     rendered. Can be empty.
     """
+
+    # add legacy fengine metadata variables
+    template_data["_fengine_template_repository"] = template_data["fengine"]["template"]["repository"]
+    template_data["_fengine_template_repository_version"] = template_data["fengine"]["template"]["repository_version"]
+
     if not template_root_dir.is_absolute():
         raise ValueError(f"template_root_dir must be an absolute path, got {template_root_dir}")
 

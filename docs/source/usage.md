@@ -105,6 +105,3 @@ You can update the `mycat` incarnation using the following command:
 ```sh
 fengine update mycat/ -u v2.0.0
 ```
-
-You may also provide other values for the template data like the `author` variable.
-```

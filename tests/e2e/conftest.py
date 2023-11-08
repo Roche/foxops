@@ -27,6 +27,11 @@ variables:
     age:
         type: int
         description: The age of the person
+
+    country:
+        type: str
+        description: The country of the person
+        default: Switzerland
 """
                 ).decode("utf-8"),
                 "commit_message": "Initial commit",

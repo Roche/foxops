@@ -46,7 +46,7 @@ Variables can be defined with the following syntax:
 ```yaml
 variables:
     <variable_1_name>:
-        type: str | int | float
+        type: string | integer | boolean
         description: <some description for this variable>
         default: <an optional default value>
 ```
@@ -57,10 +57,12 @@ with the default `Jane Doe` use the following:
 ```yaml
 variables:
     name:
-        type: str
+        type: string
         description: The name of the author
         default: Jane Doe
 ```
+
+More variable types exist (like complex objects or lists): Read more about this in the [template configuration reference](../configfile_reference).
 
 ## Exclude Files from Rendering
 

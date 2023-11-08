@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, status
 from pydantic import BaseModel, model_validator
 
 from foxops.database.repositories.change import ChangeNotFoundError
+from foxops.database.repositories.change import ChangeType as DatabaseChangeType
 from foxops.dependencies import get_change_service
 from foxops.engine import TemplateData
 from foxops.hosters.types import MergeRequestStatus
@@ -19,10 +20,17 @@ async def get_change(
     incarnation_id: Annotated[int, Path()],
     revision: Annotated[int, Path(description="Change revision within the given incarnation")],
     change_service: Annotated[ChangeService, Depends(get_change_service)],
-) -> Change:
+) -> Change | ChangeWithMergeRequest:
     try:
         change_id = await change_service.get_change_id_by_revision(incarnation_id, revision)
-        return await change_service.get_change(change_id)
+
+        match (change_type := await change_service.get_change_type(change_id)):
+            case DatabaseChangeType.MERGE_REQUEST:
+                return await change_service.get_change_with_merge_request(change_id)
+            case DatabaseChangeType.DIRECT:
+                return await change_service.get_change(change_id)
+            case _:
+                raise NotImplementedError(f"Unknown change type {change_type}")
     except ChangeNotFoundError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Change not found")
 
@@ -61,6 +69,8 @@ class ChangeDetails(BaseModel):
     requested_version: str
     requested_version_hash: str
     requested_data: TemplateData
+
+    template_data_full: TemplateData
 
     created_at: datetime
     commit_sha: str

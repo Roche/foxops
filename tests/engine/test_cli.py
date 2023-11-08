@@ -1,5 +1,4 @@
 import logging
-from dataclasses import asdict
 from pathlib import Path
 from subprocess import check_output
 from textwrap import dedent
@@ -7,12 +6,8 @@ from textwrap import dedent
 import pytest
 from typer.testing import CliRunner
 
-from foxops.engine.__main__ import app
-from foxops.engine.models import (
-    IncarnationState,
-    load_incarnation_state,
-    save_incarnation_state,
-)
+from foxops.engine import IncarnationState
+from foxops.engine.__main__ import app, parse_template_data_arguments
 
 
 @pytest.fixture(scope="module")
@@ -117,6 +112,40 @@ def test_app_should_create_template(
     assert result.exit_code == 0
     assert (tmp_path / "fengine.yaml").exists()
     assert (tmp_path / "template" / "README.md").exists()
+
+
+def test_parse_template_data_arguments():
+    # GIVEN
+    args = [
+        "name=jon",
+        "age=42",
+        "address.street=any street",
+        "address.city=any city",
+        "address.owners[]=jon",
+        "address.owners[]=ygritte",
+        "very.deeply.nested.object=foobar",
+    ]
+
+    # WHEN
+    template_data = parse_template_data_arguments(args)
+
+    # THEN
+    assert template_data == {
+        "name": "jon",
+        "age": "42",
+        "address": {
+            "street": "any street",
+            "city": "any city",
+            "owners": ["jon", "ygritte"],
+        },
+        "very": {
+            "deeply": {
+                "nested": {
+                    "object": "foobar",
+                },
+            },
+        },
+    }
 
 
 def test_app_should_initialize_incarnation_from_template_without_variables(
@@ -276,7 +305,7 @@ def test_app_should_update_incarnation_to_specific_version_in_template_repositor
     # THEN
     assert result.exit_code == 0
     assert (incarnation_dir / "info.txt").read_text() == "some info for jon."
-    incarnation_state = load_incarnation_state(incarnation_dir / ".fengine.yaml")
+    incarnation_state = IncarnationState.from_file(incarnation_dir / ".fengine.yaml")
     assert incarnation_state.template_repository_version == "v2"
     assert incarnation_state.template_repository_version_hash != "v2"
 
@@ -439,14 +468,10 @@ def test_app_update_incarnation_should_complain_if_template_repository_is_not_a_
     # NOTE(TF): patch the `.fengine.yaml` file to point to a remote Git template repository.
     #           This would be the case if the template wasn't initialized locally, but with
     #           foxops and later on cloned to develop locally using the `fengine` cli tool.
-    incarnation_state = load_incarnation_state(incarnation_dir / ".fengine.yaml")
-    patched_incarnation_state = IncarnationState(
-        **{
-            **asdict(incarnation_state),  # type: ignore
-            "template_repository": "https://any-remote-repository.com/any-repository.git",
-        }
-    )
-    save_incarnation_state(incarnation_dir / ".fengine.yaml", patched_incarnation_state)
+    incarnation_state_path = incarnation_dir / ".fengine.yaml"
+    incarnation_state = IncarnationState.from_file(incarnation_state_path)
+    incarnation_state.template_repository = "https://any-remote-repository.com/any-repository.git"
+    incarnation_state.save(incarnation_state_path)
 
     init_repository(incarnation_dir)
     commit_version(incarnation_dir, "v1")
@@ -495,14 +520,10 @@ def test_app_should_update_incarnation_with_overridden_template_repository(
     # NOTE(TF): patch the `.fengine.yaml` file to point to a remote Git template repository.
     #           This would be the case if the template wasn't initialized locally, but with
     #           foxops and later on cloned to develop locally using the `fengine` cli tool.
-    incarnation_state = load_incarnation_state(incarnation_dir / ".fengine.yaml")
-    patched_incarnation_state = IncarnationState(
-        **{
-            **asdict(incarnation_state),  # type: ignore
-            "template_repository": "https://any-remote-repository.com/any-repository.git",
-        }
-    )
-    save_incarnation_state(incarnation_dir / ".fengine.yaml", patched_incarnation_state)
+    incarnation_state_path = incarnation_dir / ".fengine.yaml"
+    incarnation_state = IncarnationState.from_file(incarnation_state_path)
+    incarnation_state.template_repository = "https://any-remote-repository.com/any-repository.git"
+    incarnation_state.save(incarnation_state_path)
 
     init_repository(incarnation_dir)
     commit_version(incarnation_dir, "v1")

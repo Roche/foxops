@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from pytest import fixture
 
-from foxops.engine import IncarnationState, save_incarnation_state
+from foxops.engine import IncarnationState
 from foxops.hosters.local import LocalHoster
 from foxops.hosters.types import MergeRequestStatus
 
@@ -236,12 +236,15 @@ async def test_get_incarnation_state_returns_state_of_incarnation_in_subdirector
         template_data={
             "foo": "bar",
         },
+        template_data_full={
+            "foo": "bar",
+        },
     )
 
     await local_hoster.create_repository(repo_name)
     async with local_hoster.cloned_repository(repo_name) as repo:
         (repo.directory / subdir).mkdir()
-        save_incarnation_state(repo.directory / subdir / ".fengine.yaml", dummy_incarnation_state)
+        dummy_incarnation_state.save(repo.directory / subdir / ".fengine.yaml")
         await repo.commit_all("Initial commit")
         await repo.push()
 

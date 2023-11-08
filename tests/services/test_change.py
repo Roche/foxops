@@ -8,8 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from foxops.database.repositories.change import ChangeNotFoundError, ChangeRepository
 from foxops.database.repositories.incarnation.errors import IncarnationNotFoundError
 from foxops.database.repositories.incarnation.repository import IncarnationRepository
-from foxops.engine import load_incarnation_state
-from foxops.engine.models import TemplateConfig, VariableDefinition
+from foxops.engine import IncarnationState
+from foxops.engine.models.template_config import (
+    StringVariableDefinition,
+    TemplateConfig,
+)
 from foxops.external.git import git_exec
 from foxops.hosters.local import LocalHoster
 from foxops.hosters.types import MergeRequestStatus
@@ -56,11 +59,9 @@ async def git_repo_template(local_hoster: LocalHoster) -> str:
 
         # adding a new version that adds a template variable
         template_config = TemplateConfig(
-            variables={
-                "author": VariableDefinition(type="str", description="The author of the project", default="dummy"),
-            }
+            variables={"author": StringVariableDefinition(description="The author of the project", default="dummy")}
         )
-        template_config.to_yaml(repo.directory / "fengine.yaml")
+        template_config.save(repo.directory / "fengine.yaml")
         await repo.commit_all("add template config and new variable")
         await repo.tag("v1.3.0")
 
@@ -267,7 +268,7 @@ async def test_create_change_direct_succeeds_when_updating_the_template_version(
     async with change_service._hoster.cloned_repository(initialized_incarnation.incarnation_repository) as repo:
         assert (repo.directory / "README.md").read_text() == "Hello, world2!"
 
-        incarnation_state = load_incarnation_state(repo.directory / ".fengine.yaml")
+        incarnation_state = IncarnationState.from_file(repo.directory / ".fengine.yaml")
         assert incarnation_state.template_repository_version == "v1.1.0"
 
 
@@ -278,12 +279,13 @@ async def test_create_change_direct_succeeds_and_makes_new_template_variables_vi
     change = await change_service.create_change_direct(initialized_incarnation.id, requested_version="v1.3.0")
 
     # THEN
-    assert change.requested_data == {"author": "dummy"}
+    assert change.requested_data == {}
+    assert change.template_data_full["author"] == "dummy"
 
     async with change_service._hoster.cloned_repository(initialized_incarnation.incarnation_repository) as repo:
-        incarnation_state = load_incarnation_state(repo.directory / ".fengine.yaml")
+        incarnation_state = IncarnationState.from_file(repo.directory / ".fengine.yaml")
         assert incarnation_state.template_repository_version == "v1.3.0"
-        assert incarnation_state.template_data == {"author": "dummy"}
+        assert incarnation_state.template_data_full["author"] == "dummy"
 
 
 async def test_create_change_direct_succeeds_when_updating_to_the_same_branch_name(
@@ -310,7 +312,7 @@ async def test_create_change_direct_succeeds_when_updating_to_the_same_branch_na
     async with change_service._hoster.cloned_repository(initialized_incarnation.incarnation_repository) as repo:
         assert (repo.directory / "README.md").read_text() == "Hello, world - even more!"
 
-        incarnation_state = load_incarnation_state(repo.directory / ".fengine.yaml")
+        incarnation_state = IncarnationState.from_file(repo.directory / ".fengine.yaml")
         assert incarnation_state.template_repository_version == "main"
 
 
@@ -357,7 +359,7 @@ async def test_create_change_merge_request_succeeds_when_updating_the_template_v
     ) as repo:
         assert (repo.directory / "README.md").read_text() == "Hello, world2!"
 
-        incarnation_state = load_incarnation_state(repo.directory / ".fengine.yaml")
+        incarnation_state = IncarnationState.from_file(repo.directory / ".fengine.yaml")
         assert incarnation_state.template_repository_version == "v1.1.0"
 
 
@@ -380,7 +382,7 @@ async def test_create_change_merge_request_succeeds_when_updating_the_template_v
     async with change_service._hoster.cloned_repository(initialized_incarnation.incarnation_repository) as repo:
         assert (repo.directory / "README.md").read_text() == "Hello, world2!"
 
-        incarnation_state = load_incarnation_state(repo.directory / ".fengine.yaml")
+        incarnation_state = IncarnationState.from_file(repo.directory / ".fengine.yaml")
         assert incarnation_state.template_repository_version == "v1.1.0"
 
 
@@ -594,7 +596,7 @@ async def test_reset_incarnation_succeeds_when_overriding_version_and_data(
 ):
     # WHEN
     change = await change_service.reset_incarnation(
-        initialized_incarnation_with_customizations.id, override_version="v1.1.0", override_data={"foo": "bar"}
+        initialized_incarnation_with_customizations.id, override_version="v1.3.0", override_data={"author": "bar"}
     )
 
     # THEN
@@ -606,12 +608,12 @@ async def test_reset_incarnation_succeeds_when_overriding_version_and_data(
         initialized_incarnation_with_customizations.incarnation_repository,
         refspec=merge_request.source_branch,
     ) as repo:
-        assert (repo.directory / "README.md").read_text() == "Hello, world2!"
+        assert (repo.directory / "README.md").read_text() == "Hello, world3!"
         assert not (repo.directory / "CONTRIBUTING.md").exists()
 
-        incarnation_state = load_incarnation_state(repo.directory / ".fengine.yaml")
-        assert incarnation_state.template_repository_version == "v1.1.0"
-        assert incarnation_state.template_data == {"foo": "bar"}
+        incarnation_state = IncarnationState.from_file(repo.directory / ".fengine.yaml")
+        assert incarnation_state.template_repository_version == "v1.3.0"
+        assert incarnation_state.template_data == {"author": "bar"}
 
 
 async def test_reset_incarnation_fails_when_no_customizations_were_made(

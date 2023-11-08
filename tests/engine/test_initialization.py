@@ -3,8 +3,13 @@ from pathlib import Path
 import pytest
 
 from foxops import utils
-from foxops.engine import initialize_incarnation
-from foxops.errors import ReconciliationUserError
+from foxops.engine import IncarnationState, initialize_incarnation
+from foxops.engine.errors import ProvidedTemplateDataInvalidError
+from foxops.engine.models.template_config import (
+    IntegerVariableDefinition,
+    StringVariableDefinition,
+    TemplateConfig,
+)
 
 
 async def init_repository(repository_dir: Path) -> str:
@@ -43,24 +48,26 @@ variables:
         template_root_dir=tmp_path,
         template_repository="any-repository-url",
         template_repository_version="any-version",
-        template_data={"author": "John Doe", "three": "3"},
+        template_data={"author": "John Doe", "three": 3},
         incarnation_root_dir=incarnation_dir,
     )
 
     # THEN
     assert (incarnation_dir / "README.md").read_text() == "John Doe knows that 1+2 = 3"
-    assert (
-        (incarnation_dir / ".fengine.yaml").read_text()
-        == f"""# This file is auto-generated and owned by foxops.
-# DO NOT EDIT MANUALLY.
-template_data:
-  author: John Doe
-  three: '3'
-template_repository: any-repository-url
-template_repository_version: any-version
-template_repository_version_hash: {repository_head}
-"""
-    )
+
+    incarnation_state = IncarnationState.from_file(incarnation_dir / ".fengine.yaml")
+    assert incarnation_state.template_repository == "any-repository-url"
+    assert incarnation_state.template_repository_version == "any-version"
+    assert incarnation_state.template_repository_version_hash == repository_head
+
+    assert incarnation_state.template_data["author"] == "John Doe"
+    assert incarnation_state.template_data["three"] == 3
+    assert "fengine" not in incarnation_state.template_data
+
+    assert incarnation_state.template_data_full["author"] == "John Doe"
+    assert incarnation_state.template_data_full["three"] == 3
+    assert incarnation_state.template_data_full["fengine"]["template"]["repository"] == "any-repository-url"
+    assert incarnation_state.template_data_full["fengine"]["template"]["repository_version"] == "any-version"
 
 
 async def test_initialize_template_at_root_of_incarnation_repository_using_fengine_metadata(tmp_path: Path):
@@ -79,7 +86,7 @@ async def test_initialize_template_at_root_of_incarnation_repository_using_fengi
         template_root_dir=tmp_path,
         template_repository="any-repository-url",
         template_repository_version="any-version",
-        template_data={"author": "John Doe", "three": "3"},
+        template_data={"author": "John Doe", "three": 3},
         incarnation_root_dir=incarnation_dir,
     )
 
@@ -92,21 +99,17 @@ async def test_initialize_template_at_root_of_incarnation_repository_with_existi
     tmp_path: Path,
 ):
     # GIVEN
-    (tmp_path / "fengine.yaml").write_text(
-        """
-variables:
-  author:
-    type: str
-    description: dummy
-  three:
-    type: int
-    description: dummy"""
-    )
+    TemplateConfig(
+        variables={
+            "author": StringVariableDefinition(description="dummy"),
+            "three": IntegerVariableDefinition(description="dummy"),
+        }
+    ).save(tmp_path / "fengine.yaml")
 
+    await init_repository(tmp_path)
     template_dir = tmp_path / "template"
     template_dir.mkdir()
     (template_dir / "README.md").write_text("{{ author }} knows that 1+2 = {{ three }}")
-    repository_head = await init_repository(tmp_path)
 
     incarnation_dir = tmp_path / "incarnation"
     incarnation_dir.mkdir()
@@ -118,25 +121,13 @@ variables:
         template_root_dir=tmp_path,
         template_repository="any-repository-url",
         template_repository_version="any-version",
-        template_data={"author": "John Doe", "three": "3"},
+        template_data={"author": "John Doe", "three": 3},
         incarnation_root_dir=incarnation_dir,
     )
 
     # THEN
     assert (incarnation_dir / "config.yaml").read_text() == "existing: true"
     assert (incarnation_dir / "README.md").read_text() == "John Doe knows that 1+2 = 3"
-    assert (
-        (incarnation_dir / ".fengine.yaml").read_text()
-        == f"""# This file is auto-generated and owned by foxops.
-# DO NOT EDIT MANUALLY.
-template_data:
-  author: John Doe
-  three: '3'
-template_repository: any-repository-url
-template_repository_version: any-version
-template_repository_version_hash: {repository_head}
-"""
-    )
 
 
 async def test_initialize_template_fails_when_variables_are_not_set(tmp_path):
@@ -160,7 +151,7 @@ variables:
     incarnation_dir.mkdir()
 
     # THEN
-    with pytest.raises(ReconciliationUserError):
+    with pytest.raises(ProvidedTemplateDataInvalidError):
         await initialize_incarnation(
             template_root_dir=tmp_path,
             template_repository="any-repository-url",
@@ -242,7 +233,7 @@ variables:
     assert (incarnation_dir / "README.md").read_text() == "John Doe knows that 1+2 = 42"
 
 
-async def test_initialize_template_ignores_but_warns_about_additional_variables(tmp_path, mocker):
+async def test_initialize_template_adds_additional_variables_to_state(tmp_path):
     # GIVEN
     (tmp_path / "fengine.yaml").write_text(
         """
@@ -281,152 +272,5 @@ variables:
 
     # THEN
     assert incarnation_state is not None
-
-
-async def test_initialize_template_with_variables_from_fvars_file(tmp_path: Path):
-    # GIVEN
-    (tmp_path / "fengine.yaml").write_text(
-        """
-variables:
-  author:
-    type: str
-    description: dummy
-  three:
-    type: int
-    description: dummy"""
-    )
-
-    template_dir = tmp_path / "template"
-    template_dir.mkdir()
-    (template_dir / "README.md").write_text("{{ author }} knows that 1+2 = {{ three }}")
-    repository_head = await init_repository(tmp_path)
-
-    incarnation_dir = tmp_path / "incarnation"
-    incarnation_dir.mkdir()
-    (incarnation_dir / "default.fvars").write_text(
-        """
-        author=John Doe
-        """
-    )
-
-    # WHEN
-    await initialize_incarnation(
-        template_root_dir=tmp_path,
-        template_repository="any-repository-url",
-        template_repository_version="any-version",
-        template_data={"three": "3"},
-        incarnation_root_dir=incarnation_dir,
-    )
-
-    # THEN
-    assert (incarnation_dir / "README.md").read_text() == "John Doe knows that 1+2 = 3"
-    assert (
-        (incarnation_dir / ".fengine.yaml").read_text()
-        == f"""# This file is auto-generated and owned by foxops.
-# DO NOT EDIT MANUALLY.
-template_data:
-  author: John Doe
-  three: '3'
-template_repository: any-repository-url
-template_repository_version: any-version
-template_repository_version_hash: {repository_head}
-"""
-    )
-
-
-async def test_initialize_template_template_data_precedence_over_fvars(tmp_path: Path):
-    # GIVEN
-    (tmp_path / "fengine.yaml").write_text(
-        """
-variables:
-  author:
-    type: str
-    description: dummy
-  three:
-    type: int
-    description: dummy"""
-    )
-
-    template_dir = tmp_path / "template"
-    template_dir.mkdir()
-    (template_dir / "README.md").write_text("{{ author }} knows that 1+2 = {{ three }}")
-    repository_head = await init_repository(tmp_path)
-
-    incarnation_dir = tmp_path / "incarnation"
-    incarnation_dir.mkdir()
-    (incarnation_dir / "default.fvars").write_text(
-        """
-        author=John Doe
-        """
-    )
-
-    # WHEN
-    await initialize_incarnation(
-        template_root_dir=tmp_path,
-        template_repository="any-repository-url",
-        template_repository_version="any-version",
-        template_data={"author": "Overridden John Doe", "three": "3"},
-        incarnation_root_dir=incarnation_dir,
-    )
-
-    # THEN
-    assert (incarnation_dir / "README.md").read_text() == "Overridden John Doe knows that 1+2 = 3"
-    assert (
-        (incarnation_dir / ".fengine.yaml").read_text()
-        == f"""# This file is auto-generated and owned by foxops.
-# DO NOT EDIT MANUALLY.
-template_data:
-  author: Overridden John Doe
-  three: '3'
-template_repository: any-repository-url
-template_repository_version: any-version
-template_repository_version_hash: {repository_head}
-"""
-    )
-
-
-async def test_initialize_template_empty_fvars_file(tmp_path: Path):
-    # GIVEN
-    (tmp_path / "fengine.yaml").write_text(
-        """
-variables:
-  author:
-    type: str
-    description: dummy
-  three:
-    type: int
-    description: dummy"""
-    )
-
-    template_dir = tmp_path / "template"
-    template_dir.mkdir()
-    (template_dir / "README.md").write_text("{{ author }} knows that 1+2 = {{ three }}")
-    repository_head = await init_repository(tmp_path)
-
-    incarnation_dir = tmp_path / "incarnation"
-    incarnation_dir.mkdir()
-    (incarnation_dir / "default.fvars").write_text("")
-
-    # WHEN
-    await initialize_incarnation(
-        template_root_dir=tmp_path,
-        template_repository="any-repository-url",
-        template_repository_version="any-version",
-        template_data={"author": "John Doe", "three": "3"},
-        incarnation_root_dir=incarnation_dir,
-    )
-
-    # THEN
-    assert (incarnation_dir / "README.md").read_text() == "John Doe knows that 1+2 = 3"
-    assert (
-        (incarnation_dir / ".fengine.yaml").read_text()
-        == f"""# This file is auto-generated and owned by foxops.
-# DO NOT EDIT MANUALLY.
-template_data:
-  author: John Doe
-  three: '3'
-template_repository: any-repository-url
-template_repository_version: any-version
-template_repository_version_hash: {repository_head}
-"""
-    )
+    assert "additional_variable_1" not in incarnation_state.template_data
+    assert "additional_variable_2" not in incarnation_state.template_data
