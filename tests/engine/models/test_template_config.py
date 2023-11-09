@@ -290,3 +290,25 @@ def test_template_data_validation_for_nested_objects_with_defaults_inside():
 
     # THEN
     assert parsed_data.test_object.test_string == "test"
+
+
+def test_template_string_variables_accept_integer_inputs_and_converts_them():
+    # GIVEN
+    template_config = TemplateConfig(
+        variables={
+            "test_string": StringVariableDefinition(
+                description="test string",
+            ),
+        }
+    )
+    template_data = {
+        "test_string": 1,
+    }
+    parsed_config = TemplateConfig.model_validate(template_config)
+
+    # WHEN
+    data_model = parsed_config.data_model()
+    parsed_data = data_model.model_validate(template_data)
+
+    # THEN
+    assert parsed_data.test_string == "1"

@@ -7,7 +7,14 @@ import re
 from pathlib import Path
 from typing import Annotated, Any, Literal, Self, Type, Union
 
-from pydantic import AfterValidator, BaseModel, Field, ValidationError, create_model
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    BeforeValidator,
+    Field,
+    ValidationError,
+    create_model,
+)
 from ruamel.yaml import YAML
 
 
@@ -39,12 +46,18 @@ class BaseFlatVariableDefinition(BaseVariableDefinition):
         return self.default if self.default is not None else ...
 
 
+def convert_to_string(v: Any) -> str:
+    if isinstance(v, (int, float, bool)):
+        return str(v)
+    return v
+
+
 class StringVariableDefinition(BaseFlatVariableDefinition):
     type: Literal["str", "string"] = "string"
     default: str | None = None
 
     def pydantic_field_model(self) -> Any:
-        return str
+        return Annotated[str, BeforeValidator(convert_to_string)]
 
 
 class IntegerVariableDefinition(BaseFlatVariableDefinition):
