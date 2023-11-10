@@ -282,7 +282,7 @@ class ChangeService:
         return await self.get_change_with_merge_request(change_in_db.id)
 
     async def create_change_direct(
-        self, incarnation_id: int, requested_version: str | None = None, requested_data: TemplateData | None = None
+        self, incarnation_id: int, requested_version: str, requested_data: TemplateData
     ) -> Change:
         """
         Perform a DIRECT change on the given incarnation.
@@ -326,8 +326,8 @@ class ChangeService:
     async def create_change_merge_request(
         self,
         incarnation_id: int,
-        requested_version: str | None = None,
-        requested_data: TemplateData | None = None,
+        requested_version: str,
+        requested_data: TemplateData,
         automerge: bool = False,
     ) -> ChangeWithMergeRequest:
         """
@@ -578,7 +578,7 @@ class ChangeService:
 
     @asynccontextmanager
     async def _prepared_change_environment(
-        self, incarnation_id: int, requested_version: str | None, requested_data: TemplateData | None
+        self, incarnation_id: int, requested_version: str, requested_data: TemplateData
     ) -> AsyncIterator[_PreparedChangeEnvironment]:
         """
         This method checks out the incarnation repository, prepares a branch that contains the update and commits.
@@ -591,14 +591,6 @@ class ChangeService:
         # if the previous change was of type merge request and is still open, we dont want to continue
         last_change = await self.get_latest_change_for_incarnation_if_completed(incarnation_id)
 
-        to_version = last_change.requested_version
-        if requested_version is not None:
-            to_version = requested_version
-
-        to_data = dict(last_change.requested_data)
-        if requested_data is not None:
-            to_data.update(requested_data)
-
         incarnation_repo_metadata = await self._hoster.get_repository_metadata(incarnation.incarnation_repository)
 
         async with (
@@ -608,7 +600,7 @@ class ChangeService:
             branch_name = generate_foxops_branch_name(
                 prefix="update-to",
                 target_directory=incarnation.target_directory,
-                template_repository_version=to_version,
+                template_repository_version=requested_version,
             )
             await local_incarnation_repository.create_and_checkout_branch(branch_name, exist_ok=False)
 
@@ -618,8 +610,8 @@ class ChangeService:
                 patch_result,
             ) = await fengine.update_incarnation_from_git_template_repository(
                 template_git_repository=local_template_repository.directory,
-                update_template_repository_version=to_version,
-                update_template_data=to_data,
+                update_template_repository_version=requested_version,
+                update_template_data=requested_data,
                 incarnation_root_dir=(local_incarnation_repository.directory / incarnation.target_directory),
                 diff_patch_func=fengine.diff_and_patch,
             )
@@ -629,7 +621,9 @@ class ChangeService:
             if patch_result is None:
                 raise ChangeFailed("Patch result was None. That is unexpected at this stage.")
 
-            await local_incarnation_repository.commit_all(f"foxops: updating incarnation to version {to_version}")
+            await local_incarnation_repository.commit_all(
+                f"foxops: updating incarnation to version {requested_version}"
+            )
             commit_sha = await local_incarnation_repository.head()
 
             yield _PreparedChangeEnvironment(
@@ -637,7 +631,7 @@ class ChangeService:
                 incarnation_repository_identifier=incarnation.incarnation_repository,
                 incarnation_repository_default_branch=incarnation_repo_metadata["default_branch"],
                 to_version_hash=await local_template_repository.head(),
-                to_version=to_version,
+                to_version=requested_version,
                 to_data=incarnation_state.template_data,
                 to_data_full=incarnation_state.template_data_full,
                 expected_revision=last_change.revision + 1,

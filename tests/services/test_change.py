@@ -257,7 +257,9 @@ async def test_create_change_direct_succeeds_when_updating_the_template_version(
     change_service: ChangeService, initialized_incarnation: Incarnation
 ):
     # WHEN
-    change = await change_service.create_change_direct(initialized_incarnation.id, requested_version="v1.1.0")
+    change = await change_service.create_change_direct(
+        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}
+    )
 
     # THEN
     assert change.incarnation_id == initialized_incarnation.id
@@ -276,7 +278,9 @@ async def test_create_change_direct_succeeds_and_makes_new_template_variables_vi
     change_service: ChangeService, initialized_incarnation: Incarnation
 ):
     # WHEN
-    change = await change_service.create_change_direct(initialized_incarnation.id, requested_version="v1.3.0")
+    change = await change_service.create_change_direct(
+        initialized_incarnation.id, requested_version="v1.3.0", requested_data={}
+    )
 
     # THEN
     assert change.requested_data == {}
@@ -295,14 +299,18 @@ async def test_create_change_direct_succeeds_when_updating_to_the_same_branch_na
     git_repo_template: str,
 ):
     # GIVEN
-    initial_change = await change_service.create_change_direct(initialized_incarnation.id, requested_version="main")
+    initial_change = await change_service.create_change_direct(
+        initialized_incarnation.id, requested_version="main", requested_data={}
+    )
     async with local_hoster.cloned_repository(git_repo_template) as repo:
         (repo.directory / "template" / "README.md").write_text("Hello, world - even more!")
         await repo.commit_all("update2")
         await repo.push()
 
     # WHEN
-    new_change = await change_service.create_change_direct(initialized_incarnation.id)
+    new_change = await change_service.create_change_direct(
+        initialized_incarnation.id, requested_version="main", requested_data={}
+    )
 
     # THEN
     assert new_change.revision > initial_change.revision
@@ -325,6 +333,7 @@ async def test_create_change_direct_succeeds_when_the_previous_change_was_not_me
     unmerged_change = await change_service.create_change_merge_request(
         incarnation_id=initialized_incarnation.id,
         requested_version="v1.1.0",
+        requested_data={},
         automerge=False,
     )
     async with local_hoster.cloned_repository(initialized_incarnation.incarnation_repository) as repo:
@@ -332,10 +341,35 @@ async def test_create_change_direct_succeeds_when_the_previous_change_was_not_me
 
     # WHEN
     local_hoster.close_merge_request(initialized_incarnation.incarnation_repository, unmerged_change.merge_request_id)
-    change = await change_service.create_change_direct(initialized_incarnation.id, requested_version="v1.2.0")
+    change = await change_service.create_change_direct(
+        initialized_incarnation.id, requested_version="v1.2.0", requested_data={}
+    )
 
     # THEN
     assert change.commit_sha != previous_commit_sha
+
+
+async def test_create_change_direct_succeeds_with_reverting_a_variable_back_to_its_default_value_if_not_explicitly_specified(
+    change_service: ChangeService,
+    initialized_incarnation: Incarnation,
+    local_hoster: LocalHoster,
+):
+    # GIVEN
+    # ... the incarnation is at a version that requires a variable - and the variable was explicitly set
+    change = await change_service.create_change_direct(
+        initialized_incarnation.id, requested_version="v1.3.0", requested_data={"author": "John Doe"}
+    )
+    assert change.template_data_full["author"] == "John Doe"
+
+    # WHEN
+    # ... creating a change that no longer specifies the variable
+    change = await change_service.create_change_direct(
+        initialized_incarnation.id, requested_version="v1.3.0", requested_data={}
+    )
+
+    # THEN
+    assert change.requested_data == {}
+    assert change.template_data_full["author"] == "dummy"
 
 
 async def test_create_change_merge_request_succeeds_when_updating_the_template_version_without_automerge(
@@ -343,7 +377,7 @@ async def test_create_change_merge_request_succeeds_when_updating_the_template_v
 ):
     # WHEN
     change = await change_service.create_change_merge_request(
-        initialized_incarnation.id, requested_version="v1.1.0", automerge=False
+        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}, automerge=False
     )
 
     # THEN
@@ -368,7 +402,7 @@ async def test_create_change_merge_request_succeeds_when_updating_the_template_v
 ):
     # WHEN
     change = await change_service.create_change_merge_request(
-        initialized_incarnation.id, requested_version="v1.1.0", automerge=True
+        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}, automerge=True
     )
 
     # THEN
@@ -435,7 +469,9 @@ async def test_list_changes(
     initialized_incarnation: Incarnation,
 ):
     # GIVEN
-    await change_service.create_change_merge_request(initialized_incarnation.id, requested_version="v1.1.0")
+    await change_service.create_change_merge_request(
+        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}
+    )
 
     # WHEN
     changes = await change_service.list_changes(initialized_incarnation.id)
@@ -454,7 +490,9 @@ async def test_update_incomplete_change_recovers_from_unpushed_direct_change(
     local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation
 ):
     # GIVEN
-    change = await change_service.create_change_direct(initialized_incarnation.id, requested_version="v1.1.0")
+    change = await change_service.create_change_direct(
+        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}
+    )
 
     # remove latest commit from repo
     repo_path = local_hoster._repo_path(initialized_incarnation.incarnation_repository)
@@ -480,7 +518,9 @@ async def test_update_incomplete_change_recovers_from_pushed_direct_change(
     local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation
 ):
     # GIVEN
-    change = await change_service.create_change_direct(initialized_incarnation.id, requested_version="v1.1.0")
+    change = await change_service.create_change_direct(
+        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}
+    )
 
     # update database to reflect the missing update about the pushed change
     await change_service._change_repository.update_commit_pushed(change.id, False)
@@ -498,7 +538,7 @@ async def test_update_incomplete_change_recovers_from_unpushed_merge_request_cha
 ):
     # GIVEN
     change = await change_service.create_change_merge_request(
-        initialized_incarnation.id, requested_version="v1.1.0", automerge=False
+        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}, automerge=False
     )
 
     # remove the pushed branch from the repo
@@ -524,7 +564,7 @@ async def test_update_incomplete_change_recovers_from_pushed_merge_request_chang
 ):
     # GIVEN
     change = await change_service.create_change_merge_request(
-        initialized_incarnation.id, requested_version="v1.1.0", automerge=False
+        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}, automerge=False
     )
 
     await change_service._change_repository.update_merge_request_id(change.id, None)
@@ -542,7 +582,7 @@ async def test_update_incomplete_change_raises_exception_for_pushed_merge_reques
 ):
     # GIVEN
     change = await change_service.create_change_merge_request(
-        initialized_incarnation.id, requested_version="v1.1.0", automerge=False
+        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}, automerge=False
     )
 
     await change_service._change_repository.update_merge_request_id(change.id, None)

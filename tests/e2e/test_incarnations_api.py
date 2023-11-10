@@ -413,6 +413,7 @@ async def test_put_incarnation_returns_error_if_the_previous_one_has_not_been_me
     response = await foxops_client.put(
         f"/api/incarnations/{incarnation_id}",
         json={
+            "template_repository_version": "v1.0.0",
             "template_data": {"name": "Jon", "age": 19},
             "automerge": False,
         },

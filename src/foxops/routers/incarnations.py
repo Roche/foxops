@@ -8,12 +8,7 @@ from foxops.engine.errors import ProvidedTemplateDataInvalidError
 from foxops.errors import IncarnationNotFoundError as IncarnationNotFoundLegacyError
 from foxops.hosters import Hoster
 from foxops.logger import bind, get_logger
-from foxops.models import (
-    DesiredIncarnationState,
-    DesiredIncarnationStatePatch,
-    IncarnationBasic,
-    IncarnationWithDetails,
-)
+from foxops.models import IncarnationBasic, IncarnationWithDetails
 from foxops.models.errors import ApiError
 from foxops.routers import changes
 from foxops.services.change import (
@@ -73,6 +68,16 @@ async def list_incarnations(
         return ApiError(message="No incarnation found for the given repository and target directory")
 
 
+class CreateIncarnationRequest(BaseModel):
+    incarnation_repository: str
+    target_directory: str = "."
+
+    template_repository: str
+    template_repository_version: str
+
+    template_data: TemplateData
+
+
 @router.post(
     "",
     responses={
@@ -96,24 +101,24 @@ async def list_incarnations(
 )
 async def create_incarnation(
     response: Response,
-    desired_incarnation_state: DesiredIncarnationState,
+    request: CreateIncarnationRequest,
     change_service: ChangeService = Depends(get_change_service),
 ):
     """Initializes a new incarnation and adds it to the inventory.
 
     If the initialization fails, foxops will return the error in a `4xx` or `5xx` status code response.
     """
-    bind(incarnation_repository=desired_incarnation_state.incarnation_repository)
-    bind(target_directory=desired_incarnation_state.target_directory)
+    bind(incarnation_repository=request.incarnation_repository)
+    bind(target_directory=request.target_directory)
 
-    template_data = desired_incarnation_state.template_data or {}
+    template_data = request.template_data or {}
 
     try:
         change = await change_service.create_incarnation(
-            incarnation_repository=desired_incarnation_state.incarnation_repository,
-            target_directory=desired_incarnation_state.target_directory,
-            template_repository=desired_incarnation_state.template_repository,
-            template_repository_version=desired_incarnation_state.template_repository_version,
+            incarnation_repository=request.incarnation_repository,
+            target_directory=request.target_directory,
+            template_repository=request.template_repository,
+            template_repository_version=request.template_repository_version,
             template_data=template_data,
         )
     except ProvidedTemplateDataInvalidError as e:
@@ -127,8 +132,8 @@ async def create_incarnation(
         response.status_code = status.HTTP_409_CONFLICT
         return ApiError(
             message=(
-                f"There is already a foxops incarnation at {desired_incarnation_state.incarnation_repository} "
-                f"with target directory {desired_incarnation_state.target_directory}"
+                f"There is already a foxops incarnation at {request.incarnation_repository} "
+                f"with target directory {request.target_directory}"
             )
         )
 
@@ -227,6 +232,15 @@ async def reset_incarnation(
     )
 
 
+class UpdateIncarnationRequest(BaseModel):
+    """A DesiredIncarnationStatePatch represents the patch for the desired state of an incarnation."""
+
+    template_repository_version: str
+    template_data: TemplateData = {}
+
+    automerge: bool
+
+
 @router.put(
     "/{incarnation_id}",
     responses={
@@ -255,26 +269,22 @@ async def reset_incarnation(
 async def update_incarnation(
     response: Response,
     incarnation_id: int,
-    desired_incarnation_state_patch: DesiredIncarnationStatePatch,
+    request: UpdateIncarnationRequest,
     change_service: ChangeService = Depends(get_change_service),
 ):
-    """Reconciles the incarnation.
+    """Updates the incarnation to the given version and data.
 
-    If the reconciliation fails, foxops will return the error in a `4xx` or `5xx` status code response.
-
-    If a reconciliation for the incarnation is already in progress a `409 CONFLICT` status code will be returned.
-
-    If no *desired incarnation state* is provided in the request body, foxops will use the
-    persisted *actual state* and perform a reconciliation. This is seldomly useful, but can be used
-    to update when a moving Git revision (e.g. a branch) is used.
+    The provided version and template data must represent the full desired target state of the incarnation.
+    If you only want to do surgical patches (e.g. updating a single variable or bump the template version while
+    reusing the previously set variable values), use the PATCH endpoint instead.
     """
 
     try:
         await change_service.create_change_merge_request(
             incarnation_id=incarnation_id,
-            requested_version=desired_incarnation_state_patch.template_repository_version,
-            requested_data=desired_incarnation_state_patch.template_data,
-            automerge=desired_incarnation_state_patch.automerge,
+            requested_version=request.template_repository_version,
+            requested_data=request.template_data,
+            automerge=request.automerge,
         )
     except ProvidedTemplateDataInvalidError as e:
         response.status_code = status.HTTP_400_BAD_REQUEST
@@ -293,8 +303,8 @@ async def update_incarnation(
         logger.info(
             "A change was requested, but there were no changes to apply",
             incarnation_id=incarnation_id,
-            requested_version=desired_incarnation_state_patch.template_repository_version,
-            requested_data=desired_incarnation_state_patch.template_data,
+            requested_version=request.template_repository_version,
+            requested_data=request.template_data,
         )
 
     return await change_service.get_incarnation_with_details(incarnation_id)
