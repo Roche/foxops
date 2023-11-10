@@ -296,7 +296,9 @@ class ChangeService:
 
         # https://youtrack.jetbrains.com/issue/PY-36444
         env: _PreparedChangeEnvironment
-        async with self._prepared_change_environment(incarnation_id, requested_version, requested_data) as env:
+        async with self._prepared_change_environment(
+            incarnation_id, requested_version, requested_data, patch=False
+        ) as env:
             # because we want to apply the change without an MR
             # ... let's merge the change directly into the default branch
             await env.incarnation_repository.checkout_branch(env.incarnation_repository_default_branch)
@@ -326,9 +328,10 @@ class ChangeService:
     async def create_change_merge_request(
         self,
         incarnation_id: int,
-        requested_version: str,
+        requested_version: str | None,
         requested_data: TemplateData,
         automerge: bool = False,
+        patch: bool = False,
     ) -> ChangeWithMergeRequest:
         """
         Perform a MERGE_REQUEST change on the given incarnation.
@@ -339,7 +342,9 @@ class ChangeService:
 
         # https://youtrack.jetbrains.com/issue/PY-36444
         env: _PreparedChangeEnvironment
-        async with self._prepared_change_environment(incarnation_id, requested_version, requested_data) as env:
+        async with self._prepared_change_environment(
+            incarnation_id, requested_version, requested_data, patch=patch
+        ) as env:
             change_in_db = await self._change_repository.create_change(
                 incarnation_id=incarnation_id,
                 revision=env.expected_revision,
@@ -578,18 +583,28 @@ class ChangeService:
 
     @asynccontextmanager
     async def _prepared_change_environment(
-        self, incarnation_id: int, requested_version: str, requested_data: TemplateData
+        self, incarnation_id: int, requested_version: str | None, requested_data: TemplateData, patch: bool
     ) -> AsyncIterator[_PreparedChangeEnvironment]:
         """
         This method checks out the incarnation repository, prepares a branch that contains the update and commits.
-        """
-        incarnation = await self._incarnation_repository.get_by_id(incarnation_id)
 
-        if incarnation.template_repository is None:
-            raise Exception("upgrade failed. Should not happen.")
+        If patch is True:
+        - the requested_version can be None, which results in using the same version that is currently applied
+        - the requested_data can be a subset of the required template variables. The provided values
+          will then be added to those that are currently already in use when rendering the incarnation.
+        """
+
+        incarnation = await self._incarnation_repository.get_by_id(incarnation_id)
 
         # if the previous change was of type merge request and is still open, we dont want to continue
         last_change = await self.get_latest_change_for_incarnation_if_completed(incarnation_id)
+
+        if patch:
+            to_version = requested_version or last_change.requested_version
+        else:
+            if requested_version is None:
+                raise ValueError("requested_version must be set if patch is False")
+            to_version = requested_version
 
         incarnation_repo_metadata = await self._hoster.get_repository_metadata(incarnation.incarnation_repository)
 
@@ -600,7 +615,7 @@ class ChangeService:
             branch_name = generate_foxops_branch_name(
                 prefix="update-to",
                 target_directory=incarnation.target_directory,
-                template_repository_version=requested_version,
+                template_repository_version=to_version,
             )
             await local_incarnation_repository.create_and_checkout_branch(branch_name, exist_ok=False)
 
@@ -610,10 +625,11 @@ class ChangeService:
                 patch_result,
             ) = await fengine.update_incarnation_from_git_template_repository(
                 template_git_repository=local_template_repository.directory,
-                update_template_repository_version=requested_version,
+                update_template_repository_version=to_version,
                 update_template_data=requested_data,
                 incarnation_root_dir=(local_incarnation_repository.directory / incarnation.target_directory),
                 diff_patch_func=fengine.diff_and_patch,
+                patch_data=patch,
             )
 
             if not update_performed:
@@ -621,9 +637,7 @@ class ChangeService:
             if patch_result is None:
                 raise ChangeFailed("Patch result was None. That is unexpected at this stage.")
 
-            await local_incarnation_repository.commit_all(
-                f"foxops: updating incarnation to version {requested_version}"
-            )
+            await local_incarnation_repository.commit_all(f"foxops: updating incarnation to version {to_version}")
             commit_sha = await local_incarnation_repository.head()
 
             yield _PreparedChangeEnvironment(
@@ -631,7 +645,7 @@ class ChangeService:
                 incarnation_repository_identifier=incarnation.incarnation_repository,
                 incarnation_repository_default_branch=incarnation_repo_metadata["default_branch"],
                 to_version_hash=await local_template_repository.head(),
-                to_version=requested_version,
+                to_version=to_version,
                 to_data=incarnation_state.template_data,
                 to_data_full=incarnation_state.template_data_full,
                 expected_revision=last_change.revision + 1,

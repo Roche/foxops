@@ -404,7 +404,7 @@ async def test_put_incarnation_creates_merge_request_with_conflicts(
     )
 
 
-async def test_put_incarnation_returns_error_if_the_previous_one_has_not_been_merged(
+async def test_patch_incarnation_returns_error_if_the_previous_one_has_not_been_merged(
     foxops_client: AsyncClient,
     gitlab_incarnation_repository_in_v1: tuple[str, str],
 ):
@@ -421,16 +421,44 @@ async def test_put_incarnation_returns_error_if_the_previous_one_has_not_been_me
     response.raise_for_status()
 
     # WHEN
-    response = await foxops_client.put(
+    response = await foxops_client.patch(
         f"/api/incarnations/{incarnation_id}",
         json={
-            "template_repository_version": "v2.0.0",
+            "requested_version": "v2.0.0",
             "automerge": False,
         },
     )
 
     # THEN
     assert response.status_code == HTTPStatus.CONFLICT
+
+
+async def test_patch_incarnation_creates_merge_requests_for_updated_data(
+    foxops_client: AsyncClient,
+    gitlab_client: Client,
+    gitlab_incarnation_repository_in_v1: tuple[str, str],
+):
+    # GIVEN
+    incarnation_repository, incarnation_id = gitlab_incarnation_repository_in_v1
+
+    # WHEN
+    response = await foxops_client.patch(
+        f"/api/incarnations/{incarnation_id}",
+        json={
+            "requested_data": {"age": 20},
+            "automerge": True,
+        },
+    )
+
+    # THEN
+    assert response.status_code == HTTPStatus.OK
+
+    assert_file_in_repository(
+        gitlab_client,
+        incarnation_repository,
+        "README.md",
+        "Jon is of age 20",
+    )
 
 
 async def test_get_incarnations_returns_all_incarnations(
