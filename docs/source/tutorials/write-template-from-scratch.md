@@ -62,7 +62,7 @@ variables:
         default: Jane Doe
 ```
 
-More variable types exist (like complex objects or lists): Read more about this in the [template configuration reference](../configfile_reference).
+More variable types exist (like complex objects or lists): Read more about this in the [template configuration reference](../reference/templates).
 
 ## Exclude Files from Rendering
 
