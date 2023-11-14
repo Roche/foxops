@@ -599,7 +599,7 @@ async def test_reset_incarnation_returns_change_and_does_not_modify_main_branch(
     local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation_with_customizations: Incarnation
 ):
     # WHEN
-    change = await change_service.reset_incarnation(initialized_incarnation_with_customizations.id)
+    change = await change_service.reset_incarnation(initialized_incarnation_with_customizations.id, "v1.0.0", {})
 
     # THEN
     assert change.merge_request_status == MergeRequestStatus.OPEN
@@ -617,7 +617,11 @@ async def test_reset_incarnation_succeeds_and_removes_customizations_on_merge_re
     local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation_with_customizations: Incarnation
 ):
     # WHEN
-    change = await change_service.reset_incarnation(initialized_incarnation_with_customizations.id)
+    change = await change_service.reset_incarnation(
+        initialized_incarnation_with_customizations.id,
+        version="v1.3.0",
+        data={},
+    )
 
     # THEN
     assert change.revision > 1
@@ -627,7 +631,7 @@ async def test_reset_incarnation_succeeds_and_removes_customizations_on_merge_re
         initialized_incarnation_with_customizations.incarnation_repository,
         refspec=change.merge_request_branch_name,
     ) as repo:
-        assert (repo.directory / "README.md").read_text() == "Hello, world!"
+        assert (repo.directory / "README.md").read_text() == "Hello, world3!"
         assert not (repo.directory / "CONTRIBUTING.md").exists()
 
 
@@ -636,7 +640,7 @@ async def test_reset_incarnation_succeeds_when_overriding_version_and_data(
 ):
     # WHEN
     change = await change_service.reset_incarnation(
-        initialized_incarnation_with_customizations.id, override_version="v1.3.0", override_data={"author": "bar"}
+        initialized_incarnation_with_customizations.id, "v1.3.0", {"author": "bar"}
     )
 
     # THEN
@@ -661,13 +665,13 @@ async def test_reset_incarnation_fails_when_no_customizations_were_made(
 ):
     # THEN
     with pytest.raises(ChangeRejectedDueToNoChanges):
-        await change_service.reset_incarnation(initialized_incarnation.id)
+        await change_service.reset_incarnation(initialized_incarnation.id, "v1.0.0", {})
 
 
 async def test_reset_incarnation_fails_when_incarnation_does_not_exist(change_service: ChangeService):
     # WHEN
     with pytest.raises(IncarnationNotFoundError):
-        await change_service.reset_incarnation(123456789)
+        await change_service.reset_incarnation(123456789, "v1.0.0", {})
 
 
 def test_delete_all_files_in_local_git_repository_removes_hidden_directories_and_files(tmp_path):

@@ -200,9 +200,7 @@ class ChangeService:
 
         return await self.get_change(change.id)
 
-    async def reset_incarnation(
-        self, incarnation_id: int, override_version: str | None = None, override_data: TemplateData | None = None
-    ) -> ChangeWithMergeRequest:
+    async def reset_incarnation(self, incarnation_id: int, version: str, data: TemplateData) -> ChangeWithMergeRequest:
         """
         Resets an incarnation by removing all customizations that were done to it
         ... and bring it back to a pristine state as if it was just created freshly from the template.
@@ -220,15 +218,8 @@ class ChangeService:
 
         reset_branch_name = f"foxops-reset-{str(uuid.uuid4())[:8]}"
 
-        to_version = last_change.requested_version
-        if override_version is not None:
-            to_version = override_version
-        to_data = dict(last_change.requested_data)
-        if override_data is not None:
-            to_data.update(override_data)
-
         async with (
-            self._hoster.cloned_repository(incarnation.template_repository, refspec=to_version) as template_git,
+            self._hoster.cloned_repository(incarnation.template_repository, refspec=version) as template_git,
             self._hoster.cloned_repository(incarnation.incarnation_repository) as incarnation_git,
         ):
             await incarnation_git.create_and_checkout_branch(reset_branch_name)
@@ -237,15 +228,15 @@ class ChangeService:
             incarnation_state = await fengine.initialize_incarnation(
                 template_root_dir=template_git.directory,
                 template_repository=incarnation.template_repository,
-                template_repository_version=to_version,
-                template_data=to_data,
+                template_repository_version=version,
+                template_data=data,
                 incarnation_root_dir=incarnation_git.directory / incarnation.target_directory,
             )
 
             if not await incarnation_git.has_uncommitted_changes():
                 raise ChangeRejectedDueToNoChanges("No changes were made to the incarnation. Nothing to reset.")
 
-            await incarnation_git.commit_all(f"foxops: resetting incarnation to version {to_version}")
+            await incarnation_git.commit_all(f"foxops: resetting incarnation to version {version}")
             commit_sha = await incarnation_git.head()
 
             change_in_db = await self._change_repository.create_change(
@@ -263,7 +254,7 @@ class ChangeService:
 
             await self._push_change_commit_and_update_database(incarnation_git, change_in_db.id)
 
-        title = f"↩️ - RESET: To version {to_version}"
+        title = f"↩️ - RESET: To version {version}"
         description = (
             "This MR helps to bring back the incarnation to a 'pristine' state, as if it was "
             "just created. Feel free to edit the branch to remove the changes and customizations "

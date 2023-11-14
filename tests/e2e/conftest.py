@@ -1,5 +1,5 @@
 import base64
-from typing import Callable, NamedTuple, Any, Awaitable
+from typing import Any, Awaitable, Callable, NamedTuple
 from urllib.parse import quote_plus
 
 import pytest
@@ -8,12 +8,14 @@ from httpx import AsyncClient, Client
 from foxops.__main__ import create_app
 from foxops.engine.models.template_config import TemplateConfig
 
-
-TemplateVersion = NamedTuple("TemplateVersion", [
-    ("version", str),
-    ("config", TemplateConfig),
-    ("files", dict[str, bytes]),
-])
+TemplateVersion = NamedTuple(
+    "TemplateVersion",
+    [
+        ("version", str),
+        ("config", TemplateConfig),
+        ("files", dict[str, bytes]),
+    ],
+)
 
 TemplateFactory = Callable[[list[TemplateVersion]], str]
 

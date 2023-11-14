@@ -170,8 +170,8 @@ async def read_incarnation(
 
 
 class IncarnationResetRequest(BaseModel):
-    override_version: str | None = None
-    override_template_data: TemplateData | None = None
+    requested_version: str
+    requested_data: TemplateData
 
 
 class IncarnationResetResponse(BaseModel):
@@ -200,16 +200,15 @@ class IncarnationResetResponse(BaseModel):
 async def reset_incarnation(
     incarnation_id: int,
     response: Response,
-    request: IncarnationResetRequest | None = None,
+    request: IncarnationResetRequest,
     incarnation_service: IncarnationService = Depends(get_incarnation_service),
     change_service: ChangeService = Depends(get_change_service),
     hoster: Hoster = Depends(get_hoster),
 ):
-    to_version = request.override_version if request else None
-    to_data = request.override_template_data if request else None
-
     try:
-        change = await change_service.reset_incarnation(incarnation_id, to_version, to_data)
+        change = await change_service.reset_incarnation(
+            incarnation_id, request.requested_version, request.requested_data
+        )
     except ProvidedTemplateDataInvalidError as e:
         response.status_code = status.HTTP_400_BAD_REQUEST
         error_messages = e.get_readable_error_messages()

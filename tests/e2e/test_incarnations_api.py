@@ -7,13 +7,16 @@ import pytest
 from httpx import AsyncClient, Client
 from pytest_mock import MockFixture
 
-from e2e.conftest import TemplateFactory, TemplateVersion, IncarnationFactory
-from foxops.engine.models.template_config import TemplateConfig, StringVariableDefinition
+from foxops.engine.models.template_config import (
+    StringVariableDefinition,
+    TemplateConfig,
+)
 from tests.e2e.assertions import (
     assert_file_in_repository,
     assert_update_merge_request_exists,
     assert_update_merge_request_with_conflicts_exists,
 )
+from tests.e2e.conftest import IncarnationFactory, TemplateVersion
 
 # mark all tests in this module as e2e
 pytestmark = [pytest.mark.e2e, pytest.mark.api]
@@ -659,7 +662,13 @@ async def test_post_incarnation_reset_creates_merge_request_that_resets_incarnat
     response.raise_for_status()
 
     # WHEN
-    response = await foxops_client.post(f"/api/incarnations/{incarnation_id}/reset")
+    response = await foxops_client.post(
+        f"/api/incarnations/{incarnation_id}/reset",
+        json={
+            "requested_version": "v1.0.0",
+            "requested_data": {"name": "Jon", "age": 18},
+        },
+    )
     response.raise_for_status()
 
     response_data = response.json()
