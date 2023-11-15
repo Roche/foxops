@@ -102,6 +102,9 @@ The following is needed to run foxops:
   * `FOXOPS_HOSTER_TYPE` - Set to `gitlab` for a production deployment
   * `FOXOPS_HOSTER_GITLAB_ADDRESS` - Set to the address of your GitLab instance (e.g. `https://gitlab.com`) (if hoster type is set to `gitlab`)
   * `FOXOPS_HOSTER_GITLAB_TOKEN` - Set to a GitLab access token that has access to all repositories (incarnations & templates) that foxops should manage (if hoster type is set to `gitlab`)
+    * The Gitlab token must have the `api` scope to be able to perform all required actions (pushing/pulling repos, creating merge requests).
+    * Be aware that foxops pushes all changes using this token (and therefore, might also trigger pipelines with this token). As Gitlab pipelines inherit the permissions from the user (in this case, the token) creating a change, make sure this token has sufficient access.
+  * `FOXOPS_LOG_LEVEL` - Set to `DEBUG` to enable debug logging (optional, default is `INFO`)
 
 #### Kubernetes Example
 

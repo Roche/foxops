@@ -38,7 +38,7 @@ async def test_create_change(api_client: AsyncClient, change_service_mock: Chang
 
     # WHEN
     response = await api_client.post(
-        "/incarnations/1/changes", json={"change_type": "direct", "requested_version": "1.0.0"}
+        "/incarnations/1/changes", json={"change_type": "direct", "requested_version": "1.0.0", "requested_data": {}}
     )
 
     # THEN

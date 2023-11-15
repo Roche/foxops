@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Annotated, Self
 
 from fastapi import APIRouter, Depends, HTTPException, Path, status
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel
 
 from foxops.database.repositories.change import ChangeNotFoundError
 from foxops.database.repositories.change import ChangeType as DatabaseChangeType
@@ -42,16 +42,9 @@ class CreateChangeType(enum.Enum):
 
 
 class CreateChangeRequest(BaseModel):
-    requested_version: str | None = None
-    requested_data: dict[str, str] | None = None
+    requested_version: str
+    requested_data: TemplateData
     change_type: CreateChangeType = CreateChangeType.DIRECT
-
-    @model_validator(mode="after")
-    def check_either_version_or_data_change_requested(self) -> Self:
-        if self.requested_version is None and self.requested_data is None:
-            raise ValueError("Either requested_version or requested_data must be set")
-
-        return self
 
 
 class ChangeType(enum.Enum):

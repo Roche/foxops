@@ -4,6 +4,7 @@ Pydantic Models (TemplateConfig) that can be used for reading the `fengine.yaml`
 
 import abc
 import re
+from io import StringIO
 from pathlib import Path
 from typing import Annotated, Any, Literal, Self, Type, Union
 
@@ -169,8 +170,13 @@ class TemplateConfig(BaseModel):
         return create_model("TemplateDataModel", **fields)
 
     def save(self, target: Path) -> None:
+        target.write_text(self.yaml())
+
+    def yaml(self) -> str:
         yaml = YAML(typ="safe")
         yaml.default_flow_style = False
 
-        with target.open("w") as f:
-            yaml.dump(self.model_dump(), f)
+        s = StringIO()
+        yaml.dump(self.model_dump(), s)
+
+        return s.getvalue()

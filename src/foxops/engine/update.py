@@ -1,3 +1,4 @@
+from copy import deepcopy
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -11,12 +12,30 @@ from foxops.logger import get_logger
 logger = get_logger(__name__)
 
 
+def _patch_template_data(data: TemplateData, patch: TemplateData) -> None:
+    """Patch the template data with the patch data (in-place).
+
+    Will iterate through the provided patch 1-by-1, deeply merging it into the "data" dict.
+    If a list is encountered in the patch, it will fully replace the list in the data dict (instead of appending).
+    """
+
+    for key, value in patch.items():
+        if isinstance(value, dict):
+            if key not in data:
+                data[key] = {}
+
+            _patch_template_data(data[key], value)
+        else:
+            data[key] = value
+
+
 async def update_incarnation_from_git_template_repository(
     template_git_repository: Path,
     update_template_repository_version: str,
     update_template_data: TemplateData,
     incarnation_root_dir: Path,
     diff_patch_func,
+    patch_data: bool = False,
 ) -> tuple[bool, IncarnationState, PatchResult | None]:
     """
     Update an incarnation with a new version of a template.
@@ -24,7 +43,10 @@ async def update_incarnation_from_git_template_repository(
     The process works roughly like this:
     * create a git worktree from the template repository version ('v1') that is currently in use by the incarnation
     * create a git worktree from the template repository version ('v2') that the incarnation should be updated to
-
+    * initialize two _temporary_ incarnations from both template versions into separate directories:
+      - the old template version with the data that is currently in use by the incarnation
+      - the new template version with the data that was provided for the update
+    * diff the two incarnations - then apply the patch on the actual incarnation that should be updated
     """
     if update_template_repository_version.startswith("-"):
         raise ValueError(
@@ -68,6 +90,7 @@ async def update_incarnation_from_git_template_repository(
             updated_template_data=update_template_data,
             incarnation_root_dir=incarnation_root_dir,
             diff_patch_func=diff_patch_func,
+            patch_data=patch_data,
         )
 
 
@@ -78,12 +101,22 @@ async def update_incarnation(
     updated_template_data: TemplateData,
     incarnation_root_dir: Path,
     diff_patch_func,
+    patch_data: bool = False,
 ) -> tuple[bool, IncarnationState, PatchResult | None]:
-    """Update an incarnation with a new version of a template."""
+    """Update an incarnation with a new version of a template.
+
+    If patch_data is True, the updated_template_data will be merged into the current template data.
+    """
 
     # initialize pristine incarnation from current incarnation state
     incarnation_state_path = incarnation_root_dir / ".fengine.yaml"
     incarnation_state = IncarnationState.from_file(incarnation_state_path)
+
+    if patch_data:
+        template_data = deepcopy(incarnation_state.template_data)
+        _patch_template_data(template_data, updated_template_data)
+    else:
+        template_data = updated_template_data
 
     with TemporaryDirectory() as incarnation_v1_dir, TemporaryDirectory() as incarnation_v2_dir:
         logger.debug(
@@ -115,7 +148,7 @@ async def update_incarnation(
             template_root_dir=updated_template_root_dir,
             template_repository=incarnation_state.template_repository,
             template_repository_version=updated_template_repository_version,
-            template_data=updated_template_data,
+            template_data=template_data,
             incarnation_root_dir=Path(incarnation_v2_dir),
         )
 

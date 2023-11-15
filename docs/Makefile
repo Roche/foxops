@@ -20,4 +20,5 @@ help:
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 live:
+	rm -rf "$(BUILDDIR)"
 	sphinx-autobuild "$(SOURCEDIR)" "$(BUILDDIR)"

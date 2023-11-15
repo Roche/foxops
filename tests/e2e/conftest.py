@@ -1,11 +1,66 @@
 import base64
-from typing import Callable
+from typing import Any, Awaitable, Callable, NamedTuple
 from urllib.parse import quote_plus
 
 import pytest
 from httpx import AsyncClient, Client
 
 from foxops.__main__ import create_app
+from foxops.engine.models.template_config import TemplateConfig
+
+TemplateVersion = NamedTuple(
+    "TemplateVersion",
+    [
+        ("version", str),
+        ("config", TemplateConfig),
+        ("files", dict[str, bytes]),
+    ],
+)
+
+TemplateFactory = Callable[[list[TemplateVersion]], str]
+
+
+@pytest.fixture(scope="session")
+def gitlab_template_factory(gitlab_client: Client, gitlab_project_factory: Callable[[str], dict]) -> TemplateFactory:
+    def _create_template(versions: list[TemplateVersion]) -> str:
+        project = gitlab_project_factory("template")
+
+        for version in versions:
+            (
+                gitlab_client.post(
+                    f"/projects/{project['id']}/repository/files/{quote_plus('fengine.yaml')}",
+                    json={
+                        "encoding": "base64",
+                        "content": base64.b64encode(version.config.yaml().encode()).decode(),
+                        "commit_message": "Initial commit",
+                        "branch": project["default_branch"],
+                    },
+                )
+            ).raise_for_status()
+
+            for path, content in version.files.items():
+                (
+                    gitlab_client.post(
+                        f"/projects/{project['id']}/repository/files/{quote_plus('template/' + path)}",
+                        json={
+                            "encoding": "base64",
+                            "content": base64.b64encode(content).decode(),
+                            "commit_message": "commitmessage",
+                            "branch": project["default_branch"],
+                        },
+                    )
+                ).raise_for_status()
+
+            (
+                gitlab_client.post(
+                    f"/projects/{project['id']}/repository/tags",
+                    json={"tag_name": version.version, "ref": project["default_branch"]},
+                )
+            ).raise_for_status()
+
+        return project["path_with_namespace"]
+
+    return _create_template
 
 
 @pytest.fixture(scope="session")
@@ -122,3 +177,36 @@ async def gitlab_incarnation_repository_in_v1(
     incarnation = response.json()
 
     return incarnation_repo, str(incarnation["id"])
+
+
+IncarnationFactory = Callable[[list[TemplateVersion], dict[str, Any]], Awaitable[tuple[str, str]]]
+
+
+@pytest.fixture
+def gitlab_incarnation_factory(
+    foxops_client: AsyncClient,
+    gitlab_project_factory: Callable[[str], dict],
+    gitlab_template_factory: TemplateFactory,
+) -> IncarnationFactory:
+    async def _create_incarnation(
+        template_versions: list[TemplateVersion],
+        template_data: dict[str, Any],
+    ) -> tuple[str, str]:
+        template_repo = gitlab_template_factory(template_versions)
+        incarnation_repo = gitlab_project_factory("incarnation")["path_with_namespace"]
+
+        response = await foxops_client.post(
+            "/api/incarnations",
+            json={
+                "incarnation_repository": incarnation_repo,
+                "template_repository": template_repo,
+                "template_repository_version": template_versions[-1].version,
+                "template_data": template_data,
+            },
+        )
+        response.raise_for_status()
+        incarnation = response.json()
+
+        return incarnation_repo, str(incarnation["id"])
+
+    return _create_incarnation

@@ -200,9 +200,7 @@ class ChangeService:
 
         return await self.get_change(change.id)
 
-    async def reset_incarnation(
-        self, incarnation_id: int, override_version: str | None = None, override_data: TemplateData | None = None
-    ) -> ChangeWithMergeRequest:
+    async def reset_incarnation(self, incarnation_id: int, version: str, data: TemplateData) -> ChangeWithMergeRequest:
         """
         Resets an incarnation by removing all customizations that were done to it
         ... and bring it back to a pristine state as if it was just created freshly from the template.
@@ -220,15 +218,8 @@ class ChangeService:
 
         reset_branch_name = f"foxops-reset-{str(uuid.uuid4())[:8]}"
 
-        to_version = last_change.requested_version
-        if override_version is not None:
-            to_version = override_version
-        to_data = dict(last_change.requested_data)
-        if override_data is not None:
-            to_data.update(override_data)
-
         async with (
-            self._hoster.cloned_repository(incarnation.template_repository, refspec=to_version) as template_git,
+            self._hoster.cloned_repository(incarnation.template_repository, refspec=version) as template_git,
             self._hoster.cloned_repository(incarnation.incarnation_repository) as incarnation_git,
         ):
             await incarnation_git.create_and_checkout_branch(reset_branch_name)
@@ -237,15 +228,15 @@ class ChangeService:
             incarnation_state = await fengine.initialize_incarnation(
                 template_root_dir=template_git.directory,
                 template_repository=incarnation.template_repository,
-                template_repository_version=to_version,
-                template_data=to_data,
+                template_repository_version=version,
+                template_data=data,
                 incarnation_root_dir=incarnation_git.directory / incarnation.target_directory,
             )
 
             if not await incarnation_git.has_uncommitted_changes():
                 raise ChangeRejectedDueToNoChanges("No changes were made to the incarnation. Nothing to reset.")
 
-            await incarnation_git.commit_all(f"foxops: resetting incarnation to version {to_version}")
+            await incarnation_git.commit_all(f"foxops: resetting incarnation to version {version}")
             commit_sha = await incarnation_git.head()
 
             change_in_db = await self._change_repository.create_change(
@@ -263,7 +254,7 @@ class ChangeService:
 
             await self._push_change_commit_and_update_database(incarnation_git, change_in_db.id)
 
-        title = f"↩️ - RESET: To version {to_version}"
+        title = f"↩️ - RESET: To version {version}"
         description = (
             "This MR helps to bring back the incarnation to a 'pristine' state, as if it was "
             "just created. Feel free to edit the branch to remove the changes and customizations "
@@ -282,7 +273,7 @@ class ChangeService:
         return await self.get_change_with_merge_request(change_in_db.id)
 
     async def create_change_direct(
-        self, incarnation_id: int, requested_version: str | None = None, requested_data: TemplateData | None = None
+        self, incarnation_id: int, requested_version: str, requested_data: TemplateData
     ) -> Change:
         """
         Perform a DIRECT change on the given incarnation.
@@ -296,7 +287,9 @@ class ChangeService:
 
         # https://youtrack.jetbrains.com/issue/PY-36444
         env: _PreparedChangeEnvironment
-        async with self._prepared_change_environment(incarnation_id, requested_version, requested_data) as env:
+        async with self._prepared_change_environment(
+            incarnation_id, requested_version, requested_data, patch=False
+        ) as env:
             # because we want to apply the change without an MR
             # ... let's merge the change directly into the default branch
             await env.incarnation_repository.checkout_branch(env.incarnation_repository_default_branch)
@@ -326,9 +319,10 @@ class ChangeService:
     async def create_change_merge_request(
         self,
         incarnation_id: int,
-        requested_version: str | None = None,
-        requested_data: TemplateData | None = None,
+        requested_version: str | None,
+        requested_data: TemplateData,
         automerge: bool = False,
+        patch: bool = False,
     ) -> ChangeWithMergeRequest:
         """
         Perform a MERGE_REQUEST change on the given incarnation.
@@ -339,7 +333,9 @@ class ChangeService:
 
         # https://youtrack.jetbrains.com/issue/PY-36444
         env: _PreparedChangeEnvironment
-        async with self._prepared_change_environment(incarnation_id, requested_version, requested_data) as env:
+        async with self._prepared_change_environment(
+            incarnation_id, requested_version, requested_data, patch=patch
+        ) as env:
             change_in_db = await self._change_repository.create_change(
                 incarnation_id=incarnation_id,
                 revision=env.expected_revision,
@@ -578,26 +574,28 @@ class ChangeService:
 
     @asynccontextmanager
     async def _prepared_change_environment(
-        self, incarnation_id: int, requested_version: str | None, requested_data: TemplateData | None
+        self, incarnation_id: int, requested_version: str | None, requested_data: TemplateData, patch: bool
     ) -> AsyncIterator[_PreparedChangeEnvironment]:
         """
         This method checks out the incarnation repository, prepares a branch that contains the update and commits.
-        """
-        incarnation = await self._incarnation_repository.get_by_id(incarnation_id)
 
-        if incarnation.template_repository is None:
-            raise Exception("upgrade failed. Should not happen.")
+        If patch is True:
+        - the requested_version can be None, which results in using the same version that is currently applied
+        - the requested_data can be a subset of the required template variables. The provided values
+          will then be added to those that are currently already in use when rendering the incarnation.
+        """
+
+        incarnation = await self._incarnation_repository.get_by_id(incarnation_id)
 
         # if the previous change was of type merge request and is still open, we dont want to continue
         last_change = await self.get_latest_change_for_incarnation_if_completed(incarnation_id)
 
-        to_version = last_change.requested_version
-        if requested_version is not None:
+        if patch:
+            to_version = requested_version or last_change.requested_version
+        else:
+            if requested_version is None:
+                raise ValueError("requested_version must be set if patch is False")
             to_version = requested_version
-
-        to_data = dict(last_change.requested_data)
-        if requested_data is not None:
-            to_data.update(requested_data)
 
         incarnation_repo_metadata = await self._hoster.get_repository_metadata(incarnation.incarnation_repository)
 
@@ -619,9 +617,10 @@ class ChangeService:
             ) = await fengine.update_incarnation_from_git_template_repository(
                 template_git_repository=local_template_repository.directory,
                 update_template_repository_version=to_version,
-                update_template_data=to_data,
+                update_template_data=requested_data,
                 incarnation_root_dir=(local_incarnation_repository.directory / incarnation.target_directory),
                 diff_patch_func=fengine.diff_and_patch,
+                patch_data=patch,
             )
 
             if not update_performed:

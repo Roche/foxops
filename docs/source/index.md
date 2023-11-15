@@ -12,8 +12,8 @@ tutorials/index
 :maxdepth: 2
 :caption: References
 
+reference/templates
 terminology
-configfile_reference
 api
 ```
 
