@@ -44,6 +44,7 @@ export interface IncarnationApiView {
   template_repository_version: string
   template_repository_version_hash: string
   template_data: Record<string, string> | null,
+  template_data_full: Record<string, never> | null,
 }
 export interface Incarnation {
   id: number,
@@ -59,6 +60,7 @@ export interface Incarnation {
   templateRepositoryVersion: string,
   templateRepositoryVersionHash: string,
   templateData: Record<string, string>,
+  templateDataFull: Record<string, never>
 }
 
 export interface IncarnationUpdateApiInput {

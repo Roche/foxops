@@ -3,6 +3,7 @@ import styled from '@emotion/styled'
 import React, { forwardRef, useEffect, useId, useRef, useState } from 'react'
 import { transparentize } from '../../../styling/colors'
 import { buildTransform } from '../../../styling/transform'
+import { InputError } from '../InputError/InputError'
 
 interface InputComponentProps {
   inputSize: Size,
@@ -66,13 +67,6 @@ const Label = styled.label<LabelProps>(({ theme, lifted, size }) => {
 
 const Asterisk = styled.span(({ theme }) => ({
   color: theme.colors.error
-}))
-
-const InputError = styled.div(({ theme }) => ({
-  fontSize: 12,
-  color: theme.colors.error,
-  marginTop: 4,
-  marginBottom: 4
 }))
 
 type Size = 'medium' | 'large'

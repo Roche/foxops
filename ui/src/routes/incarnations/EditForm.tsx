@@ -9,14 +9,22 @@ import { IncarnationsForm } from './Form'
 import { Section } from './parts'
 import { Incarnation } from '../../interfaces/incarnations.types'
 
-const toIncarnationInput = (x: Incarnation): IncarnationInput => ({
-  automerge: true,
-  repository: x.incarnationRepository,
-  targetDirectory: x.targetDirectory,
-  templateRepository: x.templateRepository ?? '',
-  templateVersion: x.templateRepositoryVersion ?? '',
-  templateData: Object.entries(x.templateData).map(([key, value]) => ({ key, value }))
-})
+const toIncarnationInput = (x: Incarnation): IncarnationInput => {
+  let templateData = '{}'
+  try {
+    templateData = JSON.stringify(x.templateData, null, 2)
+  } catch (e) {
+    console.error(e)
+  }
+  return {
+    automerge: true,
+    repository: x.incarnationRepository,
+    targetDirectory: x.targetDirectory,
+    templateRepository: x.templateRepository ?? '',
+    templateVersion: x.templateRepositoryVersion ?? '',
+    templateData
+  }
+}
 
 export const EditIncarnationForm = () => {
   const { id } = useParams()
@@ -35,6 +43,7 @@ export const EditIncarnationForm = () => {
   const body = isSuccess
     ? (
       <IncarnationsForm
+        templateDataFull={data.templateDataFull}
         mergeRequestUrl={data.mergeRequestUrl}
         commitUrl={data.commitUrl}
         mutation={x => incarnations.update(id, x)}

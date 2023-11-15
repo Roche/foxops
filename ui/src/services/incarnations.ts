@@ -24,19 +24,13 @@ export interface IncarnationInput {
   targetDirectory: string,
   templateRepository: string,
   templateVersion: string,
-  templateData: {
-    key: string,
-    value: string,
-  }[]
+  templateData: string
 }
 
 export interface IncarnationUpdateInput {
   templateVersion: string,
   automerge: boolean,
-  templateData: {
-    key: string,
-    value: string,
-  }[]
+  templateData: string
 }
 
 export const convertToUiBaseIncarnation = (x: IncarnationBaseApiView): IncarnationBase => ({
@@ -68,8 +62,8 @@ const convertToUiIncarnation = (x: IncarnationApiView): Incarnation => ({
   templateRepository: x.template_repository,
   templateRepositoryVersion: x.template_repository_version,
   templateRepositoryVersionHash: x.template_repository_version_hash,
-  templateData: x.template_data ?? {}
-
+  templateData: x.template_data ?? {},
+  templateDataFull: x.template_data_full ?? {}
 })
 
 const convertToApiInput = (x: IncarnationInput): IncarnationApiInput => ({
@@ -77,19 +71,13 @@ const convertToApiInput = (x: IncarnationInput): IncarnationApiInput => ({
   template_repository: x.templateRepository,
   template_repository_version: x.templateVersion,
   target_directory: x.targetDirectory,
-  template_data: x.templateData.reduce((acc, { key, value }) => {
-    acc[key] = value
-    return acc
-  }, {} as Record<string, string>),
+  template_data: JSON.parse(x.templateData),
   automerge: false
 })
 
 const convertToApiUpdateInput = (x: IncarnationInput): IncarnationUpdateApiInput => ({
   template_repository_version: x.templateVersion,
-  template_data: x.templateData.reduce((acc, { key, value }) => {
-    acc[key] = value
-    return acc
-  }, {} as Record<string, string>),
+  template_data: JSON.parse(x.templateData),
   automerge: x.automerge
 })
 

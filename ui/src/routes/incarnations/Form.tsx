@@ -1,11 +1,10 @@
-import { useForm, SubmitHandler, useFieldArray, Controller } from 'react-hook-form'
+import { useForm, SubmitHandler, Controller } from 'react-hook-form'
 import isEqual from 'lodash.isequal'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/common/Button/Button'
 import { Hug } from '../../components/common/Hug/Hug'
 import { IconButton } from '../../components/common/IconButton/IconButton'
 import { ExpandLeft } from '../../components/common/Icons/ExpandLeft'
-import { Trash } from '../../components/common/Icons/Trash'
 import { TextField } from '../../components/common/TextField/TextField'
 import { Section, StatusTag } from './parts'
 import { IncarnationInput } from '../../services/incarnations'
@@ -21,6 +20,8 @@ import isUrl from 'is-url'
 import { OpenInNew } from '../../components/common/Icons/OpenInNew'
 import { ToggleSwitch } from '../../components/common/ToggleSwitch/ToggleSwitch'
 import { IncarnationApiView, MergeRequestStatus } from 'interfaces/incarnations.types'
+import { JsonEditor } from 'components/common/JsonEditor/JsonEditor'
+import { Tabs } from 'components/common/Tabs/Tabs'
 
 const ErrorMessage = styled.div(({ theme }) => ({
   position: 'relative',
@@ -56,6 +57,7 @@ type FormProps = {
   incarnationMergeRequestStatus?: MergeRequestStatus | null,
   mergeRequestUrl?: string | null,
   commitUrl?: string
+  templateDataFull?: Record<string, never>
 }
 
 export const IncarnationsForm = ({
@@ -65,25 +67,15 @@ export const IncarnationsForm = ({
   deleteIncarnation = () => Promise.resolve(),
   incarnationMergeRequestStatus,
   mergeRequestUrl,
-  commitUrl
+  commitUrl,
+  templateDataFull
 }: FormProps) => {
-  const { register, handleSubmit, formState: { errors }, control, getValues, setFocus, watch } = useForm({
+  const { register, handleSubmit, formState: { errors }, control, getValues, watch } = useForm({
     defaultValues
   })
   const templateRepo = watch('templateRepository')
   const failed = templateRepo === '' && isEdit
   const [apiError, setApiError] = useState<ApiErrorResponse | null>()
-  const { fields, append, remove } = useFieldArray({ name: 'templateData', control })
-  const appendAndFocus = (key: string, value: string) => {
-    append({ key, value })
-    requestAnimationFrame(() => {
-      if (key) {
-        setFocus(`templateData.${fields.length}.key`)
-      } else {
-        setFocus(`templateData.${fields.length}.value`)
-      }
-    })
-  }
   const navigate = useNavigate()
   const onBackClick = () => {
     const values = getValues()
@@ -131,6 +123,30 @@ export const IncarnationsForm = ({
     : isLoading ? 'Creating' : 'Create'
 
   const deleteButtonTitle = deleteMutation.isSuccess ? 'Deleted!' : deleteMutation.isLoading ? 'Deleting' : 'Delete'
+  const editTemplateDataController = <Controller
+    control={control}
+    name="templateData"
+    rules={{
+      validate: value => {
+        try {
+          JSON.parse(value)
+          return true
+        } catch (error) {
+          return 'Invalid JSON'
+        }
+      }
+    }}
+    render={({
+      field: { onChange, value },
+      fieldState: { error, invalid }
+    }) => (
+      <JsonEditor
+        defaultValue={value}
+        onChange={onChange}
+        invalid={invalid}
+        error={error?.message}
+        height="max(calc(100vh - 700px), 200px)" />
+    )} />
   const form = <Hug as="form" mb={16} flex mx={-8} onSubmit={handleSubmit(onSubmit)}>
     <Hug w="60%" miw={600} px={8}>
       <Hug mb={16}>
@@ -166,35 +182,35 @@ export const IncarnationsForm = ({
             )} />
         </Hug>
       )}
-      <h4>Template data</h4>
-      <Hug mb={16}>
-        {fields.map((field, index) => (
-          <Hug flex mb={8} mx={-4} key={field.id}>
-            <Hug w="50%" px={4}>
-              <TextField disabled={isLoading} placeholder="Key" {...register(`templateData.${index}.key` as const)} />
-            </Hug>
-            <Hug w="50%" pl={4} pr={8}>
-              <TextField disabled={isLoading} placeholder="Value" {...register(`templateData.${index}.value` as const)} />
-            </Hug>
-            <Hug pr={4}>
-              <IconButton disabled={isLoading} type="button" onClick={() => remove(index)} title="Delete">
-                <Trash />
-              </IconButton>
-            </Hug>
-          </Hug>
-        ))}
-      </Hug>
-      <Hug flex mb={8} ml={-8}>
-        <Hug w="calc(50% - 18px)" pl={8} pr={4}>
-          <TextField disabled={isLoading} placeholder="Start typing to add new key..." value="" onChange={e => {
-            appendAndFocus(e.target.value, '')
-          }} />
-        </Hug>
-        <Hug w="calc(50% + 18px)" pl={4}>
-          <TextField disabled={isLoading} placeholder="...value pair" value="" onChange={e => {
-            appendAndFocus('', e.target.value)
-          }} />
-        </Hug>
+      <Hug my={16}>
+        {isEdit ? (
+          <Tabs
+            tabs={[
+              {
+                label: <strong>Template data JSON</strong>,
+                content: <Hug my={8}>
+                  {editTemplateDataController}
+                </Hug>
+              },
+              {
+                label: <strong>Full template data (readonly)</strong>,
+                content: <Hug my={8}>
+                  <JsonEditor
+                    defaultValue={JSON.stringify(templateDataFull, null, 2)}
+                    readOnly
+                    height="max(calc(100vh - 700px), 200px)" />
+                </Hug>
+              }
+            ]} />
+        )
+          : (
+            <>
+              <h4>Template data JSON</h4>
+              <Hug my={16}>
+                {editTemplateDataController}
+              </Hug>
+            </>
+          )}
       </Hug>
       <Hug flex={['jcfe', 'aic']}>
         <Hug>
