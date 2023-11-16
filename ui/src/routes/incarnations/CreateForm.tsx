@@ -7,7 +7,7 @@ const defaultValues = {
   targetDirectory: '',
   templateRepository: '',
   templateVersion: '',
-  templateData: []
+  templateData: '{}'
 }
 
 export const CreateIncarnationForm = () => (

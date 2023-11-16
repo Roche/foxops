@@ -11,6 +11,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { EditIncarnationForm } from './routes/incarnations/EditForm'
 import { BulkUpdateIncarnations } from './routes/incarnations/BulkUpdate'
 import { IncarnationsTable } from './routes/incarnations/Table/Table'
+import './hooks/use-worker'
 
 const queryClient = new QueryClient({
   defaultOptions: {

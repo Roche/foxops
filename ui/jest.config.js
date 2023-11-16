@@ -11,6 +11,9 @@ module.exports = {
   moduleNameMapper: {
     '\\.(css|less|scss)$': '<rootDir>/support/style-mock.ts',
     '^support/(.*)$': '<rootDir>/support/$1',
-    '^interfaces/(.*)$': '<rootDir>/interfaces/$1'
+    '^components/(.*)$': '<rootDir>/components/$1',
+    '^interfaces/(.*)$': '<rootDir>/interfaces/$1',
+    '^stores/(.*)$': '<rootDir>/stores/$1',
+    'monaco-editor': '<rootDir>/support/monaco-mock.ts'
   }
 }

@@ -15,7 +15,7 @@ const toIncarnationInput = (x: Incarnation): IncarnationInput => ({
   targetDirectory: x.targetDirectory,
   templateRepository: x.templateRepository ?? '',
   templateVersion: x.templateRepositoryVersion ?? '',
-  templateData: Object.entries(x.templateData).map(([key, value]) => ({ key, value }))
+  templateData: JSON.stringify(x.templateData, null, 2)
 })
 
 export const EditIncarnationForm = () => {
@@ -35,6 +35,7 @@ export const EditIncarnationForm = () => {
   const body = isSuccess
     ? (
       <IncarnationsForm
+        templateDataFull={data.templateDataFull}
         mergeRequestUrl={data.mergeRequestUrl}
         commitUrl={data.commitUrl}
         mutation={x => incarnations.update(id, x)}

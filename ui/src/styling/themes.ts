@@ -13,9 +13,22 @@ const sizes = {
   toolbar: 60,
   aside: 57
 }
+const greyPalette = {
+  50: '#FAF9F7',
+  100: '#E8E6E1',
+  200: '#D3CEC4',
+  300: '#B8B2A7',
+  400: '#A39E93',
+  500: '#857F72',
+  600: '#625D52',
+  700: '#504A40',
+  800: '#423D33',
+  900: '#27241D'
+}
 
 export const THEMES: Record<ThemeMode, Theme> = {
   light: {
+    mode: 'light',
     colors: {
       baseBg: '#fff',
       asideBg: '#F5F5F5',
@@ -47,9 +60,13 @@ export const THEMES: Record<ThemeMode, Theme> = {
       paperShadow: '0px 2px 4px rgba(0, 0, 0, 0.25)'
     },
     zIndex,
-    sizes
+    sizes,
+    palettes: {
+      grey: greyPalette
+    }
   },
   dark: {
+    mode: 'dark',
     colors: {
       baseBg: '#333',
       asideBg: '#444',
@@ -81,6 +98,9 @@ export const THEMES: Record<ThemeMode, Theme> = {
       paperShadow: '0px 2px 4px rgba(0, 0, 0, 0.25)'
     },
     zIndex,
-    sizes
+    sizes,
+    palettes: {
+      grey: greyPalette
+    }
   }
 }
