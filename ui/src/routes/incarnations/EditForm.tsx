@@ -9,17 +9,14 @@ import { IncarnationsForm } from './Form'
 import { Section } from './parts'
 import { Incarnation } from '../../interfaces/incarnations.types'
 
-const toIncarnationInput = (x: Incarnation): IncarnationInput => {
-  const templateData = JSON.stringify(x.templateData, null, 2)
-  return {
-    automerge: true,
-    repository: x.incarnationRepository,
-    targetDirectory: x.targetDirectory,
-    templateRepository: x.templateRepository ?? '',
-    templateVersion: x.templateRepositoryVersion ?? '',
-    templateData
-  }
-}
+const toIncarnationInput = (x: Incarnation): IncarnationInput => ({
+  automerge: true,
+  repository: x.incarnationRepository,
+  targetDirectory: x.targetDirectory,
+  templateRepository: x.templateRepository ?? '',
+  templateVersion: x.templateRepositoryVersion ?? '',
+  templateData: JSON.stringify(x.templateData, null, 2)
+})
 
 export const EditIncarnationForm = () => {
   const { id } = useParams()
