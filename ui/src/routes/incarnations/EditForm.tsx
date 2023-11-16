@@ -10,12 +10,7 @@ import { Section } from './parts'
 import { Incarnation } from '../../interfaces/incarnations.types'
 
 const toIncarnationInput = (x: Incarnation): IncarnationInput => {
-  let templateData = '{}'
-  try {
-    templateData = JSON.stringify(x.templateData, null, 2)
-  } catch (e) {
-    console.error(e)
-  }
+  const templateData = JSON.stringify(x.templateData, null, 2)
   return {
     automerge: true,
     repository: x.incarnationRepository,
