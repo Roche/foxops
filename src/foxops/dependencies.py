@@ -3,8 +3,9 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.openapi.models import APIKey, APIKeyIn
 from fastapi.security.base import SecurityBase
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine
 
+from foxops.database.engine import create_engine
 from foxops.database.repositories.change import ChangeRepository
 from foxops.database.repositories.incarnation.repository import IncarnationRepository
 from foxops.hosters import Hoster
@@ -41,7 +42,7 @@ def get_database_engine(request: Request, settings: DatabaseSettings = Depends(g
     if hasattr(request.app.state, "database"):
         return request.app.state.database
 
-    async_engine = create_async_engine(settings.url.get_secret_value(), future=True, echo=False, pool_pre_ping=True)
+    async_engine = create_engine(settings.url.get_secret_value())
 
     request.app.state.database = async_engine
     return async_engine

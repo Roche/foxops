@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from foxops.database.schema import change, incarnations
 from foxops.errors import FoxopsError, IncarnationNotFoundError
+from foxops.logger import get_logger
 
 
 class ChangeConflictError(FoxopsError):
@@ -90,6 +91,8 @@ class ChangeRepository:
     def __init__(self, engine: AsyncEngine) -> None:
         self.engine = engine
 
+        self.log = get_logger(component=self.__class__.__name__)
+
     async def create_change(
         self,
         incarnation_id: int,
@@ -154,6 +157,14 @@ class ChangeRepository:
         requested_data: str,
         template_data_full: str,
     ) -> ChangeInDB:
+        logger = self.log.bind(function="create_incarnation_with_first_change")
+        logger.debug(
+            "starting transaction",
+            incarnation_repository=incarnation_repository,
+            target_directory=target_directory,
+            template_repository=template_repository,
+        )
+
         async with self.engine.begin() as conn:
             query_insert_incarnation = (
                 insert(incarnations)
@@ -166,6 +177,8 @@ class ChangeRepository:
             )
             result = await conn.execute(query_insert_incarnation)
             incarnation_id = result.one()[0]
+
+            logger.debug("inserted incarnation", incarnation_id=incarnation_id)
 
             query_insert_change = (
                 insert(change)

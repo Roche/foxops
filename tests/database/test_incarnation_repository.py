@@ -1,5 +1,6 @@
 from pytest import fixture, raises
 
+from foxops.database.repositories.change import ChangeRepository
 from foxops.database.repositories.incarnation.errors import (
     IncarnationAlreadyExistsError,
     IncarnationNotFoundError,
@@ -93,12 +94,13 @@ async def test_list_returns_existing_incarnations(incarnation_repository: Incarn
 
 
 async def test_delete_by_id_returns_none_when_deleting_existing_incarnation(
-    incarnation_repository: IncarnationRepository, incarnation_id: int
+    incarnation_repository: IncarnationRepository, change_repository: ChangeRepository, incarnation_id: int
 ):
     # WHEN
     await incarnation_repository.delete_by_id(incarnation_id)
 
     # THEN
+    assert len(await change_repository.list_changes(incarnation_id)) == 0
     with raises(IncarnationNotFoundError):
         await incarnation_repository.get_by_id(incarnation_id)
 
