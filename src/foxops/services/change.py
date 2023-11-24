@@ -679,7 +679,7 @@ class ChangeService:
             if last_exception:
                 self._log.error("last exception", last_exception=last_exception)
             await self._change_repository.delete_change(change_id)
-            raise ChangeFailed("Failed to push commit to incarnation repository. Retries exceeded.")
+            raise ChangeFailed("Failed to push commit to incarnation repository. Retries exceeded.") from e
 
 
 def _construct_merge_request_conflict_description(
