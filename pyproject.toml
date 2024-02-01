@@ -45,7 +45,7 @@ pydantic-settings = "^2.0.3"
 [tool.poetry.dev-dependencies]
 # Linting
 flake8 = "^6.0.0"
-flake8-bugbear = "^23.5.9"
+flake8-bugbear = "^24.1.17"
 isort = "^5.9.3"
 
 # Testing
