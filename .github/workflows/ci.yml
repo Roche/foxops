@@ -77,7 +77,7 @@ jobs:
 
     env:
       GITLAB_CE_VERSION: ${{ matrix.gitlab-version }}
-      GITLAB_ROOT_PASSWORD: dvqMom4ruD9oqcErwtij
+      GITLAB_ROOT_PASSWORD: dummyPassword
 
     steps:
       - uses: actions/checkout@v4
