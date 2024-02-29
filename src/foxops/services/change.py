@@ -188,7 +188,7 @@ class ChangeService:
                 commit_sha=commit_sha,
                 requested_version_hash=incarnation_state.template_repository_version_hash,
                 requested_version=template_repository_version,
-                requested_data=json.dumps(template_data),
+                requested_data=json.dumps(incarnation_state.template_data),
                 template_data_full=json.dumps(incarnation_state.template_data_full),
             )
 
