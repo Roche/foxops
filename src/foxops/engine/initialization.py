@@ -62,7 +62,7 @@ async def initialize_incarnation(
         template_repository=template_repository,
         template_repository_version=template_repository_version,
         template_repository_version_hash=template_repository_version_hash,
-        template_data=template_data_model.model_dump(exclude_defaults=True),
+        template_data=template_data,
         template_data_full=full_template_data,
     )
     incarnation_state.save(incarnation_root_dir / ".fengine.yaml")

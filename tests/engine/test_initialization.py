@@ -272,5 +272,5 @@ variables:
 
     # THEN
     assert incarnation_state is not None
-    assert "additional_variable_1" not in incarnation_state.template_data
-    assert "additional_variable_2" not in incarnation_state.template_data
+    assert "additional_variable_1" in incarnation_state.template_data
+    assert "additional_variable_2" in incarnation_state.template_data
