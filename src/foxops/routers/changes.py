@@ -16,23 +16,28 @@ from foxops.services.change import CannotRepairChangeException, ChangeService
 router = APIRouter()
 
 
-async def get_change(
+async def get_change_id(
     incarnation_id: Annotated[int, Path()],
     revision: Annotated[int, Path(description="Change revision within the given incarnation")],
     change_service: Annotated[ChangeService, Depends(get_change_service)],
-) -> Change | ChangeWithMergeRequest:
+) -> int:
     try:
-        change_id = await change_service.get_change_id_by_revision(incarnation_id, revision)
-
-        match (change_type := await change_service.get_change_type(change_id)):
-            case DatabaseChangeType.MERGE_REQUEST:
-                return await change_service.get_change_with_merge_request(change_id)
-            case DatabaseChangeType.DIRECT:
-                return await change_service.get_change(change_id)
-            case _:
-                raise NotImplementedError(f"Unknown change type {change_type}")
+        return await change_service.get_change_id_by_revision(incarnation_id, revision)
     except ChangeNotFoundError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Change not found")
+
+
+async def get_change(
+    change_id: Annotated[int, Depends(get_change_id)],
+    change_service: Annotated[ChangeService, Depends(get_change_service)],
+) -> Change | ChangeWithMergeRequest:
+    match (change_type := await change_service.get_change_type(change_id)):
+        case DatabaseChangeType.MERGE_REQUEST:
+            return await change_service.get_change_with_merge_request(change_id)
+        case DatabaseChangeType.DIRECT:
+            return await change_service.get_change(change_id)
+        case _:
+            raise NotImplementedError(f"Unknown change type {change_type}")
 
 
 class CreateChangeType(enum.Enum):
@@ -142,10 +147,10 @@ async def get_change_details(
     },
 )
 async def fix_incomplete_change(
-    change: Change = Depends(get_change),
-    change_service: ChangeService = Depends(get_change_service),
+    change_id: Annotated[int, Depends(get_change_id)],
+    change_service: Annotated[ChangeService, Depends(get_change_service)],
 ):
     try:
-        await change_service.update_incomplete_change(change.id)
+        await change_service.update_incomplete_change(change_id)
     except CannotRepairChangeException as e:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))

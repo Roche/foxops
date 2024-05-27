@@ -449,7 +449,7 @@ class ChangeService:
         if not change.commit_pushed:
             raise IncompleteChange(
                 "the given change is in an incomplete state (commit_pushed=False). "
-                "Try calling update_incomplete_change(change_id) first."
+                f"Try 'POST /api/incarnations/{change.incarnation_id}/changes/{change.revision}/fix'"
             )
 
         return Change(
@@ -472,8 +472,11 @@ class ChangeService:
 
         if change_in_db.type != ChangeType.MERGE_REQUEST:
             raise ValueError(f"Change {change_id} is not a merge request change.")
-        assert change_in_db.merge_request_id is not None
-        assert change_in_db.merge_request_branch_name is not None
+        if change_in_db.merge_request_id is None or change_in_db.merge_request_branch_name is None:
+            raise IncompleteChange(
+                "the given change is in an incomplete state (MR ID/Branch = null). "
+                f"Try 'POST /api/incarnations/{change_in_db.incarnation_id}/changes/{change_in_db.revision}/fix'"
+            )
 
         status = await self._hoster.get_merge_request_status(
             incarnation_repository=incarnation_in_db.incarnation_repository,
