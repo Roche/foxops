@@ -13,7 +13,7 @@ permissions:
 
 env:
   FORCE_COLOR: "1"  # Make tools pretty.
-  PYTHON_LATEST: "3.11"
+  PYTHON_LATEST: "3.12"
   POETRY_VERSION: "1.4.0"
   POETRY_VIRTUALENVS_CREATE: false
 
@@ -72,7 +72,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11"]
+        python-version: ["3.12"]
         gitlab-version: ["16.3.3-ce.0"]
 
     env:
