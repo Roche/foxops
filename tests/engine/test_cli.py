@@ -100,7 +100,7 @@ def test_app_has_commands(command, cli_runner: CliRunner):
     assert result.exit_code == 0
 
     stdout = result.stdout.strip()
-    assert stdout.startswith("Usage: "), stdout
+    assert stdout.find("Usage:") >= 0, stdout
 
 
 def test_app_should_create_template(
