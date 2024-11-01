@@ -51,7 +51,7 @@
     "@types/react-dom": "^18.0.11",
     "@typescript-eslint/eslint-plugin": "^6.11.0",
     "@typescript-eslint/parser": "^6.11.0",
-    "@vitejs/plugin-react": "^2.1.0",
+    "@vitejs/plugin-react": "^4.3.3",
     "eslint": "^8.24.0",
     "eslint-plugin-react": "^7.32.2",
     "jest": "^28.1.3",
