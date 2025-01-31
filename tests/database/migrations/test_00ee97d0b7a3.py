@@ -4,7 +4,7 @@ from sqlalchemy import text
 
 from alembic.command import upgrade
 from alembic.script import ScriptDirectory
-from foxops.database.repositories.change import ChangeRepository
+from foxops.database.repositories.change.repository import ChangeRepository
 
 INSERT_INCARNAION = text(
     """

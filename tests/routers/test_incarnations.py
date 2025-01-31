@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from pytest_mock import MockFixture
 
-from foxops.database.repositories.change import ChangeRepository
+from foxops.database.repositories.change.repository import ChangeRepository
 from foxops.database.repositories.incarnation.repository import IncarnationRepository
 from foxops.dependencies import get_change_service
 from foxops.models.change import Change

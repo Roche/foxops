@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from foxops.__main__ import create_app
 from foxops.database.engine import create_engine
-from foxops.database.repositories.change import ChangeRepository
+from foxops.database.repositories.change.repository import ChangeRepository
 from foxops.database.repositories.incarnation.repository import IncarnationRepository
 from foxops.database.schema import meta
 from foxops.dependencies import (

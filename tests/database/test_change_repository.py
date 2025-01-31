@@ -3,14 +3,14 @@ import json
 import pytest
 from pytest import fixture
 
-from foxops.database.repositories.change import (
+from foxops.database.repositories.change.errors import (
     ChangeCommitAlreadyPushedError,
     ChangeConflictError,
     ChangeNotFoundError,
-    ChangeRepository,
-    ChangeType,
     IncarnationHasNoChangesError,
 )
+from foxops.database.repositories.change.model import ChangeType
+from foxops.database.repositories.change.repository import ChangeRepository
 from foxops.database.repositories.incarnation.model import IncarnationInDB
 from foxops.database.repositories.incarnation.repository import IncarnationRepository
 

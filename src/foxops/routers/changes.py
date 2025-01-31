@@ -5,8 +5,8 @@ from typing import Annotated, Self
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 from pydantic import BaseModel
 
-from foxops.database.repositories.change import ChangeNotFoundError
-from foxops.database.repositories.change import ChangeType as DatabaseChangeType
+from foxops.database.repositories.change.errors import ChangeNotFoundError
+from foxops.database.repositories.change.model import ChangeType as DatabaseChangeType
 from foxops.dependencies import get_change_service
 from foxops.engine import TemplateData
 from foxops.hosters.types import MergeRequestStatus
