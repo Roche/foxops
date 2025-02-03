@@ -13,11 +13,11 @@ from typing import AsyncIterator
 from pydantic import BaseModel
 
 import foxops.engine as fengine
-from foxops.database.repositories.change import (
-    ChangeRepository,
+from foxops.database.repositories.change.model import (
     ChangeType,
     IncarnationWithChangesSummary,
 )
+from foxops.database.repositories.change.repository import ChangeRepository
 from foxops.database.repositories.incarnation.repository import IncarnationRepository
 from foxops.engine import TemplateData
 from foxops.engine.patching.git_diff_patch import PatchResult

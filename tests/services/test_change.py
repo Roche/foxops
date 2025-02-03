@@ -5,7 +5,8 @@ import pytest
 from pytest import fixture
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from foxops.database.repositories.change import ChangeNotFoundError, ChangeRepository
+from foxops.database.repositories.change.errors import ChangeNotFoundError
+from foxops.database.repositories.change.repository import ChangeRepository
 from foxops.database.repositories.incarnation.errors import IncarnationNotFoundError
 from foxops.database.repositories.incarnation.repository import IncarnationRepository
 from foxops.engine import IncarnationState

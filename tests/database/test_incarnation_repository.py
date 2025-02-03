@@ -1,6 +1,6 @@
 from pytest import fixture, raises
 
-from foxops.database.repositories.change import ChangeRepository
+from foxops.database.repositories.change.repository import ChangeRepository
 from foxops.database.repositories.incarnation.errors import (
     IncarnationAlreadyExistsError,
     IncarnationNotFoundError,

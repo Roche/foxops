@@ -6,7 +6,7 @@ from fastapi.security.base import SecurityBase
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from foxops.database.engine import create_engine
-from foxops.database.repositories.change import ChangeRepository
+from foxops.database.repositories.change.repository import ChangeRepository
 from foxops.database.repositories.incarnation.repository import IncarnationRepository
 from foxops.hosters import Hoster
 from foxops.hosters.gitlab import GitlabHoster
