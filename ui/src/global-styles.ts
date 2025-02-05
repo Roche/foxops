@@ -1,5 +1,5 @@
 import { css, Theme } from '@emotion/react'
-import normalize from 'normalize.css'
+import normalize from 'normalize.css?inline'
 import { ThemeMode } from './shared/types'
 // import prism from './styling/prism.css' TODO: include it when JSON editor is ready
 

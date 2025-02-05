@@ -1,5 +1,5 @@
-import '@testing-library/jest-dom/extend-expect'
-import React, { ReactElement } from 'react'
+import '@testing-library/jest-dom'
+import React, { ReactElement, act } from 'react'
 import { render, RenderOptions } from '@testing-library/react'
 import { ThemeProvider } from '@emotion/react'
 import { THEMES } from '../styling/themes'
@@ -14,4 +14,5 @@ const customRender = (
 ) => render(ui, { wrapper: AllTheProviders, ...options })
 
 export * from '@testing-library/react'
+export { act }
 export { customRender as render }
