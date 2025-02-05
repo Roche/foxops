@@ -67,6 +67,17 @@ def create_app():
             name=f"ui-{frontend_dir}",
         )
 
+    robot_file = settings.frontend_dist_dir / "robots.txt"
+
+    if robot_file.exists():
+
+        @app.get("/robots.txt", include_in_schema=False)
+        async def _serve_robots_txt():
+            return FileResponse(robot_file)
+
+    else:
+        logger.warning("The robots.txt file does not exist, skipping ...")
+
     @app.get("/{full_path:path}", include_in_schema=False)
     async def _(full_path: str):
         """Serve the frontend."""
