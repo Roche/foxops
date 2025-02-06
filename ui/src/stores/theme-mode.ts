@@ -1,4 +1,4 @@
-import create from 'zustand'
+import { create } from 'zustand'
 import { persist, devtools } from 'zustand/middleware'
 import { STORAGE_KEYS } from '../services/storage'
 import { ThemeMode } from '../shared/types'

@@ -32,9 +32,9 @@ const sharedStyles = ({ theme, inputSize, hasError }: { theme: Theme } & InputCo
 
 const InputComponent = styled.input<InputComponentProps>(sharedStyles)
 
-const Box = styled.div(() => ({
+const Box = styled.div({
   position: 'relative'
-}))
+})
 
 interface LabelProps {
   lifted: boolean,

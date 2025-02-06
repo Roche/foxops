@@ -1,4 +1,4 @@
-import create from 'zustand'
+import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { INCARNATION_TABLE_COLUMNS, IncarnationTableColumn } from '../constants/incarnations.consts'
 import { IncarnationBase } from '../interfaces/incarnations.types'
