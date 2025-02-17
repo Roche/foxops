@@ -11,6 +11,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { EditIncarnationForm } from './routes/incarnations/EditForm'
 import { BulkUpdateIncarnations } from './routes/incarnations/BulkUpdate'
 import { IncarnationsTable } from './routes/incarnations/Table/Table'
+import { DiffIncarnation } from './routes/incarnations/DiffIncarnation'
 import './hooks/use-worker'
 
 const queryClient = new QueryClient({
@@ -36,6 +37,7 @@ function App() {
               <Route path="incarnations/create" element={<CreateIncarnationForm />} />
               <Route path="incarnations/bulk-update" element={<BulkUpdateIncarnations />} />
               <Route path="incarnations/:id" element={<EditIncarnationForm />} />
+              <Route path="incarnations/:id/diff" element={<DiffIncarnation />} />
               <Route path="*" element={<Navigate to="/incarnations" />} />
             </Route>
             <Route path="/login" element={<Login />} />

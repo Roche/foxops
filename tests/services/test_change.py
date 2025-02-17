@@ -705,3 +705,12 @@ def test_delete_all_files_in_local_git_repository_does_not_delete_git_directory_
     assert (tmp_path / ".git").exists()
     assert not (tmp_path / "subfolder" / ".git").exists()
     assert not (tmp_path / "README.md").exists()
+
+
+async def test_diff_should_not_include_gitrepository(
+    initialized_incarnation: Incarnation,
+    change_service: ChangeService,
+):
+    diff = await change_service.diff_incarnation(initialized_incarnation.id)
+
+    assert diff == ""

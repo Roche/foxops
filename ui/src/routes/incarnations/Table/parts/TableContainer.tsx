@@ -22,15 +22,13 @@ export const TableContainer = styled.div`
   .tbody {
     display: flex;
     flex-direction: column;
+    width: 100%;
   }
   .tr {
-    display: flex;
-    width: 100%;
-    &.virtual {
-      position: absolute;
-      top: 0;
-      left: 0;
-    }
+  display: flex;
+  flex-grow: 1;
+  flex-shrink: 0;
+  min-width: 100%;
   }
   .th {
     position: relative;

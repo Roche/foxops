@@ -4,7 +4,7 @@ import { IncarnationBase } from '../../../interfaces/incarnations.types'
 import { createColumnHelper, getCoreRowModel, getPaginationRowModel, getSortedRowModel, useReactTable, TableOptions } from '@tanstack/react-table'
 import { useIncarnationsData } from '../../../hooks/use-incarnations-data'
 import { useCanShowStatusStore } from '../../../stores/show-status'
-import { INCARNATION_TABLE_COLUMNS } from '../../../constants/incarnations.consts'
+import { INCARNATION_TABLE_COLUMNS, MAGIC_COLUMN_SIZE_NUMBER } from '../../../constants/incarnations.consts'
 import { Link } from 'react-router-dom'
 import { makeSortBySemVer } from '../../../utils/search-incarnations'
 import { IncarnationLinks } from '../parts/IncarnationLinks'
@@ -49,7 +49,7 @@ export const useIncarnationsTable = (withPagination: boolean) => {
   const _actions = useMemo(() => columnHelper.display({
     id: 'actions',
     header: 'Actions',
-    size: canShowStatus ? 250 : 140,
+    size: canShowStatus ? 300 : 200,
     cell: x => {
       const incarnation = x.row.original
       return <IncarnationLinks
@@ -98,7 +98,11 @@ export const useIncarnationsTable = (withPagination: boolean) => {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     enableMultiSort: true,
-    getRowId: x => `${x.id}`
+    getRowId: x => `${x.id}`,
+    defaultColumn: {
+      size: MAGIC_COLUMN_SIZE_NUMBER,
+      maxSize: Number.MAX_SAFE_INTEGER
+    }
   }
   if (withPagination) {
     tableConfig.getPaginationRowModel = getPaginationRowModel()

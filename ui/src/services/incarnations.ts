@@ -112,6 +112,10 @@ export const incarnations = {
   delete: async (id?: number | string) => {
     if (!id) throw new Error('No id provided')
     await api.delete<undefined, undefined>(`/incarnations/${id}`, { format: 'text' })
+  },
+  getDiffToTemplate: async (id?: number | string) => {
+    if (!id) throw new Error('No id provided')
+    return api.get<undefined, string>(`/incarnations/${id}/diff`, { format: 'text' })
   }
 }
 

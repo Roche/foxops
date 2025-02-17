@@ -24,17 +24,40 @@ export const IncarnationLinks = ({
   const svgProps = size === 'small' ? { width: 16, height: 16 } : { width: 20, height: 20 }
   return (
     <Hug flex={['jcfe', 'aic']}>
-      {
-        typeof id === 'number' && <IncarnationStatus id={id} size={size} />
-      }
-      <Tooltip title="Commit" style={{ whiteSpace: 'nowrap' }}>
-        <ButtonLink size={size} style={{ maxWidth: 38 }} target="_blank" disabled={!commitUrl} href={commitUrl}>
-          <Commit {...svgProps} />
-        </ButtonLink>
-      </Tooltip>
+      {typeof id === 'number' && <IncarnationStatus id={id} size={size} />}
+      <Hug>
+        <Tooltip title="Commit" style={{ whiteSpace: 'nowrap' }}>
+          <ButtonLink
+            size={size}
+            style={{ maxWidth: 38 }}
+            target="_blank"
+            disabled={!commitUrl}
+            href={commitUrl}
+          >
+            <Commit {...svgProps} />
+          </ButtonLink>
+        </Tooltip>
+      </Hug>
+      <Hug ml={4}>
+        <Tooltip title="Git Diff" style={{ whiteSpace: 'nowrap' }}>
+          <ButtonLink
+            size={size}
+            style={{ maxWidth: 38 }}
+            href={location.pathname + '/diff'}
+          >
+            <Repository {...svgProps} />
+          </ButtonLink>
+        </Tooltip>
+      </Hug>
       <Hug ml={4}>
         <Tooltip title="Merge request" style={{ whiteSpace: 'nowrap' }}>
-          <ButtonLink size={size} style={{ maxWidth: 38 }} target="_blank" disabled={!mergeRequestUrl} href={mergeRequestUrl ?? undefined}>
+          <ButtonLink
+            size={size}
+            style={{ maxWidth: 38 }}
+            target="_blank"
+            disabled={!mergeRequestUrl}
+            href={mergeRequestUrl ?? undefined}
+          >
             <MergeRequest {...svgProps} />
           </ButtonLink>
         </Tooltip>
@@ -42,7 +65,11 @@ export const IncarnationLinks = ({
       {templateRepository && (
         <Hug ml={4}>
           <Tooltip title="Template repository" style={{ whiteSpace: 'nowrap' }}>
-            <ButtonLink size={size} href={templateRepository ?? ''} target="_blank">
+            <ButtonLink
+              size={size}
+              href={templateRepository ?? ''}
+              target="_blank"
+            >
               <Repository {...svgProps} />
             </ButtonLink>
           </Tooltip>

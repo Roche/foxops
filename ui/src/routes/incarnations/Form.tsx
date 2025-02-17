@@ -49,10 +49,16 @@ const DeleteIncarnationLink = styled.span`
   text-decoration: underline;
 `
 
+type DiffChanges = {
+  added: number,
+  removed: number
+}
+
 type FormProps = {
   mutation: (data: IncarnationInput) => Promise<IncarnationApiView>,
   deleteIncarnation?: () => Promise<void>,
   defaultValues: IncarnationInput,
+  diffChanges?: DiffChanges
   isEdit?: boolean,
   incarnationMergeRequestStatus?: MergeRequestStatus | null,
   mergeRequestUrl?: string | null,
@@ -60,9 +66,52 @@ type FormProps = {
   templateDataFull?: Record<string, never>
 }
 
+type ChangeSquareProps = {
+  color: 'green' | 'red' | 'gray';
+};
+
+enum ChangeColor {
+  GREEN = '#2c9c69',
+  RED = '#d73a49',
+  GRAY = '#6a737d'
+}
+
+const ChangeSquare = ({ color }: ChangeSquareProps) => {
+  const hexCode = color === 'green' ? ChangeColor.GREEN : color === 'red' ? ChangeColor.RED : ChangeColor.GRAY
+
+  const Box = styled.div({
+    width: 12,
+    height: 12,
+    backgroundColor: hexCode,
+    display: 'inline-block',
+    marginRight: 1,
+    marginLeft: 1
+  })
+
+  return <Box />
+}
+
+const calculateNumberOfBlocks = (diffChanges: DiffChanges | undefined) => {
+  if (diffChanges === undefined) return { green: 0, red: 0, gray: 0 }
+
+  if (diffChanges.added === 0 && diffChanges.removed === 0) return { green: 0, gray: 5, red: 0 }
+  if (diffChanges.added === 0 && diffChanges.removed > 0) return { green: 0, gray: 0, red: 5 }
+  if (diffChanges.added > 0 && diffChanges.removed === 0) return { green: 5, red: 0, gray: 0 }
+
+  const addRemovePercentage = diffChanges.added / (diffChanges.removed + diffChanges.added)
+
+  if (addRemovePercentage < 0.15) return { red: 4, green: 1, gray: 0 }
+  if (addRemovePercentage < 0.35) return { red: 3, green: 2, gray: 0 }
+  if (addRemovePercentage > 0.65) return { red: 2, green: 3, gray: 0 }
+  if (addRemovePercentage > 0.85) return { red: 1, green: 4, gray: 0 }
+
+  return { red: 2, green: 2, gray: 1 }
+}
+
 export const IncarnationsForm = ({
   mutation,
   defaultValues,
+  diffChanges,
   isEdit,
   deleteIncarnation = () => Promise.resolve(),
   incarnationMergeRequestStatus,
@@ -147,8 +196,21 @@ export const IncarnationsForm = ({
         error={error?.message}
         height="max(calc(100vh - 700px), 200px)" />
     )} />
-  const form = <Hug as="form" mb={16} flex mx={-8} onSubmit={handleSubmit(onSubmit)}>
-    <Hug w="60%" miw={600} px={8}>
+
+  const numberOfBlocks = calculateNumberOfBlocks(diffChanges)
+
+  const Added = styled.span({
+    color: ChangeColor.GREEN,
+    margin: 2
+  })
+
+  const Removed = styled.span({
+    color: ChangeColor.RED,
+    margin: 2
+  })
+
+  const form = <Hug as="form" mb={16} ml={38} flex onSubmit={handleSubmit(onSubmit)} w="calc(60% + 4px)">
+    <Hug w="100%" miw={600}>
       <Hug mb={16}>
         <TextField autoFocus label="Incarnation repository" disabled={isLoading || isEdit} size="large" hasError={!!errors.repository} required {...register('repository', { required: true })} />
       </Hug>
@@ -235,7 +297,7 @@ export const IncarnationsForm = ({
       : null}
   </Hug>
   const failedFeedback = (
-    <Hug as="form" mb={16} flex mx={-8}>
+    <Hug as="form" mb={16} flex>
       <Hug w="60%" miw={600} px={8} pt={32}>
         It looks like this incarnation is not available anymore 😔.
         You can <DeleteIncarnationLink onClick={onDelete}>delete</DeleteIncarnationLink> it.
@@ -250,34 +312,68 @@ export const IncarnationsForm = ({
             <ExpandLeft />
           </IconButton>
         </Hug>
-        <Hug flex={['aic']} w="100%" pr={6}>
+        <Hug flex={['aic']} w="100%">
           {title}
           {incarnationMergeRequestStatus && (
             <Hug ml={16}>
               <Tooltip title="Merge request status">
                 <StatusTag
-                  mergeRequestStatus={incarnationMergeRequestStatus ?? null} />
+                  mergeRequestStatus={incarnationMergeRequestStatus ?? null}
+                />
               </Tooltip>
             </Hug>
           )}
           {isEdit && (
             <Hug ml="auto" flex={['aic']}>
-              <IncarnationLinks mergeRequestUrl={mergeRequestUrl} commitUrl={commitUrl} size="large" />
+              <IncarnationLinks
+                mergeRequestUrl={mergeRequestUrl}
+                commitUrl={commitUrl}
+                size="large"
+              />
               <Hug ml={4}>
                 <Tooltip title="Delete incarnation">
                   <Button
                     variant="danger"
-                    disabled={deleteMutation.isLoading || deleteMutation.isSuccess}
+                    disabled={
+                      deleteMutation.isLoading || deleteMutation.isSuccess
+                    }
                     loading={deleteMutation.isLoading}
-                    onClick={onDelete}>{deleteButtonTitle}</Button>
+                    onClick={onDelete}
+                  >
+                    {deleteButtonTitle}
+                  </Button>
                 </Tooltip>
               </Hug>
             </Hug>
           )}
         </Hug>
       </Hug>
-      {failed ? failedFeedback : form}
+      {failed ? (
+        failedFeedback
+      ) : (
+        <Hug flex={['fxdc']} ml={-42} w="100%">
+          <Hug w="calc(60% + 24px)" p={16} ml={24} h="2.5rem" flex={['jcfe']}>
+            {diffChanges && (
+              <Hug flex={['aic']} mb={0}>
+                <Added>+{diffChanges.added}</Added> <Removed>-{diffChanges.removed}</Removed>
+                <Hug ml={8}>
+                  {Array.from({ length: numberOfBlocks.green }, (_, i) => (
+                    <ChangeSquare key={i} color="green" />
+                  ))}
+                  {Array.from({ length: numberOfBlocks.red }, (_, i) => (
+                    <ChangeSquare key={i} color="red" />
+                  ))}
+                  {Array.from({ length: numberOfBlocks.gray }, (_, i) => (
+                    <ChangeSquare key={i} color="gray" />
+                  ))}
+                </Hug>
+              </Hug>
+            )}
+          </Hug>
 
+          {form}
+        </Hug>
+      )}
     </Section>
   )
 }
