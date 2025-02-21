@@ -4,10 +4,10 @@ import { transparentize } from '../../../styling/colors'
 import { MergeRequestStatus } from '../../../interfaces/incarnations.types'
 
 export const Section = styled.div({
-  maxWidth: 'calc(100% - 120px)',
+  maxWidth: '100%',
   margin: '0 auto',
-  padding: 8,
-  position: 'relative'
+  position: 'relative',
+  height: '100%'
 })
 
 interface StatusProps {

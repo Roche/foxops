@@ -14,8 +14,6 @@ import { Logo } from '../../common/Logo/Logo'
 import { Popover } from '../../common/Popover/Popover'
 import { ToolbarProgress } from '../../common/ToolbarProgress/ToolbarProgress'
 import { Tooltip } from '../../common/Tooltip/Tooltip'
-import { Search } from './Search'
-import { Settings } from './Settings'
 
 const Box = styled.div`
   box-shadow: ${p => p.theme.effects.toolbarDropShadow};
@@ -61,12 +59,6 @@ export const Toolbar = () => {
           outline>+ Create Incarnation</ButtonLink>
       </Hug>
       <Hug flex className="Toolbar-Controls" data-testid="Toolbar-Controls">
-        <Hug mr={8}>
-          <Search />
-        </Hug>
-        <Hug mr={8}>
-          <Settings />
-        </Hug>
         <Hug mr={8}>
           <Tooltip title={`Toggle ${mode} mode`}>
             <IconButton onMouseDown={e => e.preventDefault()} onClick={toggleMode}>

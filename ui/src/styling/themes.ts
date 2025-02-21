@@ -69,7 +69,7 @@ export const THEMES: Record<ThemeMode, Theme> = {
     mode: 'dark',
     colors: {
       baseBg: '#333',
-      asideBg: '#444',
+      asideBg: '#444444',
       text: '#fff',
       contrastText: '#fff',
       asideBorder: '#4e4e4e',
