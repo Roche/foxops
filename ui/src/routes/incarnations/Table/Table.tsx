@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { flexRender, Row } from '@tanstack/react-table'
 import clsx from 'clsx'
 import { Hug } from '../../../components/common/Hug/Hug'
@@ -8,15 +8,12 @@ import { SortDown } from '../../../components/common/Icons/SortDown'
 import { Sort } from '../../../components/common/Icons/Sort'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Resizer } from './parts/Resizer'
-import { useWindowSize } from 'usehooks-ts'
 import { IncarnationBase } from '../../../interfaces/incarnations.types'
 import { useIncarnationsTable } from './use-incarnations-table'
 import { useTableSettingsStore } from '../../../stores/table-settings'
 import { TableContainer } from './parts/TableContainer'
-import { MAGIC_COLUMN_SIZE_NUMBER } from '../../../constants/incarnations.consts'
-
-const OFFSET_DEFAULT = 100
-const OFFSET_WITH_PAGINATION = 150
+import { Search } from '../parts/Search'
+import { Settings } from '../parts/Settings'
 
 export const IncarnationsTable = () => {
   const { withPagination } = useTableSettingsStore()
@@ -47,19 +44,15 @@ export const Table = ({ withPagination }: { withPagination: boolean }) => {
   }, [tableDensity])
 
   const { rows } = table.getRowModel()
-  const { height: windowHeight } = useWindowSize()
-  const height = useMemo(
-    () => windowHeight - (withPagination ? OFFSET_WITH_PAGINATION : OFFSET_DEFAULT),
-    [windowHeight]
-  )
 
   return (
     <TableContainer>
+      <Hug h="4rem" flex={['aic', 'jcfe']} gap={8} pr={4}>
+        <Search></Search>
+        <Settings></Settings>
+      </Hug>
       <div className="table">
         <div
-          style={{
-            height
-          }}
           ref={tbodyElementRef}
           className="tbody-scroll-box"
         >
@@ -216,7 +209,7 @@ export const Table = ({ withPagination }: { withPagination: boolean }) => {
           )}
         </div>
         {withPagination && (
-          <Hug flex my={8}>
+          <Hug flex my={8} mb="4rem">
             <Hug ml="auto" flex={['aic']} gap={8}>
               <Hug style={{ color: 'var(--grey-600)' }}>Per page</Hug>
               {[5, 10, 25, 50].map(x => {
@@ -272,21 +265,8 @@ export const Table = ({ withPagination }: { withPagination: boolean }) => {
   )
 }
 
-const calculateWidthOffset = (width: number) => {
-  if (width === MAGIC_COLUMN_SIZE_NUMBER) return '100%'
-  if (width < 2000) return `${width}px`
-
-  const offset = (width - MAGIC_COLUMN_SIZE_NUMBER) * 5
-  if (offset < 0) return `calc(100% - ${Math.abs(offset)}px)`
-
-  return `calc(100% + ${offset}px)`
-}
-
 const makeColumnStyles = (width: number) => ({
-  width: calculateWidthOffset(width),
-  minWidth: `max(10rem, ${
-    width < 2000
-      ? `${width}px`
-      : 200 + (width - MAGIC_COLUMN_SIZE_NUMBER) + 'px'
-  })`
+  width,
+  minWidth: width,
+  maxWidth: width
 })

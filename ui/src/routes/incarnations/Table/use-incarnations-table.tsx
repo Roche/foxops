@@ -3,8 +3,7 @@ import { useTableSettingsStore } from '../../../stores/table-settings'
 import { IncarnationBase } from '../../../interfaces/incarnations.types'
 import { createColumnHelper, getCoreRowModel, getPaginationRowModel, getSortedRowModel, useReactTable, TableOptions } from '@tanstack/react-table'
 import { useIncarnationsData } from '../../../hooks/use-incarnations-data'
-import { useCanShowStatusStore } from '../../../stores/show-status'
-import { INCARNATION_TABLE_COLUMNS, MAGIC_COLUMN_SIZE_NUMBER } from '../../../constants/incarnations.consts'
+import { INCARNATION_TABLE_COLUMNS } from '../../../constants/incarnations.consts'
 import { Link } from 'react-router-dom'
 import { makeSortBySemVer } from '../../../utils/search-incarnations'
 import { IncarnationLinks } from '../parts/IncarnationLinks'
@@ -44,20 +43,19 @@ const defineColumns = INCARNATION_TABLE_COLUMNS
   })
 
 export const useIncarnationsTable = (withPagination: boolean) => {
-  const { canShow: canShowStatus } = useCanShowStatusStore()
-
   const _actions = useMemo(() => columnHelper.display({
     id: 'actions',
     header: 'Actions',
-    size: canShowStatus ? 300 : 200,
+    size: 280,
     cell: x => {
       const incarnation = x.row.original
       return <IncarnationLinks
         id={incarnation.id}
+
         commitUrl={incarnation.commitUrl}
         mergeRequestUrl={incarnation.mergeRequestUrl} />
     }
-  }), [canShowStatus])
+  }), [])
 
   const {
     setColumnsSize,
@@ -100,8 +98,8 @@ export const useIncarnationsTable = (withPagination: boolean) => {
     enableMultiSort: true,
     getRowId: x => `${x.id}`,
     defaultColumn: {
-      size: MAGIC_COLUMN_SIZE_NUMBER,
-      maxSize: Number.MAX_SAFE_INTEGER
+      size: 250,
+      maxSize: 500
     }
   }
   if (withPagination) {
