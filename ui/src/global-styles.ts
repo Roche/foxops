@@ -8,6 +8,12 @@ export const createGlobalStyles = ({
 }: Theme, mode: ThemeMode) => css`
   ${normalize}
   :root {
+    ${mode === 'dark' ? `
+      --d2h-dark-bg-color:rgba(12, 17, 23, 0.47);
+      --d2h-moved-label-color: rgb(12, 130, 249);`
+    : ` 
+      --d2h-dark-bg-color: #f1f1f1;
+      --d2h-bg-color: #f7f7f7;`}
     --grey-50: #F7F7F7;
     --grey-100: #E1E1E1;
     --grey-200: #CFCFCF;
@@ -54,7 +60,24 @@ export const createGlobalStyles = ({
   a:hover {
     text-decoration: none;
   }
-  
+
+  .diff-file-link {
+    cursor: pointer;
+    text-decoration: underline;
+  }
+
+  .d2h-file-name {
+    user-select: none;
+  }
+
+  .d2h-file-wrapper { 
+    background-color: var(--d2h-dark-bg-color);
+  }
+
+  .d2h-wrapper {
+    background-color: transparent;
+  }
+
   @keyframes toolbar-progress {
     0% {
       transform: scaleX(0);

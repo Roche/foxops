@@ -8,9 +8,17 @@ export default defineConfig({
   plugins: [
     react(),
     envPlugin({
-      FOXOPS_API_URL: '',
-      FOXOPS_STATIC_TOKEN: ''
+      FOXOPS_API_URL: "",
+      FOXOPS_STATIC_TOKEN: "",
     }),
-    tsconfigPaths()
-  ]
-})
+    tsconfigPaths(),
+  ],
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://localhost:5001",
+        changeOrigin: true,
+      },
+    },
+  },
+});

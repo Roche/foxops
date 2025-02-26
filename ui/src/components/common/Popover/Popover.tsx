@@ -19,7 +19,7 @@ const Box = styled('div')<PopoverBoxProps>(({ theme, right, top }) => ({
   top,
   background: theme.colors.baseBg,
   transform: 'translateY(4px)',
-  borderRadius: 4
+  borderRadius: 8
 }))
 
 interface PopoverProps {

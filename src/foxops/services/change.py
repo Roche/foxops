@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import AsyncIterator
 
 from pydantic import BaseModel
@@ -102,6 +103,12 @@ class _PreparedChangeEnvironment:
     branch_name: str
     commit_sha: str
     patch_result: PatchResult
+
+
+@asynccontextmanager
+async def tmp_empty_dir():
+    with TemporaryDirectory() as tempdir:
+        yield Path(tempdir)
 
 
 class ChangeService:
@@ -574,6 +581,47 @@ class ChangeService:
             template_data=change.requested_data,
             template_data_full=change.template_data_full,
         )
+
+    async def diff_incarnation(self, incarnation_id: int) -> str:
+        incarnation = await self._incarnation_repository.get_by_id(incarnation_id)
+        latest_change = await self._change_repository.get_latest_change_for_incarnation(incarnation_id)
+
+        async with (
+            self._hoster.cloned_repository(incarnation.incarnation_repository) as incarnation_git,
+            self._hoster.cloned_repository(
+                incarnation.template_repository, refspec=latest_change.requested_version
+            ) as template_git,
+            tmp_empty_dir() as target_dir,
+        ):
+            await fengine.initialize_incarnation(
+                template_root_dir=template_git.directory,
+                template_repository=incarnation.template_repository,
+                template_repository_version=latest_change.requested_version,
+                template_data=json.loads(latest_change.requested_data),
+                incarnation_root_dir=target_dir,
+            )
+
+            _incarnation_git_dir = incarnation_git.directory / incarnation.target_directory / ".git"
+
+            # Checks if a .git directory exists in the incarnation directory and removes it
+            # This is needed to avoid the diff command to compare the .git directories
+            if _incarnation_git_dir.exists():
+                shutil.rmtree(_incarnation_git_dir)
+
+            diff = await GitRepository.diff_directory(
+                target_dir,
+                incarnation_git.directory / incarnation.target_directory,
+            )
+
+        return self._sanitize_diff(diff, str(incarnation_git.directory / incarnation.target_directory), str(target_dir))
+
+    def _sanitize_diff(self, diff: str, *paths) -> str:
+        shadow_dir = "/home/foxops/templating"
+
+        for path in paths:
+            diff = diff.replace(str(path), shadow_dir)
+
+        return diff
 
     @asynccontextmanager
     async def _prepared_change_environment(

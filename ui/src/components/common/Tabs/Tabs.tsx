@@ -6,17 +6,19 @@ export interface TabsProps {
   tabs: {
     label: React.ReactNode
     content: React.ReactNode
-  }[]
+  }[],
+  height?: string
 }
 
 export const Tabs = ({
   defaultTab = 0,
-  tabs
+  tabs,
+  height = '100%'
 }: TabsProps) => {
   const [activeTab, setActiveTab] = useState(defaultTab)
   const active = tabs[activeTab]
   return (
-    <TabsBox>
+    <TabsBox style={{ height }}>
       <TabsNav>
         {tabs.map((tab, i) => (
           <TabsNavItem
@@ -26,7 +28,7 @@ export const Tabs = ({
           >{tab.label}</TabsNavItem>
         ))}
       </TabsNav>
-      <TabsBody>
+      <TabsBody style={{ height: `calc(${height} - 4rem)`, position: 'relative' }}>
         {active.content}
       </TabsBody>
     </TabsBox>

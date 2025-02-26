@@ -435,3 +435,35 @@ async def delete_incarnation(
 
     await incarnation_service.delete(incarnation)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/{incarnation_id}/diff",
+    responses={
+        status.HTTP_200_OK: {
+            "description": "The diffs manually applied to the incarnation",
+            "model": str,
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "The incarnation was not found in the inventory",
+            "model": ApiError,
+        },
+    },
+)
+async def diff_incarnation(
+    response: Response,
+    incarnation_id: int,
+    change_service: ChangeService = Depends(get_change_service),
+):
+    """Returns the diff which shows all changes manually applied to the incarnation."""
+    try:
+        diff = await change_service.diff_incarnation(incarnation_id)
+
+        return Response(
+            content=diff,
+            media_type="text/plain",
+        )
+
+    except IncarnationNotFoundError as exc:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return ApiError(message=str(exc))

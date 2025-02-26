@@ -10,7 +10,8 @@
     "start": "vite --port 3000 --open",
     "test": "jest",
     "test:coverage": "jest --coverage",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "fmt": "eslint --fix src"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -26,6 +27,7 @@
     "@types/react-window": "^1.8.8",
     "@types/semver": "^7.5.8",
     "clsx": "^1.2.1",
+    "diff2html": "^3.4.51",
     "framer-motion": "^10.18.0",
     "is-url": "^1.2.4",
     "lodash.isequal": "^4.5.0",
