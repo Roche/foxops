@@ -1,5 +1,5 @@
 # ================= BUILD BACKEND ==================
-FROM python:3.12-slim AS backend-builder
+FROM python:3.13-slim AS backend-builder
 
 # Install the build system
 RUN apt-get update && apt-get install -y git
@@ -26,7 +26,7 @@ RUN npm install
 RUN npm run build
 
 # =============== PRODUCTION ===============
-FROM python:3.12-slim
+FROM python:3.13-slim
 
 # Install the application
 RUN apt-get update && apt-get install -y git bash
