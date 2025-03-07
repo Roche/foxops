@@ -139,6 +139,7 @@ def cmd_initialize(
         )
     except Exception as exc:
         logger.exception(f"initialization failed: {exc}")
+        raise typer.Exit(1)
     else:
         logger.info("successfully initialized incarnation")
     finally:
@@ -261,6 +262,7 @@ def cmd_update(
             logger.info("successfully updated incarnation")
     except Exception as exc:
         logger.exception(f"update failed: {exc}")
+        raise typer.Exit(1)
 
 
 @app.callback()
