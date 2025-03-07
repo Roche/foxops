@@ -148,6 +148,30 @@ class GitRepository:
 
         return stdout.decode()
 
+    @staticmethod
+    async def diff_directory(directory1, directory2) -> str:
+        cmdline = f"git --no-pager diff --no-index {directory1} {directory2}".split()
+
+        proc = await asyncio.create_subprocess_exec(
+            *cmdline,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            stdin=asyncio.subprocess.PIPE,
+            cwd=str(directory1),
+        )
+
+        stdout, stderr = await proc.communicate()
+
+        if proc.returncode not in {0, 1}:
+            raise CalledProcessError(
+                proc.returncode if proc.returncode is not None else -1,
+                cmdline,
+                stdout,
+                stderr,
+            )
+
+        return stdout.decode("unicode_escape")
+
     async def origin_default_branch(self) -> str | None:
         """Returns "main" if the remote repo is empty."""
         try:
@@ -231,3 +255,9 @@ class GitRepository:
             raise GitError("unable to determine the last commit that changed a file")
 
         return (await proc.stdout.read()).decode().strip()
+
+    @classmethod
+    async def from_empty_directory(cls, directory: Path):
+        repo = cls(directory)
+        await repo._run("init")
+        return repo

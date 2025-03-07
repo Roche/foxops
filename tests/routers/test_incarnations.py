@@ -9,12 +9,25 @@ from httpx import AsyncClient
 from pytest_mock import MockFixture
 
 from foxops.database.repositories.change.repository import ChangeRepository
+from foxops.database.repositories.incarnation.errors import IncarnationNotFoundError
 from foxops.database.repositories.incarnation.repository import IncarnationRepository
 from foxops.dependencies import get_change_service
 from foxops.models.change import Change
 from foxops.services.change import ChangeService, IncarnationAlreadyExists
 
 pytestmark = [pytest.mark.api]
+
+
+MOCK_DIFF_OUTPUT = """diff --git a/home/foxops/templating/NewFile b/home/foxops/templating/NewFile
+new file mode 100644
+index 0000000..29b8f23
+--- /dev/null
++++ b/home/foxops/templating/NewFile
+@@ -0,0 +1 @@
++Hello, World!
+diff --git a/home/foxops/templating/script.py b/home/foxops/templating/script.py
+index 636af66..336f590 100644
+"""
 
 
 class ChangeServiceMock(Mock):
@@ -49,6 +62,15 @@ def change_service_mock(app: FastAPI):
     app.dependency_overrides[get_change_service] = lambda: change_service
 
     return change_service
+
+
+@pytest.fixture
+def incarnation_repository_mock(app: FastAPI):
+    incarnation_repository = Mock(spec=IncarnationRepository)
+
+    app.dependency_overrides[IncarnationRepository] = lambda: incarnation_repository
+
+    return incarnation_repository
 
 
 async def test_api_get_incarnations_returns_empty_list_for_empty_incarnation_inventory(
@@ -170,3 +192,32 @@ async def test_api_delete_incarnation_removes_incarnation_from_inventory(
     assert response.status_code == HTTPStatus.NO_CONTENT
 
     assert len([i async for i in incarnation_repository.list()]) == 0
+
+
+async def test_api_get_diff_returns_diff_for_incarnation(
+    api_client: AsyncClient,
+    change_service_mock: ChangeService,
+    mocker: MockFixture,
+):
+    change_service_mock.diff_incarnation = mocker.AsyncMock(return_value=MOCK_DIFF_OUTPUT)  # type: ignore
+
+    response = await api_client.get("/incarnations/1/diff")
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.text == MOCK_DIFF_OUTPUT
+
+    assert change_service_mock.diff_incarnation.call_count == 1  # type: ignore
+    assert change_service_mock.diff_incarnation.call_args == mocker.call(1)  # type: ignore
+
+
+async def test_api_get_diff_of_non_existing_incarnation_returns_not_found(
+    api_client: AsyncClient,
+    incarnation_repository_mock: IncarnationRepository,
+    mocker: MockFixture,
+):
+    incarnation_repository_mock.get_by_id = mocker.AsyncMock(side_effect=IncarnationNotFoundError)  # type: ignore
+
+    response = await api_client.get("/incarnations/1/diff")
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.json() == {"message": "could not find incarnation in DB with id: 1"}

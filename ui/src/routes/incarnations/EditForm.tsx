@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { Hug } from '../../components/common/Hug/Hug'
 import { Loader } from '../../components/common/Loader/Loader'
@@ -18,9 +18,22 @@ const toIncarnationInput = (x: Incarnation): IncarnationInput => ({
   templateData: JSON.stringify(x.templateData, null, 2)
 })
 
+const countChanges = (diff: string) => {
+  const lines = diff.split('\n')
+
+  const added = lines.filter(x => x.startsWith('+')).length
+  const removed = lines.filter(x => x.startsWith('-') && !x.startsWith('--')).length
+
+  return { added, removed }
+}
+
 export const EditIncarnationForm = () => {
   const { id } = useParams()
-  const { isLoading, isError, data, isSuccess } = useQuery(['incarnations', Number(id)], () => incarnations.getById(id))
+  const { isLoading, isError, data, isSuccess } = useQuery(['incarnations', id], () => incarnations.getById(id))
+  const { data: diff } = useQuery(['incarnation_diff', id], () => incarnations.getDiffToTemplate(id))
+
+  const diffCount = useMemo(() => diff !== undefined ? countChanges(diff) : undefined, [diff])
+
   if (!id) return null // narrowing for TS
   const pendingMessage = isLoading
     ? 'Loading...'
@@ -32,25 +45,26 @@ export const EditIncarnationForm = () => {
     if (!isSuccess) return
     setCanShow(true)
   }, [isSuccess, setCanShow])
-  const body = isSuccess
-    ? (
-      <IncarnationsForm
-        templateDataFull={data.templateDataFull}
-        mergeRequestUrl={data.mergeRequestUrl}
-        commitUrl={data.commitUrl}
-        mutation={x => incarnations.update(id, x)}
-        defaultValues={toIncarnationInput(data)}
-        incarnationMergeRequestStatus={data.mergeRequestStatus}
-        deleteIncarnation={() => incarnations.delete(id)}
-        isEdit />
-    )
-    : (
-      <Section>
-        <Hug flex pl={8}>
-          <Hug mr={4}>{pendingMessage}</Hug>
-          {isLoading && <Loader />}
-        </Hug>
-      </Section>
-    )
+
+  const body = isSuccess ? (
+    <IncarnationsForm
+      templateDataFull={data.templateDataFull}
+      mergeRequestUrl={data.mergeRequestUrl}
+      commitUrl={data.commitUrl}
+      mutation={x => incarnations.update(id, x)}
+      defaultValues={toIncarnationInput(data)}
+      incarnationMergeRequestStatus={data.mergeRequestStatus}
+      deleteIncarnation={() => incarnations.delete(id)}
+      diffChanges={diffCount}
+      isEdit
+    />
+  ) : (
+    <Section>
+      <Hug flex pl={8}>
+        <Hug mr={4}>{pendingMessage}</Hug>
+        {isLoading && <Loader />}
+      </Hug>
+    </Section>
+  )
   return body
 }

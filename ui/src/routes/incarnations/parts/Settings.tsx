@@ -1,15 +1,15 @@
 import { useMemo, useState } from 'react'
-import { Tooltip } from '../../common/Tooltip/Tooltip'
-import { IconButton } from '../../common/IconButton/IconButton'
-import { Settings as SettingsIcon } from '../../common/Icons/Settings'
-import { Popover } from '../../common/Popover/Popover'
-import { Hug } from '../../common/Hug/Hug'
-import { Checkbox } from '../../common/Checkbox/Checkbox'
+import { Tooltip } from '../../../components/common/Tooltip/Tooltip'
+import { IconButton } from '../../../components/common/IconButton/IconButton'
+import { Settings as SettingsIcon } from '../../../components/common/Icons/Settings'
+import { Popover } from '../../../components/common/Popover/Popover'
+import { Hug } from '../../../components/common/Hug/Hug'
+import { Checkbox } from '../../../components/common/Checkbox/Checkbox'
 import { INCARNATION_TABLE_COLUMNS } from '../../../constants/incarnations.consts'
 import { IncarnationBase } from '../../../interfaces/incarnations.types'
 import { useTableSettingsStore } from '../../../stores/table-settings'
-import { ToggleSwitch } from '../../common/ToggleSwitch/ToggleSwitch'
-import { Divider } from '../../common/Divider/Divider'
+import { ToggleSwitch } from '../../../components/common/ToggleSwitch/ToggleSwitch'
+import { Divider } from '../../../components/common/Divider/Divider'
 import styled from '@emotion/styled'
 
 const FIELDS = INCARNATION_TABLE_COLUMNS
@@ -74,7 +74,7 @@ export const Settings = () => {
         anchorEl={settingsEl}
         onClickOutside={onClose}>
         <Hug p={16}>
-          <Hug ml={32} mb={8} style={{ color: 'var(--grey-600)', fontSize: 20 }}>Visible Table Fields</Hug>
+          <Hug mb={8} style={{ color: 'var(--grey-600)', fontSize: 20 }}>Visible Table Fields</Hug>
           <Hug maw={500} flex={['aic', 'fxww']} mb={8}>
             {FIELDS.map(x => (
               <Hug

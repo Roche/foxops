@@ -6,8 +6,9 @@ export interface IncarnationTableColumn {
   size: number,
   minSize?: number
 }
+
 const makeColumn = (config: Pick<IncarnationTableColumn, 'id' | 'header'> & Partial<Pick<IncarnationTableColumn, 'size' | 'minSize'>>) => ({
-  size: 300,
+  size: 250,
   minSize: 80,
   ...config
 })
@@ -15,55 +16,73 @@ export const INCARNATION_TABLE_COLUMNS: IncarnationTableColumn[] = [
   makeColumn({
     header: 'Id',
     id: 'id',
-    size: 70,
-    minSize: 70
+    size: 100,
+    minSize: 100
   }),
   makeColumn({
     header: 'Incarnation Repository',
     id: 'incarnationRepository',
-    size: 500
+    size: 250,
+    minSize: 100
   }),
   makeColumn({
     header: 'Template Repository',
     id: 'templateRepository',
-    size: 500
+    size: 250,
+    minSize: 100
   }),
   makeColumn({
     header: 'Target Directory',
-    id: 'targetDirectory'
+    id: 'targetDirectory',
+    size: 250,
+    minSize: 100
   }),
   makeColumn({
     header: 'Revision',
     id: 'revision',
-    size: 150
+    size: 250,
+    minSize: 100
   }),
   makeColumn({
     header: 'Type',
-    id: 'type'
+    id: 'type',
+    size: 250,
+    minSize: 100
   }),
   makeColumn({
     header: 'Requested Version',
     id: 'requestedVersion',
-    size: 400
+    size: 250,
+    minSize: 100
   }),
   makeColumn({
     header: 'Created At',
-    id: 'createdAt'
+    id: 'createdAt',
+    size: 250,
+    minSize: 100
   }),
   makeColumn({
     header: 'Commit Sha',
-    id: 'commitSha'
+    id: 'commitSha',
+    size: 250,
+    minSize: 100
   }),
   makeColumn({
     header: 'Commit Url',
-    id: 'commitUrl'
+    id: 'commitUrl',
+    size: 250,
+    minSize: 100
   }),
   makeColumn({
     header: 'Merge Request Id',
-    id: 'mergeRequestId'
+    id: 'mergeRequestId',
+    size: 250,
+    minSize: 100
   }),
   makeColumn({
     header: 'Merge Request Url',
-    id: 'mergeRequestUrl'
+    id: 'mergeRequestUrl',
+    size: 250,
+    minSize: 100
   })
 ]
