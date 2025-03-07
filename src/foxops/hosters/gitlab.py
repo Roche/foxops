@@ -7,7 +7,7 @@ from http import HTTPStatus
 from pathlib import Path
 from ssl import SSLZeroReturnError
 from tempfile import mkdtemp
-from typing import AsyncIterator, TypedDict
+from typing import Any, AsyncIterator, TypedDict
 from urllib.parse import quote_plus
 
 import httpx
@@ -299,7 +299,7 @@ class GitlabHoster(Hoster):
             response.raise_for_status()
             merge_request: MergeRequest = response.json()
             has_pipeline = bool(merge_request["head_pipeline"])
-            data = {
+            data: dict[str, Any] = {
                 "merge_commit_message": merge_commit_message,
             }
 
