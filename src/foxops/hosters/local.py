@@ -106,7 +106,14 @@ class LocalHoster(Hoster):
         return commit_id, incarnation_state
 
     async def merge_request(
-        self, *, incarnation_repository: str, source_branch: str, title: str, description: str, incarnation_sub_directory: str, with_automerge=False
+        self,
+        *,
+        incarnation_repository: str,
+        source_branch: str,
+        title: str,
+        description: str,
+        incarnation_sub_directory: str,
+        with_automerge=False,
     ) -> tuple[GitSha, MergeRequestId]:
         mr_manager = self._mr_manager(incarnation_repository)
 
@@ -117,7 +124,6 @@ class LocalHoster(Hoster):
         mr_id = mr_manager.add(title, description, source_branch)
 
         if with_automerge:
-            
             merge_message = f"Merge branch '{source_branch}' into 'main'"
 
             if incarnation_sub_directory != ".":

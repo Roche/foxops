@@ -174,7 +174,7 @@ class GitlabHoster(Hoster):
 
         if with_automerge:
             logger.info(f"Triggering automerge for the new Merge Request {merge_request['web_url']}")
-            
+
             merge_message = f"Merge branch '{source_branch}' into '{target_branch}'"
 
             if incarnation_sub_directory != ".":
