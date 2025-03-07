@@ -156,6 +156,7 @@ async def test_merge_request_returns_commit_id_of_source_branch(local_hoster):
         source_branch=change_branch,
         title="Dummy title",
         description="Dummy description",
+        incarnation_sub_directory=".",
         with_automerge=False,
     )
 
@@ -190,6 +191,7 @@ async def test_merge_request_supports_automerge(local_hoster):
         source_branch=change_branch,
         title="Dummy title",
         description="Dummy description",
+        incarnation_sub_directory=".",
         with_automerge=True,
     )
 
@@ -220,6 +222,7 @@ async def test_merge_request_fails_if_source_branch_does_not_exist(local_hoster)
             source_branch="does_not_exist",
             title="Dummy title",
             description="Dummy description",
+            incarnation_sub_directory=".",
             with_automerge=False,
         )
 

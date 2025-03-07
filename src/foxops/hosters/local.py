@@ -106,7 +106,14 @@ class LocalHoster(Hoster):
         return commit_id, incarnation_state
 
     async def merge_request(
-        self, *, incarnation_repository: str, source_branch: str, title: str, description: str, with_automerge=False
+        self,
+        *,
+        incarnation_repository: str,
+        source_branch: str,
+        title: str,
+        description: str,
+        incarnation_sub_directory: str,
+        with_automerge=False,
     ) -> tuple[GitSha, MergeRequestId]:
         mr_manager = self._mr_manager(incarnation_repository)
 
@@ -117,7 +124,12 @@ class LocalHoster(Hoster):
         mr_id = mr_manager.add(title, description, source_branch)
 
         if with_automerge:
-            await self.merge_merge_request(incarnation_repository, str(mr_id))
+            merge_message = f"Merge branch '{source_branch}' into 'main'"
+
+            if incarnation_sub_directory != ".":
+                merge_message = f"[{incarnation_sub_directory}]: {merge_message}"
+
+            await self.merge_merge_request(incarnation_repository, str(mr_id), merge_message)
 
         return commit_id, str(mr_id)
 
@@ -128,12 +140,12 @@ class LocalHoster(Hoster):
         mr = self.get_merge_request(incarnation_repository, merge_request_id)
         self._mr_manager(incarnation_repository).update_status(mr.id, MergeRequestStatus.CLOSED)
 
-    async def merge_merge_request(self, incarnation_repository: str, merge_request_id: str):
+    async def merge_merge_request(self, incarnation_repository: str, merge_request_id: str, merge_message: str) -> None:
         mr = self.get_merge_request(incarnation_repository, merge_request_id)
 
         async with self.cloned_repository(incarnation_repository) as repo:
             await repo.fetch(mr.source_branch)
-            await repo.merge(f"origin/{mr.source_branch}", ff_only=False)
+            await repo.merge(f"origin/{mr.source_branch}", ff_only=False, merge_message=merge_message)
             await repo.push()
 
         self._mr_manager(incarnation_repository).update_status(mr.id, MergeRequestStatus.MERGED)

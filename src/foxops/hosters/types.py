@@ -39,7 +39,14 @@ class Hoster(Protocol):
         ...
 
     async def merge_request(
-        self, *, incarnation_repository: str, source_branch: str, title: str, description: str, with_automerge=False
+        self,
+        *,
+        incarnation_repository: str,
+        source_branch: str,
+        title: str,
+        description: str,
+        incarnation_sub_directory: str,
+        with_automerge=False
     ) -> tuple[GitSha, MergeRequestId]:
         ...
 
