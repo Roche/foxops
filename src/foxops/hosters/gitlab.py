@@ -116,6 +116,7 @@ class GitlabHoster(Hoster):
         source_branch: str,
         title: str,
         description: str,
+        incarnation_sub_directory: str,
         with_automerge=False,
     ) -> tuple[GitSha, MergeRequestId]:
         response = await self.client.get(
@@ -173,7 +174,13 @@ class GitlabHoster(Hoster):
 
         if with_automerge:
             logger.info(f"Triggering automerge for the new Merge Request {merge_request['web_url']}")
-            merge_request = await self._automerge_merge_request(merge_request)
+            
+            merge_message = f"Merge branch '{source_branch}' into '{target_branch}'"
+
+            if incarnation_sub_directory != ".":
+                merge_message = f"[{incarnation_sub_directory}]: {merge_message}"
+
+            merge_request = await self._automerge_merge_request(merge_request, merge_message)
 
         return merge_request["sha"], str(merge_request["iid"])
 
@@ -272,7 +279,7 @@ class GitlabHoster(Hoster):
         }
 
     async def _automerge_merge_request(
-        self, merge_request: MergeRequest, timeout: timedelta | None = None
+        self, merge_request: MergeRequest, merge_commit_message: str, timeout: timedelta | None = None
     ) -> MergeRequest:
         """Automerge the given Merge Request.
 
@@ -292,7 +299,13 @@ class GitlabHoster(Hoster):
             response.raise_for_status()
             merge_request: MergeRequest = response.json()
             has_pipeline = bool(merge_request["head_pipeline"])
-            data = {"merge_when_pipeline_succeeds": True} if has_pipeline else None
+            data = {
+                "merge_commit_message": merge_commit_message,
+            }
+
+            if has_pipeline:
+                data["merge_when_pipeline_succeeds"] = True
+
             response = await self.client.put(
                 f"/projects/{merge_request['project_id']}/merge_requests/{merge_request['iid']}/merge",
                 json=data,

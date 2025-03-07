@@ -93,6 +93,7 @@ class _PreparedChangeEnvironment:
     incarnation_repository: GitRepository
     incarnation_repository_identifier: str
     incarnation_repository_default_branch: str
+    incarnation_target_directory: str
 
     to_version_hash: str
     to_version: str
@@ -272,6 +273,7 @@ class ChangeService:
             source_branch=reset_branch_name,
             title=title,
             description=description,
+            incarnation_sub_directory=incarnation.target_directory,
             with_automerge=False,
         )
 
@@ -374,6 +376,7 @@ class ChangeService:
             source_branch=env.branch_name,
             title=title,
             description=description,
+            incarnation_sub_directory=env.incarnation_target_directory,
             with_automerge=automerge,
         )
 
@@ -684,6 +687,7 @@ class ChangeService:
 
             yield _PreparedChangeEnvironment(
                 incarnation_repository=local_incarnation_repository,
+                incarnation_target_directory=incarnation.target_directory,
                 incarnation_repository_identifier=incarnation.incarnation_repository,
                 incarnation_repository_default_branch=incarnation_repo_metadata["default_branch"],
                 to_version_hash=await local_template_repository.head(),

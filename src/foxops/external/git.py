@@ -193,9 +193,10 @@ class GitRepository:
 
         return (await proc.stdout.read()).strip().decode()
 
-    async def merge(self, branch: str, ff_only: bool = False):
+    async def merge(self, branch: str, ff_only: bool = False, merge_message: str | None = None):
         ff_only_args = ["--ff-only"] if ff_only else []
-        await self._run("merge", *ff_only_args, branch)
+        merge_message_args = ["-m", merge_message] if merge_message is not None else []
+        await self._run("merge", *ff_only_args, *merge_message_args, branch)
 
     async def push(self, tags: bool = False) -> str:
         if self.push_delay_seconds > 0:
