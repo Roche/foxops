@@ -14,6 +14,7 @@ export interface IncarnationBaseApiView {
 }
 
 export type MergeRequestStatus = 'open' | 'merged' | 'closed' | 'unknown'
+export type ChangeType = 'merge_request' | 'direct'
 
 export interface IncarnationBase {
   id: number,
@@ -22,6 +23,7 @@ export interface IncarnationBase {
   templateRepository: null | string,
   revision: number,
   type: string,
+  revison: number,
   requestedVersion: null | string,
   createdAt: string,
   commitSha: string,
@@ -39,6 +41,7 @@ export interface IncarnationApiView {
   merge_request_id: string | null,
   merge_request_url: string | null,
   status: string,
+  revision: number
   merge_request_status: MergeRequestStatus | null,
   template_repository: string
   template_repository_version: string
@@ -46,6 +49,44 @@ export interface IncarnationApiView {
   template_data: Record<string, string> | null,
   template_data_full: Record<string, never> | null,
 }
+
+export interface ChangeApiView {
+  id: number,
+  type: ChangeType,
+  incarnation_id: number,
+  revision: number,
+  requested_version: string,
+  requested_version_hash: string,
+  requested_data: Record<string, string>,
+  template_data_full: Record<string, never>,
+  created_at: string,
+  commit_sha: string,
+  merge_request_id: string | null,
+  merge_request_branch_name: string | null,
+  merge_request_status: MergeRequestStatus | null,
+}
+
+export interface Change {
+  id: number,
+  type: ChangeType,
+  incarnationId: number,
+  revision: number,
+  requestedVersion: string,
+  requestedVersionHash: string,
+  requestedData: Record<string, string>,
+  templateDataFull: Record<string, never>,
+  createdAt: string,
+  commitSha: string,
+  mergeRequestId: string | null,
+  mergeRequestBranchName: string | null,
+  mergeRequestStatus: MergeRequestStatus | null,
+}
+
+export interface IncarnationResetApiInput {
+  requested_version: string,
+  requested_data: Record<string, string>
+}
+
 export interface Incarnation {
   id: number,
   incarnationRepository: string,
@@ -55,6 +96,7 @@ export interface Incarnation {
   mergeRequestId: string | null,
   mergeRequestUrl: string | null,
   status: string,
+  revision: number,
   mergeRequestStatus: MergeRequestStatus | null,
   templateRepository: string,
   templateRepositoryVersion: string,

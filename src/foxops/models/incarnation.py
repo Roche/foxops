@@ -35,6 +35,7 @@ class IncarnationBasic(BaseModel):
 class IncarnationWithDetails(IncarnationBasic):
     status: ReconciliationStatus = Field(description="DEPRECATED. Use the 'merge_request_status' field instead.")
     merge_request_status: MergeRequestStatus | None
+    revision: int | None
 
     template_repository: str | None
     template_repository_version: str | None
