@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import styled from '@emotion/styled'
 
 const DialogOverlay = styled.div`
@@ -56,26 +56,25 @@ const DialogActions = styled.div`
   height: 4rem;
 `
 
-const AbortButton = styled.button(({ theme }) => ({
-  background: theme.colors.orange,
-  color: '#fff',
+const BaseButton = {
   borderRadius: 4,
   border: 'none',
   cursor: 'pointer',
   marginLeft: '.5rem',
   marginRight: '.5rem',
   minWidth: '6rem'
+}
+
+const AbortButton = styled.button(({ theme }) => ({
+  ...BaseButton,
+  background: theme.colors.orange,
+  color: '#fff'
 }))
 
 const ConfirmButton = styled.button(({ theme }) => ({
+  ...BaseButton,
   background: theme.colors.baseBg,
   color: theme.colors.text,
-  borderRadius: 4,
-  border: 'none',
-  cursor: 'pointer',
-  marginLeft: '.5rem',
-  marginRight: '.5rem',
-  minWidth: '6rem',
   borderWidth: 1,
   borderColor: theme.colors.orange,
   borderStyle: 'solid'
@@ -90,17 +89,11 @@ type DialogProps = {
 };
 
 export const Dialog = ({ children, open, onConfirm, onAbort, title }: DialogProps) => {
-  const [dialogOpen, setDialogOpen] = useState(open)
-
   const [animateDialog, setAnimateDialog] = useState(false)
-
-  useEffect(() => {
-    setDialogOpen(open)
-  }, [open])
 
   return (
     <>
-      {dialogOpen && (
+      {open && (
         <DialogOverlay onClick={() => setAnimateDialog(true)}>
           <DialogContent onAnimationEnd={() => setAnimateDialog(false)} style={{ animation: animateDialog ? 'bounce 0.3s' : '' }} onClick={e => e.stopPropagation()}>
             <DialogTitle>{title}</DialogTitle>

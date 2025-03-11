@@ -130,4 +130,24 @@ export const createGlobalStyles = ({ colors }: Theme, mode: ThemeMode) => css`
       transform: scale(1.04);
     }
   }
+
+  @keyframes loadbar {
+    0% {
+      width: 0;
+    }
+    100% {
+      width: 100%;
+    }
+  }
+
+  @keyframes error-close {
+    0% {  
+      transform: rotateX(0deg);
+      opacity: 1;
+    }
+    100% {
+      transform: rotateX(90deg);
+      opacity: 0;
+    }
+  }
 `

@@ -10,7 +10,6 @@ import { ApiErrorResponse } from '../../services/api'
 import { delay } from '../../utils'
 import { useMemo, useState } from 'react'
 import styled from '@emotion/styled'
-import { Close } from '../../components/common/Icons/Close'
 import { Tooltip } from '../../components/common/Tooltip/Tooltip'
 import { IncarnationLinks } from './parts/IncarnationLinks'
 import isUrl from 'is-url'
@@ -24,28 +23,7 @@ import { JsonEditor } from 'components/common/JsonEditor/JsonEditor'
 import { Tabs } from 'components/common/Tabs/Tabs'
 import { useNavigate } from 'react-router-dom'
 import { Dialog } from 'components/common/Dialog/Dialog'
-import DOMPurify from 'dompurify'
-
-const ErrorMessage = styled.div(({ theme }) => ({
-  position: 'relative',
-  color: theme.colors.contrastText,
-  fontFamily: 'var(--monospace)',
-  background: theme.colors.error,
-  flex: 1,
-  padding: 16,
-  fontSize: 14,
-  borderRadius: 4,
-  lineHeight: 1.5,
-  minHeight: 70,
-  '.IconButton--Error': {
-    color: theme.colors.contrastText,
-    float: 'right'
-  }
-}))
-
-const ErrorText = styled.div({
-  paddingTop: 10
-})
+import { useErrorStore } from 'stores/error'
 
 const DeleteIncarnationLink = styled.span`
   cursor: pointer;
@@ -154,8 +132,9 @@ export const IncarnationsForm = ({
   })
   const templateRepo = watch('templateRepository')
   const failed = templateRepo === '' && isEdit
-  const [apiError, setApiError] = useState<ApiErrorResponse | null>()
   const navigate = useNavigate()
+
+  const errorStore = useErrorStore()
 
   const queryClient = useQueryClient()
   const { mutateAsync, isLoading } = useMutation(mutation)
@@ -174,7 +153,7 @@ export const IncarnationsForm = ({
       queryClient.invalidateQueries(['incarnations'])
       navigate('/incarnations')
     } catch (error) {
-      setApiError(error as ApiErrorResponse)
+      errorStore.setError(error as ApiErrorResponse)
     }
   }
 
@@ -183,12 +162,12 @@ export const IncarnationsForm = ({
     try {
       await resetMutation.mutateAsync()
     } catch (error) {
-      setApiError(error as ApiErrorResponse)
+      errorStore.setError(error as ApiErrorResponse)
     }
   }
 
   const onSubmit: SubmitHandler<IncarnationInput> = async incarnation => {
-    setApiError(null)
+    errorStore.clearError()
     try {
       console.log(incarnation)
       await mutateAsync(incarnation)
@@ -197,7 +176,7 @@ export const IncarnationsForm = ({
       navigate('/incarnations')
     } catch (err) {
       const error = err as ApiErrorResponse
-      setApiError(error)
+      errorStore.setError(error)
     }
   }
   const buttonTitle = isEdit
@@ -389,31 +368,6 @@ export const IncarnationsForm = ({
           </Hug>
         </Hug>
       </Hug>
-      {apiError ? (
-        <Hug w="40%" px={8}>
-          <ErrorMessage>
-            <IconButton
-              flying
-              onClick={() => setApiError(null)}
-              className="IconButton--Error"
-            >
-              <Close />
-            </IconButton>
-            <ErrorText>{apiError.message}</ErrorText>
-            <Hug>
-              {apiError.documentation ? (
-                <a
-                  href={DOMPurify.sanitize(apiError.documentation)}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Read more
-                </a>
-              ) : null}
-            </Hug>
-          </ErrorMessage>
-        </Hug>
-      ) : null}
     </Hug>
   )
   const failedFeedback = (
@@ -465,7 +419,7 @@ export const IncarnationsForm = ({
               <Hug ml={4}>
                 <Tooltip title="Remove all manual changes">
                   <Button
-                    miw="6.5rem"
+                    minWidth="6.5rem"
                     variant="warning"
                     disabled={
                       resetMutation.isLoading || resetMutation.isSuccess || !resetIncarnationEnabled || incarnationMergeRequestStatus === 'open'
@@ -480,7 +434,7 @@ export const IncarnationsForm = ({
               <Hug ml={4}>
                 <Tooltip title="Delete incarnation">
                   <Button
-                    miw="6.5rem"
+                    minWidth="6.5rem"
                     variant="danger"
                     disabled={
                       deleteMutation.isLoading || deleteMutation.isSuccess

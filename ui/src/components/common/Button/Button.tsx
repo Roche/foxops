@@ -10,7 +10,7 @@ interface ButtonBoxProps {
   outline: number,
   size?: Size,
   variant?: Variant,
-  miw?: string
+  minWidth?: string
 }
 
 const getBgByState = ({ theme, variant, disabled }: { theme: Theme, disabled?: boolean, variant?: Variant }) => {
@@ -32,7 +32,7 @@ const getColor = (outlined: boolean, backgroundColor: string, theme: Theme) => {
   return backgroundColor === 'transparent' ? theme.colors.text : '#fff'
 }
 
-const ButtonBox = styled('button')<ButtonBoxProps>(({ theme, size, disabled, variant, outline, miw }) => {
+const ButtonBox = styled('button')<ButtonBoxProps>(({ theme, size, disabled, variant, outline, minWidth }) => {
   const backgroundColor = getBgByState({ theme, variant, disabled })
   return {
     textDecoration: 'none',
@@ -51,7 +51,7 @@ const ButtonBox = styled('button')<ButtonBoxProps>(({ theme, size, disabled, var
     paddingRight: size === 'small' ? 8 : 16,
     cursor: disabled ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.7 : 1,
-    minWidth: miw || '0px',
+    minWidth: minWidth ?? '0px',
     ':not(:disabled)::after': {
       content: disabled ? undefined : '""',
       position: 'absolute',
@@ -108,7 +108,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   size?: Size,
   dataTestid?: string,
   loading?: boolean,
-  miw?: string
+  minWidth?: string
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({ children, dataTestid, loading, outline, ...props }, ref) => (
