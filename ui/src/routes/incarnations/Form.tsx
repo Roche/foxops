@@ -23,6 +23,8 @@ import {
 import { JsonEditor } from 'components/common/JsonEditor/JsonEditor'
 import { Tabs } from 'components/common/Tabs/Tabs'
 import { useNavigate } from 'react-router-dom'
+import { Dialog } from 'components/common/Dialog/Dialog'
+import DOMPurify from 'dompurify'
 
 const ErrorMessage = styled.div(({ theme }) => ({
   position: 'relative',
@@ -161,20 +163,23 @@ export const IncarnationsForm = ({
 
   const resetMutation = useMutation(resetIncarnation)
 
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [resetDialogOpen, setResetDialogOpen] = useState(false)
+
   const onDelete = async () => {
-    if (window.confirm('Are you sure you want to delete this incarnation?')) {
-      try {
-        await deleteMutation.mutateAsync()
-        await delay(1000)
-        queryClient.invalidateQueries(['incarnations'])
-        navigate('/incarnations')
-      } catch (error) {
-        setApiError(error as ApiErrorResponse)
-      }
+    setDeleteDialogOpen(false)
+    try {
+      await deleteMutation.mutateAsync()
+      await delay(1000)
+      queryClient.invalidateQueries(['incarnations'])
+      navigate('/incarnations')
+    } catch (error) {
+      setApiError(error as ApiErrorResponse)
     }
   }
 
   const onReset = async () => {
+    setResetDialogOpen(false)
     try {
       await resetMutation.mutateAsync()
     } catch (error) {
@@ -398,7 +403,7 @@ export const IncarnationsForm = ({
             <Hug>
               {apiError.documentation ? (
                 <a
-                  href={apiError.documentation}
+                  href={DOMPurify.sanitize(apiError.documentation)}
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -415,7 +420,7 @@ export const IncarnationsForm = ({
     <Hug as="form" mb={16} flex>
       <Hug w="60%" miw={600} px={8} pt={32}>
         It looks like this incarnation is not available anymore 😔. You can{' '}
-        <DeleteIncarnationLink onClick={onDelete}>delete</DeleteIncarnationLink>{' '}
+        <DeleteIncarnationLink onClick={() => setDeleteDialogOpen(true)}>delete</DeleteIncarnationLink>{' '}
         it.
       </Hug>
     </Hug>
@@ -463,10 +468,10 @@ export const IncarnationsForm = ({
                     miw="6.5rem"
                     variant="warning"
                     disabled={
-                      resetMutation.isLoading || resetMutation.isSuccess || !resetIncarnationEnabled
+                      resetMutation.isLoading || resetMutation.isSuccess || !resetIncarnationEnabled || incarnationMergeRequestStatus === 'open'
                     }
                     loading={deleteMutation.isLoading}
-                    onClick={onReset}
+                    onClick={() => setResetDialogOpen(true)}
                   >
                     {resetButtonTitle}
                   </Button>
@@ -481,7 +486,7 @@ export const IncarnationsForm = ({
                       deleteMutation.isLoading || deleteMutation.isSuccess
                     }
                     loading={deleteMutation.isLoading}
-                    onClick={onDelete}
+                    onClick={() => setDeleteDialogOpen(true)}
                   >
                     {deleteButtonTitle}
                   </Button>
@@ -490,6 +495,15 @@ export const IncarnationsForm = ({
             </Hug>
           )}
         </Hug>
+        <Dialog open={deleteDialogOpen} onAbort={() => setDeleteDialogOpen(false)} onConfirm={onDelete} title="Delete incarnation">
+          <span>Are you sure you want to delete this incarnation?</span>
+          <span>This action <strong>cannot</strong> be undone.</span>
+        </Dialog>
+        <Dialog open={resetDialogOpen} onAbort={() => setResetDialogOpen(false)} onConfirm={onReset} title="Reset incarnation">
+          <span>Are you sure you want to reset this incarnation?</span>
+          <span>Doing this will create a merge request which removes all changes manually applied to the incarnation</span>
+          <span>The merge request will not be automatically merged</span>
+        </Dialog>
       </Hug>
       {failed ? (
         failedFeedback
