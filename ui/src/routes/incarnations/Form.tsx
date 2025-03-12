@@ -24,6 +24,7 @@ import { Tabs } from 'components/common/Tabs/Tabs'
 import { useNavigate } from 'react-router-dom'
 import { Dialog } from 'components/common/Dialog/Dialog'
 import { useErrorStore } from 'stores/error'
+import { TemplateDataPrefetcher } from './parts/TemplateDataPrefetcher'
 
 const DeleteIncarnationLink = styled.span`
   cursor: pointer;
@@ -121,14 +122,7 @@ export const IncarnationsForm = ({
   commitUrl,
   templateDataFull
 }: FormProps) => {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    control,
-    watch,
-    getValues
-  } = useForm({
+  const { register, handleSubmit, formState: { errors }, control, watch, setValue, getValues } = useForm({
     defaultValues
   })
 
@@ -138,6 +132,7 @@ export const IncarnationsForm = ({
   }
 
   const templateRepo = watch('templateRepository')
+  const templateVersion = watch('templateVersion')
   const failed = templateRepo === '' && isEdit
   const navigate = useNavigate()
 
@@ -349,9 +344,10 @@ export const IncarnationsForm = ({
             ) : (
               <>
                 <strong>Template data JSON</strong>
-                <Hug my={16} h="100%">
+
+                <TemplateDataPrefetcher templateVersion={templateVersion} templateRepository={templateRepo} onFetchSuccess={data => setValue('templateData', JSON.stringify(data, null, 2))}>
                   {editTemplateDataController}
-                </Hug>
+                </TemplateDataPrefetcher>
               </>
             )}
           </Hug>

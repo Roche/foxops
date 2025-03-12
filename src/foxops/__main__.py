@@ -8,7 +8,7 @@ from foxops.error_handlers import __error_handlers__
 from foxops.logger import get_logger, setup_logging
 from foxops.middlewares import request_id_middleware, request_time_middleware
 from foxops.openapi import custom_openapi
-from foxops.routers import auth, incarnations, not_found, version
+from foxops.routers import auth, incarnations, not_found, template, version
 
 #: Holds the module logger instance
 logger = get_logger(__name__)
@@ -48,6 +48,7 @@ def create_app():
     # Add routes to the protected router (authentication required)
     protected_router = APIRouter(dependencies=[Depends(static_token_auth_scheme)])
     protected_router.include_router(incarnations.router)
+    protected_router.include_router(template.router)
 
     app.include_router(public_router)
     app.include_router(protected_router)

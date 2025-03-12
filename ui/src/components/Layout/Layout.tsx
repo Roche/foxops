@@ -29,7 +29,7 @@ const ErrorMessage = styled.div(({ theme }) => ({
     color: theme.colors.contrastText,
     float: 'right'
   },
-  width: 'min(25rem, 80%)'
+  width: 'min(25rem, 80%)',
 }))
 
 const ErrorText = styled.div({
@@ -86,7 +86,8 @@ const ErrorWrapper = styled.div({
   display: 'flex',
   alignItems: 'start',
   justifyContent: 'right',
-  paddingRight: '1rem'
+  paddingRight: '1rem',
+  pointerEvents: 'none'
 })
 
 const LoadbarWrapper = styled.div({
