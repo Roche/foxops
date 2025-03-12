@@ -46,11 +46,6 @@ export const EditIncarnationForm = () => {
     setCanShow(true)
   }, [isSuccess, setCanShow])
 
-  const resetIncarnation = async (incarnation: Incarnation) => {
-    const latestChange = await incarnations.getIncarnationChange(incarnation.id, incarnation.revision)
-    await incarnations.reset(incarnation.id, latestChange.requestedVersion, latestChange.requestedData)
-  }
-
   const body = isSuccess ? (
     <IncarnationsForm
       templateDataFull={data.templateDataFull}
@@ -60,7 +55,7 @@ export const EditIncarnationForm = () => {
       defaultValues={toIncarnationInput(data)}
       incarnationMergeRequestStatus={data.mergeRequestStatus}
       deleteIncarnation={() => incarnations.delete(id)}
-      resetIncarnation={() => resetIncarnation(data)}
+      resetIncarnation={(templateVersion: string, templateData: Record<string, string>) => incarnations.reset(id, templateVersion, templateData)}
       diffChanges={diffCount}
       isEdit
     />

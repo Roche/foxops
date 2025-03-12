@@ -113,8 +113,6 @@ export const Layout = ({ config }: LayoutProps) => {
   const { mode } = useThemeModeStore()
   const errorStore = useErrorStore()
 
-  console.log('config', errorStore.error)
-
   const [currentConfig, setCurrentConfig] = useState<PageConfig | null>(null)
   const [inErrorCloseProcess, setInCloseProcess] = useState(false)
 

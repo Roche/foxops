@@ -33,12 +33,12 @@ const DeleteIncarnationLink = styled.span`
 export type DiffChanges = {
   added: number,
   removed: number
-}
+};
 
 type FormProps = {
   mutation: (data: IncarnationInput) => Promise<IncarnationApiView>,
   deleteIncarnation?: () => Promise<void>,
-  resetIncarnation?: () => Promise<void>,
+  resetIncarnation?: (templateVersion: string, templateData: Record<string, string>) => Promise<void>,
   defaultValues: IncarnationInput,
   diffChanges?: DiffChanges,
   isEdit?: boolean,
@@ -115,7 +115,7 @@ export const IncarnationsForm = ({
   diffChanges,
   isEdit,
   deleteIncarnation = () => Promise.resolve(),
-  resetIncarnation = () => Promise.resolve(),
+  resetIncarnation = (templateVersion: string, templateData: Record<string, string>) => Promise.resolve(), // eslint-disable-line @typescript-eslint/no-unused-vars
   incarnationMergeRequestStatus,
   mergeRequestUrl,
   commitUrl,
@@ -126,10 +126,17 @@ export const IncarnationsForm = ({
     handleSubmit,
     formState: { errors },
     control,
-    watch
+    watch,
+    getValues
   } = useForm({
     defaultValues
   })
+
+  const initResetIncarnation = async () => {
+    const formValues = getValues()
+    await resetIncarnation(formValues.templateVersion, JSON.parse(formValues.templateData))
+  }
+
   const templateRepo = watch('templateRepository')
   const failed = templateRepo === '' && isEdit
   const navigate = useNavigate()
@@ -140,7 +147,7 @@ export const IncarnationsForm = ({
   const { mutateAsync, isLoading } = useMutation(mutation)
   const deleteMutation = useMutation(deleteIncarnation)
 
-  const resetMutation = useMutation(resetIncarnation)
+  const resetMutation = useMutation(initResetIncarnation)
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
@@ -149,7 +156,6 @@ export const IncarnationsForm = ({
     setDeleteDialogOpen(false)
     try {
       await deleteMutation.mutateAsync()
-      await delay(1000)
       queryClient.invalidateQueries(['incarnations'])
       navigate('/incarnations')
     } catch (error) {
@@ -179,27 +185,22 @@ export const IncarnationsForm = ({
       errorStore.setError(error)
     }
   }
-  const buttonTitle = isEdit
-    ? isLoading
-      ? 'Updating'
-      : 'Update'
-    : isLoading
-      ? 'Creating'
-      : 'Create'
 
-  const deleteButtonTitle = deleteMutation.isSuccess
-    ? 'Deleted!'
-    : deleteMutation.isLoading
-      ? 'Deleting'
-      : 'Delete'
+  const buttonTitle = isEdit ? 'Update' : 'Create'
 
-  const resetButtonTitle = resetMutation.isSuccess
-    ? 'Reset!'
-    : resetMutation.isLoading
-      ? 'Resetting'
-      : 'Reset'
+  let resetIncarnationDisabled = null
 
-  const resetIncarnationEnabled = diffChanges && (diffChanges.added !== 0 || diffChanges.removed !== 0)
+  if (diffChanges === null || diffChanges === undefined) {
+    resetIncarnationDisabled = 'Waiting for changes to be calculated'
+  } else if (diffChanges.added === 0 && diffChanges.removed === 0) {
+    resetIncarnationDisabled = 'No changes to reset'
+  } else if (resetMutation.isLoading) {
+    resetIncarnationDisabled = 'Resetting'
+  } else if (resetMutation.isSuccess) {
+    resetIncarnationDisabled = 'Reset successful. Check the merge request to finalize the reset'
+  } else if (incarnationMergeRequestStatus === 'open') {
+    resetIncarnationDisabled = 'There is already an open merge request'
+  }
 
   const editTemplateDataController = (
     <Controller
@@ -356,10 +357,27 @@ export const IncarnationsForm = ({
           </Hug>
         </Hug>
         <Hug flex={['jcfe', 'aic']} mt="auto">
-          <Hug>
+          <Hug ml={8}>
+            {isEdit && (<Tooltip title={resetIncarnationDisabled ?? 'Remove all manuall applied changes'} placement="top">
+              <Button
+                type="button"
+                minWidth="6.5rem"
+                disabled={resetIncarnationDisabled !== null}
+                loading={resetMutation.isLoading}
+                onClick={() => {
+                  setResetDialogOpen(true)
+                }}
+              >
+                Reset
+              </Button>
+            </Tooltip>
+            )}
+          </Hug>
+
+          <Hug ml={8}>
             <Button
               loading={isLoading}
-              style={{ minWidth: 120 }}
+              minWidth="6.5rem"
               type="submit"
               disabled={isLoading}
             >
@@ -374,7 +392,9 @@ export const IncarnationsForm = ({
     <Hug as="form" mb={16} flex>
       <Hug w="60%" miw={600} px={8} pt={32}>
         It looks like this incarnation is not available anymore 😔. You can{' '}
-        <DeleteIncarnationLink onClick={() => setDeleteDialogOpen(true)}>delete</DeleteIncarnationLink>{' '}
+        <DeleteIncarnationLink onClick={() => setDeleteDialogOpen(true)}>
+          delete
+        </DeleteIncarnationLink>{' '}
         it.
       </Hug>
     </Hug>
@@ -417,21 +437,6 @@ export const IncarnationsForm = ({
                 size="large"
               />
               <Hug ml={4}>
-                <Tooltip title="Remove all manual changes">
-                  <Button
-                    minWidth="6.5rem"
-                    variant="warning"
-                    disabled={
-                      resetMutation.isLoading || resetMutation.isSuccess || !resetIncarnationEnabled || incarnationMergeRequestStatus === 'open'
-                    }
-                    loading={deleteMutation.isLoading}
-                    onClick={() => setResetDialogOpen(true)}
-                  >
-                    {resetButtonTitle}
-                  </Button>
-                </Tooltip>
-              </Hug>
-              <Hug ml={4}>
                 <Tooltip title="Delete incarnation">
                   <Button
                     minWidth="6.5rem"
@@ -442,20 +447,35 @@ export const IncarnationsForm = ({
                     loading={deleteMutation.isLoading}
                     onClick={() => setDeleteDialogOpen(true)}
                   >
-                    {deleteButtonTitle}
+                    Delete
                   </Button>
                 </Tooltip>
               </Hug>
             </Hug>
           )}
         </Hug>
-        <Dialog open={deleteDialogOpen} onAbort={() => setDeleteDialogOpen(false)} onConfirm={onDelete} title="Delete incarnation">
+        <Dialog
+          open={deleteDialogOpen}
+          onAbort={() => setDeleteDialogOpen(false)}
+          onConfirm={onDelete}
+          title="Delete incarnation"
+        >
           <span>Are you sure you want to delete this incarnation?</span>
-          <span>This action <strong>cannot</strong> be undone.</span>
+          <span>
+            This action <strong>cannot</strong> be undone.
+          </span>
         </Dialog>
-        <Dialog open={resetDialogOpen} onAbort={() => setResetDialogOpen(false)} onConfirm={onReset} title="Reset incarnation">
+        <Dialog
+          open={resetDialogOpen}
+          onAbort={() => setResetDialogOpen(false)}
+          onConfirm={onReset}
+          title="Reset incarnation"
+        >
           <span>Are you sure you want to reset this incarnation?</span>
-          <span>Doing this will create a merge request which removes all changes manually applied to the incarnation</span>
+          <span>
+            Doing this will create a merge request which removes all changes
+            manually applied to the incarnation
+          </span>
           <span>The merge request will not be automatically merged</span>
         </Dialog>
       </Hug>
