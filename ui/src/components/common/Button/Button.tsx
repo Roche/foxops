@@ -5,11 +5,12 @@ import { transparentize } from '../../../styling/colors'
 import { Link } from 'react-router-dom'
 
 type Size = 'small' | 'large'
-type Variant = 'primary' | 'danger'
+type Variant = 'primary' | 'danger' | 'warning'
 interface ButtonBoxProps {
   outline: number,
   size?: Size,
-  variant?: Variant
+  variant?: Variant,
+  minWidth?: string
 }
 
 const getBgByState = ({ theme, variant, disabled }: { theme: Theme, disabled?: boolean, variant?: Variant }) => {
@@ -18,16 +19,25 @@ const getBgByState = ({ theme, variant, disabled }: { theme: Theme, disabled?: b
   }
   if (variant === 'danger') {
     return theme.colors.error
+  } else if (variant === 'warning') {
+    return theme.colors.orange
   }
-  return theme.colors.orange
+  return 'transparent'
 }
 
-const ButtonBox = styled('button')<ButtonBoxProps>(({ theme, size, disabled, variant, outline }) => {
+const getColor = (outlined: boolean, backgroundColor: string, theme: Theme) => {
+  if (outlined) {
+    return backgroundColor === 'transparent' ? theme.colors.orange : backgroundColor
+  }
+  return backgroundColor === 'transparent' ? theme.colors.text : '#fff'
+}
+
+const ButtonBox = styled('button')<ButtonBoxProps>(({ theme, size, disabled, variant, outline, minWidth }) => {
   const backgroundColor = getBgByState({ theme, variant, disabled })
   return {
     textDecoration: 'none',
-    color: outline ? backgroundColor : '#fff',
-    border: outline ? `1px solid ${backgroundColor}` : 'none',
+    color: getColor(!!outline, backgroundColor, theme),
+    border: outline || backgroundColor === 'transparent' ? `1px solid ${backgroundColor === 'transparent' ? theme.colors.orange : backgroundColor}` : 'none',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -41,6 +51,7 @@ const ButtonBox = styled('button')<ButtonBoxProps>(({ theme, size, disabled, var
     paddingRight: size === 'small' ? 8 : 16,
     cursor: disabled ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.7 : 1,
+    minWidth: minWidth ?? '0px',
     ':not(:disabled)::after': {
       content: disabled ? undefined : '""',
       position: 'absolute',
@@ -96,7 +107,8 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant,
   size?: Size,
   dataTestid?: string,
-  loading?: boolean
+  loading?: boolean,
+  minWidth?: string
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({ children, dataTestid, loading, outline, ...props }, ref) => (

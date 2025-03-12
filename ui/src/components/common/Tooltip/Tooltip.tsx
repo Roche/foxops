@@ -1,4 +1,4 @@
-import { useState, Children, cloneElement, CSSProperties } from 'react'
+import { useState, Children, CSSProperties } from 'react'
 import { useFloating, offset, flip, shift, useInteractions, useHover, Placement, safePolygon, FloatingPortal } from '@floating-ui/react-dom-interactions'
 import styled from '@emotion/styled'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -34,21 +34,19 @@ export const Tooltip = ({ children, title, dataTestid, placement = 'bottom', sty
     onOpenChange: setOpen,
     placement
   })
-  const { getReferenceProps, getFloatingProps } = useInteractions([useHover(context, { restMs: 400, handleClose: safePolygon() })])
+  const { getReferenceProps, getFloatingProps } = useInteractions([useHover(context, { restMs: 200, handleClose: safePolygon() })])
   try {
     Children.only(children)
   } catch (error) {
     console.error(error)
     return children
   }
-  const element = cloneElement(children, {
-    ...children.props,
-    ...getReferenceProps(),
-    ref: reference
-  })
+
   return (
     <>
-      {element}
+      <div ref={reference} {...getReferenceProps()}>
+        {children}
+      </div>
       <FloatingPortal>
         <AnimatePresence>
           {open && (

@@ -55,6 +55,7 @@ export const EditIncarnationForm = () => {
       defaultValues={toIncarnationInput(data)}
       incarnationMergeRequestStatus={data.mergeRequestStatus}
       deleteIncarnation={() => incarnations.delete(id)}
+      resetIncarnation={(templateVersion: string, templateData: Record<string, string>) => incarnations.reset(id, templateVersion, templateData)}
       diffChanges={diffCount}
       isEdit
     />

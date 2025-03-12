@@ -7,11 +7,34 @@ import { Toolbar } from './Toolbar/Toolbar'
 import { Hug } from 'components/common/Hug/Hug'
 import { useEffect, useState } from 'react'
 import { useThemeModeStore } from 'stores/theme-mode'
+import { useErrorStore } from 'stores/error'
+import DOMPurify from 'dompurify'
+import { IconButton } from '../../components/common/IconButton/IconButton'
+import { Close } from 'components/common/Icons/Close'
 
 const Box = styled.div(({ theme }) => ({
   paddingTop: theme.sizes.toolbar,
   paddingLeft: theme.sizes.aside
 }))
+
+const ErrorMessage = styled.div(({ theme }) => ({
+  color: theme.colors.contrastText,
+  fontFamily: 'var(--monospace)',
+  background: theme.colors.error,
+  fontSize: 14,
+  borderRadius: 4,
+  lineHeight: 1.5,
+  minHeight: '4rem',
+  '.IconButton--Error': {
+    color: theme.colors.contrastText,
+    float: 'right'
+  },
+  width: 'min(25rem, 80%)'
+}))
+
+const ErrorText = styled.div({
+  paddingTop: 10
+})
 
 export type PageConfig = {
   pathMatcher: RegExp;
@@ -53,11 +76,45 @@ const PageTitle = styled.h1({
   margin: '.8rem 0'
 })
 
+const ErrorWrapper = styled.div({
+  width: '100vw',
+  height: '100vh',
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  paddingTop: '6rem',
+  display: 'flex',
+  alignItems: 'start',
+  justifyContent: 'right',
+  paddingRight: '1rem'
+})
+
+const LoadbarWrapper = styled.div({
+  width: '100%',
+  height: '.25rem',
+  background: '#ffffff70'
+})
+
+const Loadbar = styled.div(() => ({
+  width: '30%',
+  height: '100%',
+  background: '#ffffffdd',
+  animation: 'loadbar 15s linear forwards'
+}))
+
+const ErrorBody = styled.div({
+  width: '100%',
+  padding: '1rem'
+})
+
 export const Layout = ({ config }: LayoutProps) => {
   const navigator = useNavigate()
   const location = useLocation()
   const { mode } = useThemeModeStore()
+  const errorStore = useErrorStore()
+
   const [currentConfig, setCurrentConfig] = useState<PageConfig | null>(null)
+  const [inErrorCloseProcess, setInCloseProcess] = useState(false)
 
   useEffect(() => {
     let currentURLConfig
@@ -131,6 +188,42 @@ export const Layout = ({ config }: LayoutProps) => {
         </Hug>
       </Hug>
       <IncarnationsOperationsWindow />
+      {errorStore.error ? (
+        <ErrorWrapper style={{ animation: inErrorCloseProcess ? 'error-close 0.5s' : '' }} onAnimationEnd={() => {
+          errorStore.clearError()
+          setInCloseProcess(false)
+        }}>
+          <ErrorMessage>
+            <ErrorBody>
+              <IconButton
+                flying
+                onClick={() => errorStore.clearError()}
+                className="IconButton--Error"
+              >
+                <Close />
+              </IconButton>
+              <ErrorText>{errorStore.error.message}</ErrorText>
+              <Hug>
+                {errorStore.error.documentation ? (
+                  <a
+                    href={DOMPurify.sanitize(errorStore.error.documentation)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                        Read more
+                  </a>
+                ) : null}
+              </Hug>
+            </ErrorBody>
+            <LoadbarWrapper>
+              <Loadbar onAnimationEnd={e => {
+                e.stopPropagation()
+                setInCloseProcess(true)
+              }} />
+            </LoadbarWrapper>
+          </ErrorMessage>
+        </ErrorWrapper>
+      ) : null}
     </Box>
   )
 }

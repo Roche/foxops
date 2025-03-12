@@ -578,6 +578,7 @@ class ChangeService:
             merge_request_url=merge_request_url,
             merge_request_status=merge_request_status,
             status=status,
+            revision=change.revision,
             template_repository=incarnation.template_repository,
             template_repository_version=change.requested_version,
             template_repository_version_hash=change.requested_version_hash,
