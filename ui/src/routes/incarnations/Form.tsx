@@ -24,7 +24,7 @@ import { Tabs } from 'components/common/Tabs/Tabs'
 import { useNavigate } from 'react-router-dom'
 import { Dialog } from 'components/common/Dialog/Dialog'
 import { useErrorStore } from 'stores/error'
-import { TemplateDataPrefetcher } from './parts/TemplateDataPrefetcher'
+import { template } from '../../services/template'
 
 const DeleteIncarnationLink = styled.span`
   cursor: pointer;
@@ -133,6 +133,7 @@ export const IncarnationsForm = ({
 
   const templateRepo = watch('templateRepository')
   const templateVersion = watch('templateVersion')
+
   const failed = templateRepo === '' && isEdit
   const navigate = useNavigate()
 
@@ -146,6 +147,18 @@ export const IncarnationsForm = ({
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
+
+  const [isLoadingTemplateData, setIsLoadingTemplateData] = useState(false)
+  const [fetchDialogOpen, setFetchDialogOpen] = useState(false)
+
+  const fetchTemplateData = async () => {
+    setFetchDialogOpen(false)
+    setIsLoadingTemplateData(true)
+
+    const data = await template.getDefaultVariables(templateRepo, templateVersion)
+    setValue('templateData', JSON.stringify(data, null, 2))
+    setIsLoadingTemplateData(false)
+  }
 
   const onDelete = async () => {
     setDeleteDialogOpen(false)
@@ -170,7 +183,6 @@ export const IncarnationsForm = ({
   const onSubmit: SubmitHandler<IncarnationInput> = async incarnation => {
     errorStore.clearError()
     try {
-      console.log(incarnation)
       await mutateAsync(incarnation)
       await delay(1000)
       queryClient.invalidateQueries(['incarnations'])
@@ -214,15 +226,13 @@ export const IncarnationsForm = ({
       render={({
         field: { onChange, value },
         fieldState: { error, invalid }
-      }) => (
-        <JsonEditor
-          defaultValue={value}
-          onChange={onChange}
-          invalid={invalid}
-          error={error?.message}
-          height="100%"
-        />
-      )}
+      }) => <JsonEditor
+        value={value}
+        onChange={onChange}
+        invalid={invalid}
+        error={error?.message}
+        height="100%"
+      />}
     />
   )
 
@@ -310,6 +320,11 @@ export const IncarnationsForm = ({
                 />
               </Hug>
             )}
+            {!isEdit && (
+              <Hug mb={16}>
+                <Button type="button" minWidth="14rem" onClick={() => setFetchDialogOpen(true)} loading={isLoadingTemplateData} disabled={!templateRepo || !templateVersion || isLoadingTemplateData}>Populate Template data</Button>
+              </Hug>
+            )}
           </Hug>
           <Hug w="calc(60% - 2rem)" h="100%">
             {isEdit ? (
@@ -328,7 +343,7 @@ export const IncarnationsForm = ({
                     content: (
                       <Hug my={8} h="100%">
                         <JsonEditor
-                          defaultValue={JSON.stringify(
+                          value={JSON.stringify(
                             templateDataFull,
                             null,
                             2
@@ -344,10 +359,7 @@ export const IncarnationsForm = ({
             ) : (
               <>
                 <strong>Template data JSON</strong>
-
-                <TemplateDataPrefetcher templateVersion={templateVersion} templateRepository={templateRepo} onFetchSuccess={data => setValue('templateData', JSON.stringify(data, null, 2))}>
-                  {editTemplateDataController}
-                </TemplateDataPrefetcher>
+                {editTemplateDataController}
               </>
             )}
           </Hug>
@@ -473,6 +485,17 @@ export const IncarnationsForm = ({
             manually applied to the incarnation
           </span>
           <span>The merge request will not be automatically merged</span>
+        </Dialog>
+        <Dialog
+          open={fetchDialogOpen}
+          onAbort={() => setFetchDialogOpen(false)}
+          onConfirm={fetchTemplateData}
+          title="Fetch template data"
+        >
+          <span>Are you sure you want to fetch the template data?</span>
+          <span>
+            Doing this will overwrite the current template data. This action is <strong>not</strong> reversible.
+          </span>
         </Dialog>
       </Hug>
       {failed ? (
