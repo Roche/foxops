@@ -29,7 +29,7 @@ const ErrorMessage = styled.div(({ theme }) => ({
     color: theme.colors.contrastText,
     float: 'right'
   },
-  width: 'min(25rem, 80%)',
+  width: 'min(25rem, 80%)'
 }))
 
 const ErrorText = styled.div({
