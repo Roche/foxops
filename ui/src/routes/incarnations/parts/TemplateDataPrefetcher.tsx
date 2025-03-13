@@ -31,7 +31,7 @@ const PreFetchBoxWrapper = styled.div(({
 }))
 
 const PreFetchBox = styled.div(({
-  backgroundColor: 'rgba(49, 49, 49, 0.6)',
+  backgroundColor: 'rgba(49, 49, 49)',
   width: '80%',
   minHeight: '60%',
   maxHeight: '85%',
@@ -42,7 +42,8 @@ const PreFetchBox = styled.div(({
   justifyContent: 'center',
   alignItems: 'center',
   color: 'white',
-  boxShadow: '0 0 5px rgba(0, 0, 0, 0.2)'
+  boxShadow: '0 0 5px rgba(0, 0, 0, 0.2)',
+  overflow: 'auto'
 }))
 
 const TemplateDataPrefetcherTitle = styled.h1(({
@@ -129,7 +130,7 @@ export const TemplateDataPrefetcher = ({ templateRepository, templateVersion, ch
           <TemplateDataPrefetcherActions>
             <Hug m=".5rem">
               <Tooltip title="Fetch data">
-                <Button loading={isLoading} minWidth="9.5rem" disabled={(!templateRepository || !templateVersion) || isLoading} type="button" onClick={fetchData}>Prefetch data</Button>
+                <Button style={{ color: '#fff' }} loading={isLoading} minWidth="9.5rem" disabled={(!templateRepository || !templateVersion) || isLoading} type="button" onClick={fetchData}>Prefetch data</Button>
               </Tooltip>
             </Hug><Hug m=".5rem">
               <Button variant="warning" minWidth="9.5rem" type="button" disabled={isLoading} onClick={() => setIsActivated(false)}>Continue Editing</Button>
