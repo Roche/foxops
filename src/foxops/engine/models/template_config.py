@@ -155,10 +155,7 @@ class ObjectVariableDefinition(BaseVariableDefinition):
         return create_model("ObjectVariable", **fields)
 
     def mock_data(self) -> Any:
-        return {
-            name: child.mock_data()
-            for name, child in self.children.items()
-        }
+        return {name: child.mock_data() for name, child in self.children.items()}
 
 
 class TemplateRenderingConfig(BaseModel):
@@ -200,10 +197,7 @@ class TemplateConfig(BaseModel):
         return create_model("TemplateDataModel", **fields)
 
     def mock_data(self) -> dict[str, Any]:
-        return {
-            name: var.mock_data()
-            for name, var in self.variables.items()
-        }
+        return {name: var.mock_data() for name, var in self.variables.items()}
 
     def save(self, target: Path) -> None:
         target.write_text(self.yaml())
