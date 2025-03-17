@@ -57,7 +57,7 @@ The supported hoster types are the following:
 
 Using the `local` hoster is recommended for local development. The local hoster stores the repositories in a local directory. The path to this directory can be configured via the `FOXOPS_HOSTER_LOCAL_DIRECTORY` environment variable.
 
-Using the `local` hoster requires a certain project structure in order to work correctly.
+Using the `local` hoster requires a certain directory structure in order to work correctly.
 
 1. Create a directory where the repositories should be stored. This directory will be used as the `FOXOPS_HOSTER_LOCAL_DIRECTORY` environment variable.
 2. Inside this directory create a subdirectory for each "git" project. It doesn't matter if this "git" project is used as a template or an incarnation.
