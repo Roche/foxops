@@ -5,7 +5,7 @@ import { useThemeModeStore } from 'stores/theme-mode'
 import { InputError } from '../InputError/InputError'
 
 export interface JsonEditorProps {
-  defaultValue?: string
+  value: string
   height?: number | string
   onChange?: (value: string) => void
   invalid?: boolean
@@ -14,7 +14,7 @@ export interface JsonEditorProps {
 }
 
 export const JsonEditor = ({
-  defaultValue,
+  value,
   height = 300,
   onChange = () => {},
   invalid,
@@ -30,7 +30,7 @@ export const JsonEditor = ({
       setEditor(editor => {
         if (editor) return editor
         const _editor = monaco.editor.create(monacoEl.current!, {
-          value: defaultValue,
+          value,
           language: 'json',
           automaticLayout: true,
           theme: mode === 'dark' ? 'vs-dark' : 'vs',
@@ -53,6 +53,8 @@ export const JsonEditor = ({
   useEffect(() => {
     monaco.editor.setTheme(mode === 'dark' ? 'vs-dark' : 'vs')
   }, [mode])
+
+  useEffect(() => editor?.setValue(value), [value])
 
   return (
     <>
