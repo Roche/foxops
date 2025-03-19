@@ -41,6 +41,103 @@ poetry run alembic upgrade head
 poetry run uvicorn foxops.__main__:create_app --host localhost --port 5001 --reload --factory
 ```
 
+## Hoster types
+
+Running FoxOps with the CLI or Docker Compose locally uses the so-called `Local Hoster`. FoxOps currently supports multiple hoster implementations, which can be configured via the `FOXOPS_HOSTER_TYPE` environment variable.
+
+The supported hoster types are the following:
+
+- `local`: The local hoster stores the repositories in a local directory. The path to this directory can be configured via the `FOXOPS_HOSTER_LOCAL_DIRECTORY` environment variable.
+- `gitlab`: The GitLab hoster uses a GitLab instance to store the repositories. The GitLab instance can be configured via the `FOXOPS_HOSTER_GITLAB_ADDRESS`, `FOXOPS_HOSTER_GITLAB_TOKEN` and `FOXOPS_HOSTER_GITLAB_ROOT_GROUP_ID` environment variables.
+- More hoster types might be added in the future (for example GitHub, Bitbucket, etc.)
+
+> For local development, using the `local` hoster is recommended. See the section "How to setup the local hoster" for more information.
+
+## How to setup the local hoster
+
+Using the `local` hoster is recommended for local development. The local hoster stores the repositories in a local directory. The path to this directory can be configured via the `FOXOPS_HOSTER_LOCAL_DIRECTORY` environment variable.
+
+Using the `local` hoster requires a certain directory structure in order to work correctly.
+
+1. Create a directory where the repositories should be stored. This directory will be used as the `FOXOPS_HOSTER_LOCAL_DIRECTORY` environment variable.
+2. Inside this directory create a subdirectory for each "git" project. It doesn't matter if this "git" project is used as a template or an incarnation.
+3. The next steps depend on what the type of the "git" project should be. It could either be used as a template or an incarnation.
+
+### Template
+
+If it is a template, all you have to do is to create a directory called `git`. This directory needs to contain the git template repository.
+
+For this, you first have to create an empty git repository. You can do this by running the following commands:
+
+```shell
+git init git
+```
+
+Now inside this directory, run the following command to create an empty template repository:
+
+```shell
+fengine new
+```
+
+If you don't have the `fengine` command installed, you can install it by running the following command:
+
+```shell
+pip install foxops
+```
+
+### Incarnation
+
+An incarnation directory needs to follow a slightly different structure. It needs to contain a `git` directory and a `merge_request` directory. Since merge requests are a concept of GitLab, the `merge_request` directory is used as a wrapper to simulate the merge request functionality.
+
+> A locally hosted git repository supports merging branches. **BUT** it doesn't support merge requests (the concept of reviewing a merge before it is merged). This is why the `merge_request` directory is used as a wrapper to simulate the merge request functionality.
+
+To do this, run the following commands:
+
+```shell
+mkdir -p merge_request
+```
+
+The next step is to create the git repository. You can do this by running the following commands:
+
+```shell
+git init --bare git
+```
+
+> Note: This is a bare repository. A bare repository doesn't have a working directory. But it can be used to push and pull changes to and from. If you would like to check out the repository, you can clone it to a different directory.
+
+Now that we have this structure, we can start to create your first incarnation in the FoxOps UI.
+
+## Running the UI locally
+Running the UI localy requires having node.js installed. 
+
+Running the UI usualy requires the API to be running. So if you don't have the API running on port 5001, follow the steps above to run the API locally.
+
+To run the UI locally, navigate to the `ui` directory and run the following commands:
+
+```shell
+npm install
+npm run start
+```
+
+This will start the UI on `http://localhost:3000`.
+
+The UI will automatically proxy requests to the API running on `http://localhost:5001`.
+
+## Running the UI through the API
+It is also possible to serve the UI through the API. This is usually done when running the API in production. However it is not recommended to do this for local developement, since it requires quite some time to rebuild the UI.
+
+However if you would like to test this, you can run the following commands:
+
+```shell
+cd ui
+npm run build
+```
+
+> Note this requires the API to be running. If you don't have the API running, follow the steps above to run the API locally.
+
+You can now access the UI on the port the API is running on. Usually this is `http://localhost:5001`.
+
+
 ## Running Tests
 
 The test suite uses `pytest` as a test runner and it's located under `tests/`.
