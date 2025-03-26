@@ -11,8 +11,10 @@ from pytest_mock import MockFixture
 from foxops.database.repositories.change.repository import ChangeRepository
 from foxops.database.repositories.incarnation.errors import IncarnationNotFoundError
 from foxops.database.repositories.incarnation.repository import IncarnationRepository
+from foxops.database.repositories.user.repository import UserRepository
 from foxops.dependencies import get_change_service
 from foxops.models.change import Change
+from foxops.models.user import User
 from foxops.services.change import ChangeService, IncarnationAlreadyExists
 
 pytestmark = [pytest.mark.api]
@@ -41,6 +43,7 @@ class ChangeServiceMock(Mock):
         template_repository_version: str,
         template_data: dict[str, str],
         target_directory: str = ".",
+        owner_id: int = 1,
     ) -> Change:
         return Change(
             id=1,
@@ -53,6 +56,16 @@ class ChangeServiceMock(Mock):
             created_at=datetime.now(),
             commit_sha="commit_sha",
         )
+
+
+@pytest.fixture
+async def user(user_repository: UserRepository) -> User:
+    return User.model_validate(
+        await user_repository.create(
+            username="test",
+            is_admin=False,
+        )
+    )
 
 
 @pytest.fixture
@@ -85,9 +98,7 @@ async def test_api_get_incarnations_returns_empty_list_for_empty_incarnation_inv
 
 
 async def test_api_get_incarnations_returns_incarnations_from_inventory(
-    api_client: AsyncClient,
-    change_repository: ChangeRepository,
-    mocker: MockFixture,
+    api_client: AsyncClient, change_repository: ChangeRepository, mocker: MockFixture, user: User
 ):
     # GIVEN
     await change_repository.create_incarnation_with_first_change(
@@ -99,6 +110,7 @@ async def test_api_get_incarnations_returns_incarnations_from_inventory(
         requested_version_hash="template_commit_sha",
         requested_data=json.dumps({"foo": "bar"}),
         template_data_full=json.dumps({"foo": "bar"}),
+        owner_id=user.id,
     )
 
     # WHEN
@@ -120,6 +132,7 @@ async def test_api_get_incarnations_returns_incarnations_from_inventory(
             "requested_version": "v1.0",
             "revision": 1,
             "type": "direct",
+            "owner": user.model_dump(),
         }
     ]
 
@@ -175,14 +188,11 @@ async def test_api_create_incarnation_returns_conflict_when_incarnation_already_
 
 
 async def test_api_delete_incarnation_removes_incarnation_from_inventory(
-    api_client: AsyncClient,
-    incarnation_repository: IncarnationRepository,
+    api_client: AsyncClient, incarnation_repository: IncarnationRepository, user: User
 ):
     # GIVEN
     incarnation = await incarnation_repository.create(
-        incarnation_repository="test",
-        target_directory="test",
-        template_repository="template_repo",
+        incarnation_repository="test", target_directory="test", template_repository="template_repo", owner_id=user.id
     )
 
     # WHEN

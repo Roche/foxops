@@ -90,6 +90,7 @@ class ChangeRepository:
         requested_version: str,
         requested_data: str,
         template_data_full: str,
+        owner_id: int,
     ) -> ChangeInDB:
         logger = self.log.bind(function="create_incarnation_with_first_change")
         logger.debug(
@@ -106,6 +107,7 @@ class ChangeRepository:
                     incarnation_repository=incarnation_repository,
                     target_directory=target_directory,
                     template_repository=template_repository,
+                    owner=owner_id,
                 )
                 .returning(incarnations.c.id)
             )
@@ -193,6 +195,7 @@ class ChangeRepository:
                     incarnations.c.incarnation_repository,
                     incarnations.c.target_directory,
                     incarnations.c.template_repository,
+                    incarnations.c.owner,
                     alias_change.c.revision,
                     alias_change.c.type,
                     alias_change.c.requested_version,

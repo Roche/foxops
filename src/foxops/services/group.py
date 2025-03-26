@@ -1,16 +1,7 @@
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
-
 from foxops.database.repositories.group.repository import GroupRepository
-
-
-class Group(BaseModel):
-    id: int
-    system_name: str
-    display_name: str
-
-    model_config = ConfigDict(from_attributes=True)
+from foxops.models.group import Group
 
 
 class GroupService:

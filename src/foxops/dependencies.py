@@ -17,11 +17,13 @@ from foxops.hosters import Hoster
 from foxops.hosters.gitlab import GitlabHoster
 from foxops.hosters.local import LocalHoster
 from foxops.logger import get_logger
-from foxops.services.change import ChangeService
-from foxops.services.group import Group, GroupService
-from foxops.services.incarnation import IncarnationService
-from foxops.services.user import User, UserService, UserWithGroups
+from foxops.models.group import Group
+from foxops.models.user import User, UserWithGroups
 from foxops.services.authorization import AuthorizationService
+from foxops.services.change import ChangeService
+from foxops.services.group import GroupService
+from foxops.services.incarnation import IncarnationService
+from foxops.services.user import UserService
 from foxops.settings import (
     DatabaseSettings,
     GitlabHosterSettings,
@@ -119,17 +121,28 @@ def get_user_service(
 def get_incarnation_service(
     incarnation_repository: IncarnationRepository = Depends(get_incarnation_repository),
     hoster: Hoster = Depends(get_hoster),
+    user_repository: UserRepository = Depends(get_user_repository),
+    group_repository: GroupRepository = Depends(get_group_repository),
 ) -> IncarnationService:
-    return IncarnationService(incarnation_repository=incarnation_repository, hoster=hoster)
+    return IncarnationService(
+        incarnation_repository=incarnation_repository,
+        hoster=hoster,
+        user_repository=user_repository,
+        group_repository=group_repository,
+    )
 
 
 def get_change_service(
     hoster: Hoster = Depends(get_hoster),
     change_repository: ChangeRepository = Depends(get_change_repository),
     incarnation_repository: IncarnationRepository = Depends(get_incarnation_repository),
+    user_repository: UserRepository = Depends(get_user_repository),
 ) -> ChangeService:
     return ChangeService(
-        hoster=hoster, incarnation_repository=incarnation_repository, change_repository=change_repository
+        hoster=hoster,
+        incarnation_repository=incarnation_repository,
+        change_repository=change_repository,
+        user_repository=user_repository,
     )
 
 
@@ -234,10 +247,10 @@ group_auth_scheme = GroupHeaderAuth()
 
 
 def authorization(
-        _static_token: None = Depends(static_token_auth_scheme),
-        _user_schema: None = Depends(user_auth_scheme),
-        current_user: UserWithGroups = Depends(group_auth_scheme),
-        user_service: UserService = Depends(get_user_service),
-        group_service: GroupService = Depends(get_group_service),
+    _static_token: None = Depends(static_token_auth_scheme),
+    _user_schema: None = Depends(user_auth_scheme),
+    current_user: UserWithGroups = Depends(group_auth_scheme),
+    user_service: UserService = Depends(get_user_service),
+    group_service: GroupService = Depends(get_group_service),
 ) -> AuthorizationService:
     return AuthorizationService(current_user=current_user, user_service=user_service, group_service=group_service)

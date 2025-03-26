@@ -21,7 +21,7 @@ class GroupRepository:
             try:
                 result = await conn.execute(query)
             except IntegrityError as e:
-                raise GroupAlreadyExistsError(f"system_name={system_name}") from e
+                raise GroupAlreadyExistsError(system_name) from e
 
             row = result.one()
             return GroupInDB.model_validate(row)
@@ -35,7 +35,7 @@ class GroupRepository:
             try:
                 row = result.one()
             except NoResultFound as e:
-                raise GroupNotFoundError(f"system_name={system_name}") from e
+                raise GroupNotFoundError(system_name=system_name) from e
 
             return GroupInDB.model_validate(row)
 
@@ -50,3 +50,14 @@ class GroupRepository:
                 groups.append(GroupInDB.model_validate(row))
 
             return groups
+
+    async def get_by_id(self, group_id: int) -> GroupInDB:
+        query = select(group).where(group.c.id == group_id)
+
+        async with self.engine.begin() as conn:
+            result = await conn.execute(query)
+            try:
+                row = result.one()
+            except NoResultFound as e:
+                raise GroupNotFoundError(id=group_id) from e
+            return GroupInDB.model_validate(row)

@@ -6,6 +6,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     Integer,
     MetaData,
     String,
@@ -61,6 +62,7 @@ group = Table(
     Column("id", Integer, primary_key=True),
     Column("system_name", String, nullable=False, unique=True),
     Column("display_name", String, nullable=False),
+    Index("ix_group_system_name", "system_name"),
 )
 
 user = Table(
@@ -69,6 +71,7 @@ user = Table(
     Column("id", Integer, primary_key=True),
     Column("username", String, nullable=False, unique=True),
     Column("is_admin", Boolean, nullable=False, default=False),
+    Index("ix_user_username", "username"),
 )
 
 group_user = Table(
@@ -84,6 +87,7 @@ user_incarnation_permission = Table(
     Column("user_id", Integer, ForeignKey("foxops_user.id", ondelete="CASCADE"), primary_key=True),
     Column("incarnation_id", Integer, ForeignKey("incarnation.id", ondelete="CASCADE"), primary_key=True),
     Column("type", Enum(Permission), nullable=False),
+    Index("ix_user_permission_incarnation_id", "incarnation_id"),
 )
 
 
@@ -93,4 +97,5 @@ group_incarnation_permission = Table(
     Column("group_id", Integer, ForeignKey("foxops_group.id", ondelete="CASCADE"), primary_key=True),
     Column("incarnation_id", Integer, ForeignKey("incarnation.id", ondelete="CASCADE"), primary_key=True),
     Column("type", Enum(Permission), nullable=False),
+    Index("ix_group_permission_incarnation_id", "incarnation_id"),
 )

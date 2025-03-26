@@ -7,8 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from foxops.database.repositories.change.errors import ChangeNotFoundError
 from foxops.database.repositories.change.repository import ChangeRepository
+from foxops.database.repositories.group.repository import GroupRepository
 from foxops.database.repositories.incarnation.errors import IncarnationNotFoundError
 from foxops.database.repositories.incarnation.repository import IncarnationRepository
+from foxops.database.repositories.user.repository import UserRepository
 from foxops.engine import IncarnationState
 from foxops.engine.models.template_config import (
     StringVariableDefinition,
@@ -19,6 +21,7 @@ from foxops.hosters.local import LocalHoster
 from foxops.hosters.types import MergeRequestStatus
 from foxops.models import Incarnation
 from foxops.models.change import Change, ChangeWithMergeRequest
+from foxops.models.user import User
 from foxops.services.change import (
     CannotRepairChangeException,
     ChangeRejectedDueToNoChanges,
@@ -27,6 +30,7 @@ from foxops.services.change import (
     _construct_merge_request_conflict_description,
     delete_all_files_in_local_git_repository,
 )
+from foxops.services.user import UserService
 
 
 @fixture(scope="function")
@@ -72,8 +76,13 @@ async def git_repo_template(local_hoster: LocalHoster) -> str:
 
 
 @fixture(scope="function")
+async def user(user_service: UserService) -> User:
+    return await user_service.create_user("test", False)
+
+
+@fixture(scope="function")
 async def initialized_incarnation(
-    local_hoster: LocalHoster, git_repo_template: str, change_service: ChangeService
+    local_hoster: LocalHoster, git_repo_template: str, change_service: ChangeService, user: User
 ) -> Incarnation:
     repo_name = "incarnation_initialized"
     await local_hoster.create_repository(repo_name)
@@ -83,6 +92,7 @@ async def initialized_incarnation(
         template_repository=git_repo_template,
         template_repository_version="v1.0.0",
         template_data={},
+        owner_id=user.id,
     )
 
     return Incarnation(
@@ -92,6 +102,7 @@ async def initialized_incarnation(
         template_repository=git_repo_template,
         commit_sha="dummy",
         merge_request_id=None,
+        owner=user,
     )
 
 
@@ -113,12 +124,20 @@ async def change_service(
     test_async_engine: AsyncEngine, incarnation_repository: IncarnationRepository, local_hoster: LocalHoster
 ) -> ChangeService:
     change_repository = ChangeRepository(test_async_engine)
-
+    user_repository = UserRepository(test_async_engine)
     return ChangeService(
         hoster=local_hoster,
         incarnation_repository=incarnation_repository,
         change_repository=change_repository,
+        user_repository=user_repository,
     )
+
+
+@fixture(scope="function")
+async def user_service(test_async_engine: AsyncEngine):
+    user_repository = UserRepository(test_async_engine)
+    group_repository = GroupRepository(test_async_engine)
+    return UserService(user_repository=user_repository, group_repository=group_repository)
 
 
 @fixture(scope="function")
@@ -126,16 +145,17 @@ async def change_service_with_delay(
     test_async_engine: AsyncEngine, incarnation_repository: IncarnationRepository, local_hoster_with_delay: LocalHoster
 ) -> ChangeService:
     change_repository = ChangeRepository(test_async_engine)
-
+    user_repository = UserRepository(test_async_engine)
     return ChangeService(
         hoster=local_hoster_with_delay,
         incarnation_repository=incarnation_repository,
         change_repository=change_repository,
+        user_repository=user_repository,
     )
 
 
 async def test_create_incarnation_succeeds_when_creating_incarnation_in_root_folder(
-    change_service: ChangeService, git_repo_template: str, local_hoster: LocalHoster
+    change_service: ChangeService, git_repo_template: str, local_hoster: LocalHoster, user: User
 ):
     # GIVEN
     incarnation_repo_name = "incarnation"
@@ -148,6 +168,7 @@ async def test_create_incarnation_succeeds_when_creating_incarnation_in_root_fol
         template_repository=git_repo_template,
         template_repository_version="v1.0.0",
         template_data={},
+        owner_id=user.id,
     )
 
     # THEN
@@ -161,7 +182,7 @@ async def test_create_incarnation_succeeds_when_creating_incarnation_in_root_fol
 
 
 async def test_create_incarnation_succeeds_when_creating_incarnation_in_subfolder(
-    change_service: ChangeService, git_repo_template: str, local_hoster: LocalHoster
+    change_service: ChangeService, git_repo_template: str, local_hoster: LocalHoster, user: User
 ):
     # GIVEN
     incarnation_repo_name = "incarnation"
@@ -174,6 +195,7 @@ async def test_create_incarnation_succeeds_when_creating_incarnation_in_subfolde
         template_repository=git_repo_template,
         template_repository_version="v1.0.0",
         template_data={},
+        owner_id=user.id,
     )
 
     # THEN
@@ -187,7 +209,7 @@ async def test_create_incarnation_succeeds_when_creating_incarnation_in_subfolde
 
 
 async def test_create_incarnation_succeeds_with_internal_retries_when_the_first_push_is_rejected(
-    change_service_with_delay: ChangeService, local_hoster_with_delay: LocalHoster, git_repo_template: str
+    change_service_with_delay: ChangeService, local_hoster_with_delay: LocalHoster, git_repo_template: str, user: User
 ):
     # GIVEN
     repo_name = "incarnation_initialized"
@@ -201,6 +223,7 @@ async def test_create_incarnation_succeeds_with_internal_retries_when_the_first_
             template_repository=git_repo_template,
             template_repository_version="v1.0.0",
             template_data={},
+            owner_id=user.id,
         )
 
     # WHEN
@@ -211,6 +234,7 @@ async def test_create_incarnation_succeeds_with_internal_retries_when_the_first_
             template_repository=git_repo_template,
             template_repository_version="v1.0.0",
             template_data={},
+            owner_id=user.id,
         ),
         _delayed_creation(),
     )
@@ -232,7 +256,7 @@ async def test_create_incarnation_succeeds_with_internal_retries_when_the_first_
 
 
 async def test_create_incarnation_fails_if_there_is_already_one_at_the_target(
-    change_service: ChangeService, git_repo_template: str, local_hoster: LocalHoster
+    change_service: ChangeService, git_repo_template: str, local_hoster: LocalHoster, user: User
 ):
     # GIVEN
     incarnation_repo_name = "incarnation"
@@ -242,6 +266,7 @@ async def test_create_incarnation_fails_if_there_is_already_one_at_the_target(
         template_repository=git_repo_template,
         template_repository_version="v1.0.0",
         template_data={},
+        owner_id=user.id,
     )
 
     # THEN
@@ -251,6 +276,7 @@ async def test_create_incarnation_fails_if_there_is_already_one_at_the_target(
             template_repository=git_repo_template,
             template_repository_version="v1.1.0",
             template_data={},
+            owner_id=user.id,
         )
 
 

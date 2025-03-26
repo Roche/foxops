@@ -1,18 +1,7 @@
-from pydantic import BaseModel, ConfigDict
-
 from foxops.database.repositories.group.repository import GroupRepository
 from foxops.database.repositories.user.repository import UserRepository
-from foxops.services.group import Group
+from foxops.models.user import User, UserWithGroups
 
-class User(BaseModel):
-    id: int
-    username: str
-    is_admin: bool
-
-    model_config = ConfigDict(from_attributes=True)
-
-class UserWithGroups(User):
-    groups: list[Group]
 
 class UserService:
     def __init__(self, user_repository: UserRepository, group_repository: GroupRepository) -> None:
@@ -57,6 +46,6 @@ class UserService:
         groups = await self.group_repository.get_by_userid(user.id)
 
         return UserWithGroups(groups=groups, **user.model_dump())
-    
+
     async def remove_all_groups_from_user(self, user_id: int) -> None:
         await self.user_repository.remove_all_groups(user_id)

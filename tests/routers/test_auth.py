@@ -1,6 +1,8 @@
 from fastapi import FastAPI, status
 from httpx import AsyncClient
 
+from foxops.dependencies import group_auth_scheme, user_auth_scheme
+
 
 async def test_returns_err_if_authorization_header_is_missing(app: FastAPI):
     # WHEN
@@ -63,6 +65,9 @@ async def test_returns_err_if_token_is_wrong(app: FastAPI):
 
 
 async def test_allow_access_if_token_is_correct(app: FastAPI, static_api_token: str):
+    app.dependency_overrides[group_auth_scheme] = lambda: None  # Disable group auth for this test
+    app.dependency_overrides[user_auth_scheme] = lambda: None  # Disable user auth for this test
+
     # WHEN
     async with AsyncClient(app=app, base_url="http://test", follow_redirects=True) as client:
         response = await client.get("/auth/test", headers={"Authorization": f"Bearer {static_api_token}"})

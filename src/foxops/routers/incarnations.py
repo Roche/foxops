@@ -3,16 +3,29 @@ from typing import Self
 from fastapi import APIRouter, Depends, Response, status
 from pydantic import BaseModel, model_validator
 
+from foxops.database.repositories.group.errors import GroupNotFoundError
 from foxops.database.repositories.incarnation.errors import IncarnationNotFoundError
-from foxops.dependencies import get_change_service, get_hoster, get_incarnation_service
+from foxops.database.repositories.user.errors import UserNotFoundError
+from foxops.dependencies import (
+    authorization,
+    get_change_service,
+    get_hoster,
+    get_incarnation_service,
+)
 from foxops.engine import TemplateData
 from foxops.engine.errors import ProvidedTemplateDataInvalidError
 from foxops.errors import IncarnationNotFoundError as IncarnationNotFoundLegacyError
 from foxops.hosters import Hoster
 from foxops.logger import bind, get_logger
-from foxops.models import IncarnationBasic, IncarnationWithDetails
+from foxops.models import IncarnationWithDetails
 from foxops.models.errors import ApiError
+from foxops.models.incarnation import (
+    IncarnationWithLatestChangeDetails,
+    UnresolvedGroupPermissions,
+    UnresolvedUserPermissions,
+)
 from foxops.routers import changes
+from foxops.services.authorization import AuthorizationService
 from foxops.services.change import (
     ChangeRejectedDueToNoChanges,
     ChangeRejectedDueToPreviousUnfinishedChange,
@@ -34,7 +47,7 @@ logger = get_logger(__name__)
     responses={
         status.HTTP_200_OK: {
             "description": "The list of incarnations in the inventory",
-            "model": list[IncarnationBasic],
+            "model": list[IncarnationWithLatestChangeDetails],
         },
         status.HTTP_400_BAD_REQUEST: {
             "description": "The `incarnation_repository` and `target_directory` settings where inconsistent",
@@ -100,11 +113,13 @@ class CreateIncarnationRequest(BaseModel):
             "model": ApiError,
         },
     },
+    status_code=status.HTTP_201_CREATED,
 )
 async def create_incarnation(
     response: Response,
     request: CreateIncarnationRequest,
     change_service: ChangeService = Depends(get_change_service),
+    authorization_serive: AuthorizationService = Depends(authorization),
 ):
     """Initializes a new incarnation and adds it to the inventory.
 
@@ -122,6 +137,7 @@ async def create_incarnation(
             template_repository=request.template_repository,
             template_repository_version=request.template_repository_version,
             template_data=template_data,
+            owner_id=authorization_serive.current_user.id,
         )
     except ProvidedTemplateDataInvalidError as e:
         response.status_code = status.HTTP_400_BAD_REQUEST
@@ -216,9 +232,9 @@ async def reset_incarnation(
             message=f"could not initialize the incarnation as the provided template data "
             f"is invalid: {'; '.join(error_messages)}"
         )
-    except IncarnationNotFoundError:
+    except IncarnationNotFoundError as exc:
         response.status_code = status.HTTP_404_NOT_FOUND
-        return ApiError(message="The incarnation was not found in the inventory")
+        return ApiError(message=str(exc))
     except ChangeRejectedDueToNoChanges:
         response.status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
         return ApiError(message="The incarnation does not have any customizations. Nothing to reset.")
@@ -279,6 +295,10 @@ class UpdateIncarnationRequest(BaseModel):
 
     template_repository_version: str
     template_data: TemplateData
+    owner_id: int
+
+    user_permissions: list[UnresolvedUserPermissions]
+    group_permissions: list[UnresolvedGroupPermissions]
 
     automerge: bool
 
@@ -313,6 +333,7 @@ async def update_incarnation(
     incarnation_id: int,
     request: UpdateIncarnationRequest,
     change_service: ChangeService = Depends(get_change_service),
+    incarnation_service: IncarnationService = Depends(get_incarnation_service),
 ):
     """Updates the incarnation to the given version and data.
 
@@ -320,6 +341,34 @@ async def update_incarnation(
     If you only want to do surgical patches (e.g. updating a single variable or bump the template version while
     reusing the previously set variable values), use the PATCH endpoint instead.
     """
+
+    await incarnation_service.remove_all_permissions(incarnation_id)
+    try:
+        await incarnation_service.set_user_permissions(incarnation_id, request.user_permissions)
+    except UserNotFoundError as exc:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return ApiError(message=str(exc))
+    except IncarnationNotFoundError as exc:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return ApiError(message=str(exc))
+
+    try:
+        await incarnation_service.set_group_permissions(incarnation_id, request.group_permissions)
+    except GroupNotFoundError as exc:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return ApiError(message=str(exc))
+    except IncarnationNotFoundError as exc:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return ApiError(message=str(exc))
+
+    try:
+        await incarnation_service.set_owner(incarnation_id, request.owner_id)
+    except UserNotFoundError as exc:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return ApiError(message=str(exc))
+    except IncarnationNotFoundError as exc:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return ApiError(message=str(exc))
 
     return await _create_change(
         incarnation_id=incarnation_id,
@@ -337,13 +386,27 @@ class PatchIncarnationRequest(BaseModel):
 
     requested_version: str | None = None
     requested_data: TemplateData | None = None
+    user_permissions: list[UnresolvedUserPermissions] | None = None
+    group_permissions: list[UnresolvedGroupPermissions] | None = None
+    owner_id: int | None = None
 
-    automerge: bool
+    automerge: bool | None = None
 
     @model_validator(mode="after")
     def check_either_version_or_data_change_requested(self) -> Self:
-        if self.requested_version is None and self.requested_data is None:
-            raise ValueError("Either requested_version or requested_data must be set")
+        if (
+            self.requested_version is None
+            and self.requested_data is None
+            and self.user_permissions is None
+            and self.group_permissions is None
+            and self.owner_id is None
+        ):
+            raise ValueError(
+                "One of the following fields must be set: requested_version, requested_data, user_permission, group_permission"
+            )
+
+        if (self.requested_data is not None or self.requested_version is not None) and self.automerge is None:
+            raise ValueError("The 'automerge' field must be set if a change is requested")
 
         return self
 
@@ -378,6 +441,7 @@ async def patch_incarnation(
     incarnation_id: int,
     request: PatchIncarnationRequest,
     change_service: ChangeService = Depends(get_change_service),
+    incarnation_service: IncarnationService = Depends(get_incarnation_service),
 ):
     """Updates the incarnation to the given version and data.
 
@@ -387,15 +451,54 @@ async def patch_incarnation(
 
     requested_data = request.requested_data or {}
 
-    return await _create_change(
-        incarnation_id=incarnation_id,
-        requested_version=request.requested_version,
-        requested_data=requested_data,
-        automerge=request.automerge,
-        patch=True,
-        response=response,
-        change_service=change_service,
-    )
+    if request.group_permissions is not None:
+        try:
+            await incarnation_service.remove_all_group_permissions(incarnation_id)
+            await incarnation_service.set_group_permissions(incarnation_id, request.group_permissions)
+        except GroupNotFoundError as exc:
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return ApiError(message=str(exc))
+        except IncarnationNotFoundError as exc:
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return ApiError(message=str(exc))
+
+    if request.user_permissions is not None:
+        try:
+            await incarnation_service.remove_all_user_permissions(incarnation_id)
+            await incarnation_service.set_user_permissions(incarnation_id, request.user_permissions)
+        except UserNotFoundError as exc:
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return ApiError(message=str(exc))
+        except IncarnationNotFoundError as exc:
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return ApiError(message=str(exc))
+
+    if request.owner_id is not None:
+        try:
+            await incarnation_service.set_owner(incarnation_id, request.owner_id)
+        except UserNotFoundError as exc:
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return ApiError(message=str(exc))
+        except IncarnationNotFoundError as exc:
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return ApiError(message=str(exc))
+
+    if request.requested_version is not None or request.requested_data is not None:
+        return await _create_change(
+            incarnation_id=incarnation_id,
+            requested_version=request.requested_version,
+            requested_data=requested_data,
+            automerge=request.automerge or False,
+            patch=True,
+            response=response,
+            change_service=change_service,
+        )
+    else:
+        try:
+            return await change_service.get_incarnation_with_details(incarnation_id)
+        except IncarnationNotFoundError as exc:
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return ApiError(message=str(exc))
 
 
 @router.delete(

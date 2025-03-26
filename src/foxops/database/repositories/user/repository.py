@@ -1,5 +1,3 @@
-from typing import AsyncIterator
-
 from sqlalchemy import insert, select
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -23,7 +21,7 @@ class UserRepository:
             try:
                 result = await conn.execute(query)
             except IntegrityError as e:
-                raise UserAlreadyExistsError(f"username={username}") from e
+                raise UserAlreadyExistsError(username=username) from e
 
             row = result.one()
             return UserInDB.model_validate(row)
@@ -37,7 +35,7 @@ class UserRepository:
             try:
                 row = result.one()
             except NoResultFound as e:
-                raise UserNotFoundError(f"username={username}") from e
+                raise UserNotFoundError(username=username) from e
 
             return UserInDB.model_validate(row)
 
@@ -59,3 +57,16 @@ class UserRepository:
         async with self.engine.begin() as conn:
             query = group_user.delete().where(group_user.c.user_id == user_id)
             await conn.execute(query)
+
+    async def get_by_id(self, user_id: int) -> UserInDB:
+        query = select(user).where(user.c.id == user_id)
+
+        async with self.engine.begin() as conn:
+            result = await conn.execute(query)
+
+            try:
+                row = result.one()
+            except NoResultFound as e:
+                raise UserNotFoundError(id=user_id) from e
+
+            return UserInDB.model_validate(row)

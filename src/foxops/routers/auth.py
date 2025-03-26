@@ -1,9 +1,7 @@
 from fastapi import APIRouter, Depends
 from fastapi.responses import PlainTextResponse
 
-from foxops.dependencies import (
-    authorization
-)
+from foxops.dependencies import authorization
 
 #: Holds the router for the version endpoint
 router = APIRouter(prefix="/auth", tags=["authentication"])

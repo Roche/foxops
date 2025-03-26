@@ -74,6 +74,16 @@ def upgrade() -> None:
     with op.batch_alter_table("incarnation") as batch_op:
         batch_op.alter_column("owner", nullable=False)
 
+    op.create_index(
+        "ix_group_permission_incarnation_id", "group_incarnation_permission", ["incarnation_id"], unique=False
+    )
+    op.create_index(
+        "ix_user_permission_incarnation_id", "user_incarnation_permission", ["incarnation_id"], unique=False
+    )
+
+    op.create_index("ix_user_username", "foxops_user", ["username"])
+    op.create_index("ix_group_system_name", "foxops_group", ["system_name"])
+
 
 def downgrade() -> None:
     op.drop_constraint("change_user_fk", "incarnation", type_="foreignkey")
@@ -85,3 +95,5 @@ def downgrade() -> None:
     op.drop_table("group_user")
     op.drop_table("foxops_user")
     op.drop_table("foxops_group")
+    op.drop_index("ix_group_permission_incarnation_id", table_name="group_incarnation_permission")
+    op.drop_index("ix_user_permission_incarnation_id", table_name="user_incarnation_permission")
