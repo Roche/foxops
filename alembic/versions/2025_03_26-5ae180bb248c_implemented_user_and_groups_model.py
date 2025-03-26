@@ -19,7 +19,7 @@ depends_on = None
 
 def upgrade() -> None:
     op.create_table(
-        "group",
+        "foxops_group",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("system_name", sa.String(), nullable=False),
         sa.Column("display_name", sa.String(), nullable=False),
@@ -27,7 +27,7 @@ def upgrade() -> None:
         sa.UniqueConstraint("system_name"),
     )
     op.create_table(
-        "user",
+        "foxops_user",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("username", sa.String(), nullable=False),
         sa.Column("is_admin", sa.Boolean(), nullable=False),
@@ -38,8 +38,8 @@ def upgrade() -> None:
         "group_user",
         sa.Column("group_id", sa.Integer(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
-        sa.ForeignKeyConstraint(["group_id"], ["group.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["user_id"], ["user.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["group_id"], ["foxops_group.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["user_id"], ["foxops_user.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("group_id", "user_id"),
     )
     op.create_table(
@@ -47,7 +47,7 @@ def upgrade() -> None:
         sa.Column("group_id", sa.Integer(), nullable=False),
         sa.Column("incarnation_id", sa.Integer(), nullable=False),
         sa.Column("type", sa.Enum("READ", "WRITE", name="permission"), nullable=False),
-        sa.ForeignKeyConstraint(["group_id"], ["group.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["group_id"], ["foxops_group.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["incarnation_id"], ["incarnation.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("group_id", "incarnation_id"),
     )
@@ -57,18 +57,18 @@ def upgrade() -> None:
         sa.Column("incarnation_id", sa.Integer(), nullable=False),
         sa.Column("type", sa.Enum("READ", "WRITE", name="permission"), nullable=False),
         sa.ForeignKeyConstraint(["incarnation_id"], ["incarnation.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["user_id"], ["user.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["user_id"], ["foxops_user.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("user_id", "incarnation_id"),
     )
     with op.batch_alter_table("change") as batch_op:
         batch_op.add_column(sa.Column("initialized_by", sa.Integer(), nullable=True))
-        batch_op.create_foreign_key("change_user_fk", "user", ["initialized_by"], ["id"], ondelete="SET NULL")
+        batch_op.create_foreign_key("change_user_fk", "foxops_user", ["initialized_by"], ["id"], ondelete="SET NULL")
 
     with op.batch_alter_table("incarnation") as batch_op:
         batch_op.add_column(sa.Column("owner", sa.Integer(), nullable=True))
-        batch_op.create_foreign_key("incarnation_owner_fk", "user", ["owner"], ["id"], ondelete="NO ACTION")
+        batch_op.create_foreign_key("incarnation_owner_fk", "foxops_user", ["owner"], ["id"], ondelete="NO ACTION")
 
-    op.execute("INSERT INTO USER (id, username, is_admin) VALUES (1, 'root', TRUE)")
+    op.execute("INSERT INTO foxops_user (id, username, is_admin) VALUES (1, 'root', TRUE)")
     op.execute("UPDATE incarnation SET owner = 1")
 
     with op.batch_alter_table("incarnation") as batch_op:
@@ -83,5 +83,5 @@ def downgrade() -> None:
     op.drop_table("user_incarnation_permission")
     op.drop_table("group_incarnation_permission")
     op.drop_table("group_user")
-    op.drop_table("user")
-    op.drop_table("group")
+    op.drop_table("foxops_user")
+    op.drop_table("foxops_group")

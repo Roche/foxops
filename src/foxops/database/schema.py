@@ -29,7 +29,7 @@ incarnations = Table(
     Column("incarnation_repository", String, nullable=False),
     Column("target_directory", String, nullable=False),
     Column("template_repository", String, nullable=False),
-    Column("owner", Integer, ForeignKey("user.id", ondelete="noaction"), nullable=False),
+    Column("owner", Integer, ForeignKey("foxops_user.id", ondelete="noaction"), nullable=False),
     UniqueConstraint("incarnation_repository", "target_directory", name="incarnation_identity"),
 )
 
@@ -47,7 +47,7 @@ change = Table(
     Column("template_data_full", String, nullable=False),
     Column("commit_sha", String, nullable=False),
     Column("commit_pushed", Boolean, nullable=False),
-    Column("initialized_by", Integer, ForeignKey("user.id", ondelete="setnull"), nullable=True),
+    Column("initialized_by", Integer, ForeignKey("foxops_user.id", ondelete="setnull"), nullable=True),
     # fields for merge request changes
     Column("merge_request_id", String),
     Column("merge_request_branch_name", String),
@@ -56,7 +56,7 @@ change = Table(
 
 
 group = Table(
-    "group",
+    "foxops_group",
     meta,
     Column("id", Integer, primary_key=True),
     Column("system_name", String, nullable=False, unique=True),
@@ -64,7 +64,7 @@ group = Table(
 )
 
 user = Table(
-    "user",
+    "foxops_user",
     meta,
     Column("id", Integer, primary_key=True),
     Column("username", String, nullable=False, unique=True),
@@ -74,14 +74,14 @@ user = Table(
 group_user = Table(
     "group_user",
     meta,
-    Column("group_id", Integer, ForeignKey("group.id", ondelete="CASCADE"), primary_key=True),
-    Column("user_id", Integer, ForeignKey("user.id", ondelete="CASCADE"), primary_key=True),
+    Column("group_id", Integer, ForeignKey("foxops_group.id", ondelete="CASCADE"), primary_key=True),
+    Column("user_id", Integer, ForeignKey("foxops_user.id", ondelete="CASCADE"), primary_key=True),
 )
 
 user_incarnation_permission = Table(
     "user_incarnation_permission",
     meta,
-    Column("user_id", Integer, ForeignKey("user.id", ondelete="CASCADE"), primary_key=True),
+    Column("user_id", Integer, ForeignKey("foxops_user.id", ondelete="CASCADE"), primary_key=True),
     Column("incarnation_id", Integer, ForeignKey("incarnation.id", ondelete="CASCADE"), primary_key=True),
     Column("type", Enum(Permission), nullable=False),
 )
@@ -90,7 +90,7 @@ user_incarnation_permission = Table(
 group_incarnation_permission = Table(
     "group_incarnation_permission",
     meta,
-    Column("group_id", Integer, ForeignKey("group.id", ondelete="CASCADE"), primary_key=True),
+    Column("group_id", Integer, ForeignKey("foxops_group.id", ondelete="CASCADE"), primary_key=True),
     Column("incarnation_id", Integer, ForeignKey("incarnation.id", ondelete="CASCADE"), primary_key=True),
     Column("type", Enum(Permission), nullable=False),
 )
