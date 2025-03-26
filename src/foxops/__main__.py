@@ -3,7 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse
 
-from foxops.dependencies import get_settings, static_token_auth_scheme
+from foxops.dependencies import (
+    get_settings,
+    group_auth_scheme,
+    static_token_auth_scheme,
+    user_auth_scheme,
+)
 from foxops.error_handlers import __error_handlers__
 from foxops.logger import get_logger, setup_logging
 from foxops.middlewares import request_id_middleware, request_time_middleware
@@ -46,7 +51,9 @@ def create_app():
     public_router.include_router(auth.router)
 
     # Add routes to the protected router (authentication required)
-    protected_router = APIRouter(dependencies=[Depends(static_token_auth_scheme)])
+    protected_router = APIRouter(
+        dependencies=[Depends(static_token_auth_scheme), Depends(user_auth_scheme), Depends(group_auth_scheme)]
+    )
     protected_router.include_router(incarnations.router)
 
     app.include_router(public_router)

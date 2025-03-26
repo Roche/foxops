@@ -29,7 +29,7 @@ incarnations = Table(
     Column("incarnation_repository", String, nullable=False),
     Column("target_directory", String, nullable=False),
     Column("template_repository", String, nullable=False),
-    Column("owner", Integer, ForeignKey("foxops_user.id", ondelete="noaction"), nullable=False),
+    Column("owner", Integer, ForeignKey("foxops_user.id", ondelete="NO ACTION"), nullable=False),
     UniqueConstraint("incarnation_repository", "target_directory", name="incarnation_identity"),
 )
 
@@ -47,7 +47,7 @@ change = Table(
     Column("template_data_full", String, nullable=False),
     Column("commit_sha", String, nullable=False),
     Column("commit_pushed", Boolean, nullable=False),
-    Column("initialized_by", Integer, ForeignKey("foxops_user.id", ondelete="setnull"), nullable=True),
+    Column("initialized_by", Integer, ForeignKey("foxops_user.id", ondelete="SET NULL"), nullable=True),
     # fields for merge request changes
     Column("merge_request_id", String),
     Column("merge_request_branch_name", String),
