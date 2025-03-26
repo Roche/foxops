@@ -54,3 +54,8 @@ class UserRepository:
         async with self.engine.begin() as conn:
             query = insert(group_user).values([{"user_id": user_id, "group_id": group_id} for group_id in group_ids])
             await conn.execute(query)
+
+    async def remove_all_groups(self, user_id: int):
+        async with self.engine.begin() as conn:
+            query = group_user.delete().where(group_user.c.user_id == user_id)
+            await conn.execute(query)

@@ -5,9 +5,7 @@ from starlette.responses import FileResponse
 
 from foxops.dependencies import (
     get_settings,
-    group_auth_scheme,
-    static_token_auth_scheme,
-    user_auth_scheme,
+    authorization
 )
 from foxops.error_handlers import __error_handlers__
 from foxops.logger import get_logger, setup_logging
@@ -52,7 +50,7 @@ def create_app():
 
     # Add routes to the protected router (authentication required)
     protected_router = APIRouter(
-        dependencies=[Depends(static_token_auth_scheme), Depends(user_auth_scheme), Depends(group_auth_scheme)]
+        dependencies=[Depends(authorization)]
     )
     protected_router.include_router(incarnations.router)
 

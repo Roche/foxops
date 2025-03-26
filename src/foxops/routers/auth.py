@@ -2,9 +2,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import PlainTextResponse
 
 from foxops.dependencies import (
-    group_auth_scheme,
-    static_token_auth_scheme,
-    user_auth_scheme,
+    authorization
 )
 
 #: Holds the router for the version endpoint
@@ -14,7 +12,7 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 @router.get(
     "/test",
     response_class=PlainTextResponse,
-    dependencies=[Depends(static_token_auth_scheme), Depends(user_auth_scheme), Depends(group_auth_scheme)],
+    dependencies=[Depends(authorization)],
 )
 def test_authentication_route():
     return "OK"

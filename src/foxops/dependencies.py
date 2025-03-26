@@ -20,7 +20,8 @@ from foxops.logger import get_logger
 from foxops.services.change import ChangeService
 from foxops.services.group import Group, GroupService
 from foxops.services.incarnation import IncarnationService
-from foxops.services.user import User, UserService
+from foxops.services.user import User, UserService, UserWithGroups
+from foxops.services.authorization import AuthorizationService
 from foxops.settings import (
     DatabaseSettings,
     GitlabHosterSettings,
@@ -210,7 +211,7 @@ class GroupHeaderAuth(SecurityBase):
         request: Request,
         group_service: GroupService = Depends(get_group_service),
         user_service: UserService = Depends(get_user_service),
-    ) -> None:
+    ) -> UserWithGroups:
         user_header: str | None = request.headers.get("User")
 
         user = await self.get_user(user_header, user_service)
@@ -221,8 +222,22 @@ class GroupHeaderAuth(SecurityBase):
 
         if len(groups) > 0:
             await self.user_join_groups(user, groups, user_service)
+        else:
+            await user_service.remove_all_groups_from_user(user.id)
+
+        return UserWithGroups(groups=groups, **user.model_dump())
 
 
 static_token_auth_scheme = StaticTokenHeaderAuth()
 user_auth_scheme = UserHeaderAuth()
 group_auth_scheme = GroupHeaderAuth()
+
+
+def authorization(
+        _static_token: None = Depends(static_token_auth_scheme),
+        _user_schema: None = Depends(user_auth_scheme),
+        current_user: UserWithGroups = Depends(group_auth_scheme),
+        user_service: UserService = Depends(get_user_service),
+        group_service: GroupService = Depends(get_group_service),
+) -> AuthorizationService:
+    return AuthorizationService(current_user=current_user, user_service=user_service, group_service=group_service)
