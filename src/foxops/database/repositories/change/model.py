@@ -57,5 +57,9 @@ class IncarnationWithChangesSummary(BaseModel):
     requested_version: str
     merge_request_id: str | None
     created_at: datetime
-    owner: int
+
+    owner_id: int
+    owner_username: str
+    owner_is_admin: bool
+
     model_config = ConfigDict(from_attributes=True)

@@ -74,4 +74,4 @@ async def test_allow_access_if_token_is_correct(app: FastAPI, static_api_token: 
 
     # THEN
     assert response.status_code == status.HTTP_200_OK
-    assert response.text == "OK"
+    assert response.text

@@ -125,7 +125,7 @@ class ChangeService:
                 dbobj.incarnation_repository, dbobj.merge_request_id
             )
 
-        owner = await self._user_repository.get_by_id(dbobj.owner)
+        owner = User(id=dbobj.owner_id, username=dbobj.owner_username, is_admin=dbobj.owner_is_admin)
 
         return IncarnationWithLatestChangeDetails(
             id=dbobj.id,
@@ -137,7 +137,7 @@ class ChangeService:
             requested_version=dbobj.requested_version,
             created_at=dbobj.created_at,
             commit_sha=dbobj.commit_sha,
-            owner=User.model_validate(owner),
+            owner=owner,
             commit_url=await self._hoster.get_commit_url(dbobj.incarnation_repository, dbobj.commit_sha),
             merge_request_id=dbobj.merge_request_id,
             merge_request_url=merge_request_url,

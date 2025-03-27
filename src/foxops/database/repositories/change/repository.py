@@ -16,7 +16,7 @@ from foxops.database.repositories.change.model import (
     ChangeType,
     IncarnationWithChangesSummary,
 )
-from foxops.database.schema import change, incarnations
+from foxops.database.schema import change, incarnations, user
 from foxops.errors import IncarnationNotFoundError
 from foxops.logger import get_logger
 
@@ -205,6 +205,9 @@ class ChangeRepository:
                     alias_change.c.commit_sha,
                     alias_change.c.merge_request_id,
                     alias_change.c.created_at,
+                    user.c.username.label("owner_username"),
+                    user.c.is_admin.label("owner_is_admin"),
+                    user.c.id.label("owner_id"),
                 )
                 .select_from(incarnations)
                 # join incarnations with the corresponding latest change
@@ -221,6 +224,7 @@ class ChangeRepository:
                 # where the joined `change` is already the latest one
                 .where(alias_change_newer.c.id.is_(None))
                 .order_by(incarnations.c.id)
+                .join(user, user.c.id == incarnations.c.owner)
             ),
         )
 
