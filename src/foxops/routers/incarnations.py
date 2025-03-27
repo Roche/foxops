@@ -61,6 +61,8 @@ async def list_incarnations(
     incarnation_repository: str | None = None,
     target_directory: str = ".",
     change_service: ChangeService = Depends(get_change_service),
+    incarnation_service: IncarnationService = Depends(get_incarnation_service),
+    authorization_service: AuthorizationService = Depends(authorization),
 ):
     """Returns a list of all known incarnations.
 
@@ -68,16 +70,32 @@ async def list_incarnations(
 
     TODO: implement pagination
     """
-    if incarnation_repository is None:
+    if incarnation_repository is None and authorization_service.admin:
         return await change_service.list_incarnations()
+    elif incarnation_repository is None:
+        return await change_service.list_incarnations_with_user_access(authorization_service.current_user)
 
     try:
-        return [
-            await change_service.get_incarnation_by_repo_and_target_directory(incarnation_repository, target_directory)
-        ]
+        incarnation = await change_service.get_incarnation_by_repo_and_target_directory(
+            incarnation_repository, target_directory
+        )
+
     except IncarnationNotFoundLegacyError:
         response.status_code = status.HTTP_404_NOT_FOUND
         return ApiError(message="No incarnation found for the given repository and target directory")
+
+    if authorization_service.admin or authorization_service == incarnation.owner:
+        return [incarnation]
+
+    user_with_access = await incarnation_service.get_user_ids_with_access(incarnation.id)
+    groups_with_access = await incarnation_service.get_group_ids_with_access(incarnation.id)
+
+    if authorization_service.current_user.id in user_with_access or any(
+        group.id in groups_with_access for group in authorization_service.current_user.groups
+    ):
+        return [incarnation]
+
+    return []
 
 
 class CreateIncarnationRequest(BaseModel):

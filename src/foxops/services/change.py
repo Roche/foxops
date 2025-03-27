@@ -33,7 +33,7 @@ from foxops.models.incarnation import (
     IncarnationWithLatestChangeDetails,
     UserPermission,
 )
-from foxops.models.user import User
+from foxops.models.user import User, UserWithGroups
 from foxops.utils import get_logger
 
 
@@ -147,6 +147,16 @@ class ChangeService:
         return [
             await self._incarnation_with_latest_change_details_from_dbobj(inc)
             async for inc in self._change_repository.list_incarnations_with_changes_summary()
+        ]
+
+    async def list_incarnations_with_user_access(
+        self, user: UserWithGroups
+    ) -> list[IncarnationWithLatestChangeDetails]:
+        return [
+            await self._incarnation_with_latest_change_details_from_dbobj(inc)
+            async for inc in self._change_repository.list_incarnations_with_changes_summary_and_access(
+                user.id, [group.id for group in user.groups]
+            )
         ]
 
     async def get_incarnation_by_repo_and_target_directory(

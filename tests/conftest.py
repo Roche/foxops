@@ -9,6 +9,7 @@ from typing import AsyncGenerator
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from foxops.__main__ import create_app
@@ -69,6 +70,8 @@ async def test_async_engine() -> AsyncGenerator[AsyncEngine, None]:
 
     async with async_engine.begin() as conn:
         await conn.run_sync(meta.create_all)
+        # Default admin user to have all priviliges for testings
+        await conn.execute(text("INSERT INTO foxops_user (id, username, is_admin) VALUES (1, 'root', 1)"))
 
     yield async_engine
 

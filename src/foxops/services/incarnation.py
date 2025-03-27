@@ -117,3 +117,9 @@ class IncarnationService:
 
     async def set_owner(self, incarnation_id: int, user_id: int):
         await self.incarnation_repository.set_owner(incarnation_id, user_id)
+
+    async def get_user_ids_with_access(self, incarnation_id: int) -> list[int]:
+        return await self.incarnation_repository.get_user_ids_with_permission(incarnation_id)
+
+    async def get_group_ids_with_access(self, incarnation_id: int) -> list[int]:
+        return await self.incarnation_repository.get_group_ids_with_permission(incarnation_id)

@@ -117,6 +117,24 @@ class IncarnationRepository:
             rows = await conn.execute(query)
             return [UserPermissionInDB.model_validate(row) for row in rows]
 
+    async def get_user_ids_with_permission(self, incarnation_id: int) -> List[int]:
+        query = select(user_incarnation_permission.c.user_id).where(
+            (user_incarnation_permission.c.incarnation_id == incarnation_id)
+        )
+
+        async with self.engine.begin() as conn:
+            rows = await conn.execute(query)
+            return [row[0] for row in rows]
+
+    async def get_group_ids_with_permission(self, incarnation_id: int) -> List[int]:
+        query = select(group_incarnation_permission.c.group_id).where(
+            (group_incarnation_permission.c.incarnation_id == incarnation_id)
+        )
+
+        async with self.engine.begin() as conn:
+            rows = await conn.execute(query)
+            return [row[0] for row in rows]
+
     async def set_user_permissions(self, incarnation_id: int, user_permissions: List[UserPermission]):
         query = insert(user_incarnation_permission).values(
             [

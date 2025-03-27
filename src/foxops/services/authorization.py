@@ -1,6 +1,6 @@
 from foxops.models.user import UserWithGroups
-from foxops.services.group import GroupService
-from foxops.services.user import UserService
+from foxops.services.group import Group, GroupService
+from foxops.services.user import User, UserService
 
 
 class AuthorizationService:
@@ -9,11 +9,28 @@ class AuthorizationService:
         self.group_service = group_service
         self.current_user = current_user
 
-    def is_admin(self) -> bool:
+    @property
+    def admin(self) -> bool:
         return self.current_user.is_admin
+
+    @property
+    def id(self) -> int:
+        return self.current_user.id
 
     def is_in_group(self, group_system_name_or_id: str | int) -> bool:
         if isinstance(group_system_name_or_id, str):
             return any(group.system_name == group_system_name_or_id for group in self.current_user.groups)
         else:
             return any(group.id == group_system_name_or_id for group in self.current_user.groups)
+
+    def __eq__(self, value: object):
+        if isinstance(value, UserWithGroups):
+            return self.current_user == value
+
+        if isinstance(value, User):
+            return self.id == value.id
+
+        if isinstance(value, Group):
+            return any(group.id == value.id for group in self.current_user.groups)
+
+        return NotImplemented
