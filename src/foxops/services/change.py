@@ -206,7 +206,9 @@ class ChangeService:
 
         return await self.get_change(change.id)
 
-    async def reset_incarnation(self, incarnation_id: int, version: str, data: TemplateData) -> ChangeWithMergeRequest:
+    async def reset_incarnation(
+        self, incarnation_id: int, version: str, data: TemplateData, initialized_by: int | None = None
+    ) -> ChangeWithMergeRequest:
         """
         Resets an incarnation by removing all customizations that were done to it
         ... and bring it back to a pristine state as if it was just created freshly from the template.
@@ -256,6 +258,7 @@ class ChangeService:
                 requested_data=json.dumps(incarnation_state.template_data),
                 template_data_full=json.dumps(incarnation_state.template_data_full),
                 merge_request_branch_name=reset_branch_name,
+                initialized_by=initialized_by,
             )
 
             await self._push_change_commit_and_update_database(incarnation_git, change_in_db.id)
@@ -280,7 +283,7 @@ class ChangeService:
         return await self.get_change_with_merge_request(change_in_db.id)
 
     async def create_change_direct(
-        self, incarnation_id: int, requested_version: str, requested_data: TemplateData
+        self, incarnation_id: int, requested_version: str, requested_data: TemplateData, initialized_by: int
     ) -> Change:
         """
         Perform a DIRECT change on the given incarnation.
@@ -315,6 +318,7 @@ class ChangeService:
                 requested_version=env.to_version,
                 requested_data=json.dumps(env.to_data),
                 template_data_full=json.dumps(env.to_data_full),
+                initialized_by=initialized_by,
             )
 
             # if some failure happens after this point, the database object can be cleaned
@@ -328,6 +332,7 @@ class ChangeService:
         incarnation_id: int,
         requested_version: str | None,
         requested_data: TemplateData,
+        initialized_by: int | None = None,
         automerge: bool = False,
         patch: bool = False,
     ) -> ChangeWithMergeRequest:
@@ -354,6 +359,7 @@ class ChangeService:
                 requested_data=json.dumps(env.to_data),
                 template_data_full=json.dumps(env.to_data_full),
                 merge_request_branch_name=env.branch_name,
+                initialized_by=initialized_by,
             )
 
             await self._push_change_commit_and_update_database(env.incarnation_repository, change_in_db.id)
@@ -454,6 +460,11 @@ class ChangeService:
         """
 
         change = await self._change_repository.get_change(change_id)
+
+        initialized_by = None
+        if change.initialized_by is not None:
+            initialized_by = await self._user_repository.get_by_id(change.initialized_by)
+
         if not change.commit_pushed:
             raise IncompleteChange(
                 "the given change is in an incomplete state (commit_pushed=False). "
@@ -470,6 +481,7 @@ class ChangeService:
             template_data_full=json.loads(change.template_data_full),
             created_at=change.created_at,
             commit_sha=change.commit_sha,
+            initialized_by=initialized_by,
         )
 
     async def get_change_with_merge_request(self, change_id: int) -> ChangeWithMergeRequest:

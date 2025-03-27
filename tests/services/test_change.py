@@ -281,11 +281,11 @@ async def test_create_incarnation_fails_if_there_is_already_one_at_the_target(
 
 
 async def test_create_change_direct_succeeds_when_updating_the_template_version(
-    change_service: ChangeService, initialized_incarnation: Incarnation
+    change_service: ChangeService, initialized_incarnation: Incarnation, user: User
 ):
     # WHEN
     change = await change_service.create_change_direct(
-        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}
+        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}, initialized_by=user.id
     )
 
     # THEN
@@ -302,11 +302,11 @@ async def test_create_change_direct_succeeds_when_updating_the_template_version(
 
 
 async def test_create_change_direct_succeeds_and_makes_new_template_variables_visible_in_the_foxops_api(
-    change_service: ChangeService, initialized_incarnation: Incarnation
+    change_service: ChangeService, initialized_incarnation: Incarnation, user: User
 ):
     # WHEN
     change = await change_service.create_change_direct(
-        initialized_incarnation.id, requested_version="v1.3.0", requested_data={}
+        initialized_incarnation.id, requested_version="v1.3.0", requested_data={}, initialized_by=user.id
     )
 
     # THEN
@@ -324,10 +324,11 @@ async def test_create_change_direct_succeeds_when_updating_to_the_same_branch_na
     local_hoster: LocalHoster,
     initialized_incarnation: Incarnation,
     git_repo_template: str,
+    user: User,
 ):
     # GIVEN
     initial_change = await change_service.create_change_direct(
-        initialized_incarnation.id, requested_version="main", requested_data={}
+        initialized_incarnation.id, requested_version="main", requested_data={}, initialized_by=user.id
     )
     async with local_hoster.cloned_repository(git_repo_template) as repo:
         (repo.directory / "template" / "README.md").write_text("Hello, world - even more!")
@@ -336,7 +337,7 @@ async def test_create_change_direct_succeeds_when_updating_to_the_same_branch_na
 
     # WHEN
     new_change = await change_service.create_change_direct(
-        initialized_incarnation.id, requested_version="main", requested_data={}
+        initialized_incarnation.id, requested_version="main", requested_data={}, initialized_by=user.id
     )
 
     # THEN
@@ -352,9 +353,7 @@ async def test_create_change_direct_succeeds_when_updating_to_the_same_branch_na
 
 
 async def test_create_change_direct_succeeds_when_the_previous_change_was_not_merged(
-    change_service: ChangeService,
-    initialized_incarnation: Incarnation,
-    local_hoster: LocalHoster,
+    change_service: ChangeService, initialized_incarnation: Incarnation, local_hoster: LocalHoster, user: User
 ):
     # GIVEN
     unmerged_change = await change_service.create_change_merge_request(
@@ -369,7 +368,7 @@ async def test_create_change_direct_succeeds_when_the_previous_change_was_not_me
     # WHEN
     local_hoster.close_merge_request(initialized_incarnation.incarnation_repository, unmerged_change.merge_request_id)
     change = await change_service.create_change_direct(
-        initialized_incarnation.id, requested_version="v1.2.0", requested_data={}
+        initialized_incarnation.id, requested_version="v1.2.0", requested_data={}, initialized_by=user.id
     )
 
     # THEN
@@ -377,21 +376,22 @@ async def test_create_change_direct_succeeds_when_the_previous_change_was_not_me
 
 
 async def test_create_change_direct_succeeds_with_reverting_a_variable_back_to_its_default_value_if_not_explicitly_specified(
-    change_service: ChangeService,
-    initialized_incarnation: Incarnation,
-    local_hoster: LocalHoster,
+    change_service: ChangeService, initialized_incarnation: Incarnation, local_hoster: LocalHoster, user: User
 ):
     # GIVEN
     # ... the incarnation is at a version that requires a variable - and the variable was explicitly set
     change = await change_service.create_change_direct(
-        initialized_incarnation.id, requested_version="v1.3.0", requested_data={"author": "John Doe"}
+        initialized_incarnation.id,
+        requested_version="v1.3.0",
+        requested_data={"author": "John Doe"},
+        initialized_by=user.id,
     )
     assert change.template_data_full["author"] == "John Doe"
 
     # WHEN
     # ... creating a change that no longer specifies the variable
     change = await change_service.create_change_direct(
-        initialized_incarnation.id, requested_version="v1.3.0", requested_data={}
+        initialized_incarnation.id, requested_version="v1.3.0", requested_data={}, initialized_by=user.id
     )
 
     # THEN
@@ -514,11 +514,11 @@ async def test_list_changes(
 
 
 async def test_update_incomplete_change_recovers_from_unpushed_direct_change(
-    local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation
+    local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation, user: User
 ):
     # GIVEN
     change = await change_service.create_change_direct(
-        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}
+        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}, initialized_by=user.id
     )
 
     # remove latest commit from repo
@@ -542,11 +542,11 @@ async def test_update_incomplete_change_recovers_from_unpushed_direct_change(
 
 
 async def test_update_incomplete_change_recovers_from_pushed_direct_change(
-    local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation
+    local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation, user: User
 ):
     # GIVEN
     change = await change_service.create_change_direct(
-        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}
+        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}, initialized_by=user.id
     )
 
     # update database to reflect the missing update about the pushed change

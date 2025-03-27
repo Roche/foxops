@@ -230,4 +230,4 @@ async def test_api_get_diff_of_non_existing_incarnation_returns_not_found(
     response = await api_client.get("/incarnations/1/diff")
 
     assert response.status_code == HTTPStatus.NOT_FOUND
-    assert response.json() == {"message": "could not find incarnation in DB with id: 1"}
+    assert response.json() == {"message": "Incarnation with id '1' not found."}

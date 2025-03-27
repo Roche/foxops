@@ -30,6 +30,8 @@ class ChangeInDB(BaseModel):
 
     merge_request_id: str | None
     merge_request_branch_name: str | None
+    initialized_by: int | None
+
     model_config = ConfigDict(from_attributes=True)
 
     @classmethod

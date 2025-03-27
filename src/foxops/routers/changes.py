@@ -7,10 +7,12 @@ from pydantic import BaseModel
 
 from foxops.database.repositories.change.errors import ChangeNotFoundError
 from foxops.database.repositories.change.model import ChangeType as DatabaseChangeType
-from foxops.dependencies import get_change_service
+from foxops.dependencies import authorization, get_change_service
 from foxops.engine import TemplateData
 from foxops.hosters.types import MergeRequestStatus
 from foxops.models.change import Change, ChangeWithMergeRequest
+from foxops.models.user import User
+from foxops.services.authorization import AuthorizationService
 from foxops.services.change import CannotRepairChangeException, ChangeService
 
 router = APIRouter()
@@ -73,12 +75,15 @@ class ChangeDetails(BaseModel):
     created_at: datetime
     commit_sha: str
 
+    initialized_by: User | None = None
+
     merge_request_id: str | None = None
     merge_request_branch_name: str | None = None
     merge_request_status: MergeRequestStatus | None = None
 
     @classmethod
     def from_service_object(cls, obj: Change | ChangeWithMergeRequest) -> Self:
+        print(obj)
         match obj:
             case ChangeWithMergeRequest():
                 return cls(type=ChangeType.MERGE_REQUEST, **obj.model_dump())
@@ -93,19 +98,31 @@ async def create_change(
     incarnation_id: int,
     request: CreateChangeRequest,
     change_service: ChangeService = Depends(get_change_service),
+    authorization_serive: AuthorizationService = Depends(authorization),
 ) -> ChangeDetails:
     match request.change_type:
         case CreateChangeType.DIRECT:
             change = await change_service.create_change_direct(
-                incarnation_id, request.requested_version, request.requested_data
+                incarnation_id,
+                request.requested_version,
+                request.requested_data,
+                initialized_by=authorization_serive.current_user.id,
             )
         case CreateChangeType.MERGE_REQUEST_MANUAL:
             change = await change_service.create_change_merge_request(
-                incarnation_id, request.requested_version, request.requested_data, automerge=False
+                incarnation_id,
+                request.requested_version,
+                request.requested_data,
+                automerge=False,
+                initialized_by=authorization_serive.current_user.id,
             )
         case CreateChangeType.MERGE_REQUEST_AUTOMERGE:
             change = await change_service.create_change_merge_request(
-                incarnation_id, request.requested_version, request.requested_data, automerge=True
+                incarnation_id,
+                request.requested_version,
+                request.requested_data,
+                automerge=True,
+                initialized_by=authorization_serive.current_user.id,
             )
         case _:
             raise NotImplementedError(f"Unknown change type {request.change_type}")

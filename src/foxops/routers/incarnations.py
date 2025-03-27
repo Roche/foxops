@@ -220,10 +220,14 @@ async def reset_incarnation(
     incarnation_service: IncarnationService = Depends(get_incarnation_service),
     change_service: ChangeService = Depends(get_change_service),
     hoster: Hoster = Depends(get_hoster),
+    authorization_service: AuthorizationService = Depends(authorization),
 ):
     try:
         change = await change_service.reset_incarnation(
-            incarnation_id, request.requested_version, request.requested_data
+            incarnation_id,
+            request.requested_version,
+            request.requested_data,
+            initialized_by=authorization_service.current_user.id,
         )
     except ProvidedTemplateDataInvalidError as e:
         response.status_code = status.HTTP_400_BAD_REQUEST
@@ -257,6 +261,7 @@ async def _create_change(
     patch: bool,
     response: Response,
     change_service: ChangeService,
+    initialized_by: int,
 ) -> IncarnationWithDetails | ApiError:
     try:
         await change_service.create_change_merge_request(
@@ -265,6 +270,7 @@ async def _create_change(
             requested_data=requested_data,
             automerge=automerge,
             patch=patch,
+            initialized_by=initialized_by,
         )
     except ProvidedTemplateDataInvalidError as e:
         response.status_code = status.HTTP_400_BAD_REQUEST
@@ -334,6 +340,7 @@ async def update_incarnation(
     request: UpdateIncarnationRequest,
     change_service: ChangeService = Depends(get_change_service),
     incarnation_service: IncarnationService = Depends(get_incarnation_service),
+    authorization_serive: AuthorizationService = Depends(authorization),
 ):
     """Updates the incarnation to the given version and data.
 
@@ -378,6 +385,7 @@ async def update_incarnation(
         patch=False,
         response=response,
         change_service=change_service,
+        initialized_by=authorization_serive.current_user.id,
     )
 
 
@@ -442,6 +450,7 @@ async def patch_incarnation(
     request: PatchIncarnationRequest,
     change_service: ChangeService = Depends(get_change_service),
     incarnation_service: IncarnationService = Depends(get_incarnation_service),
+    authorization_serive: AuthorizationService = Depends(authorization),
 ):
     """Updates the incarnation to the given version and data.
 
@@ -492,6 +501,7 @@ async def patch_incarnation(
             patch=True,
             response=response,
             change_service=change_service,
+            initialized_by=authorization_serive.current_user.id,
         )
     else:
         try:

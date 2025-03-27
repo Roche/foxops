@@ -40,6 +40,7 @@ class ChangeRepository:
         template_data_full: str,
         merge_request_id: str | None = None,
         merge_request_branch_name: str | None = None,
+        initialized_by: int | None = None,
     ) -> ChangeInDB:
         """
         Create a new change for the given incarnation with the given "revision" number.
@@ -67,6 +68,7 @@ class ChangeRepository:
                     commit_pushed=commit_pushed,
                     merge_request_id=merge_request_id,
                     merge_request_branch_name=merge_request_branch_name,
+                    initialized_by=initialized_by,
                 )
                 .returning(*change.columns)
             )
