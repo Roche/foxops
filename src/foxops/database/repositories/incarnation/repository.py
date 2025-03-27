@@ -11,6 +11,8 @@ from foxops.database.repositories.incarnation.errors import (
 from foxops.database.repositories.incarnation.model import (
     GroupPermissionInDB,
     IncarnationInDB,
+    UnresolvedGroupPermissionsInDB,
+    UnresolvedUserPermissionsInDB,
     UserPermissionInDB,
 )
 from foxops.database.repositories.user.errors import UserNotFoundError
@@ -117,23 +119,23 @@ class IncarnationRepository:
             rows = await conn.execute(query)
             return [UserPermissionInDB.model_validate(row) for row in rows]
 
-    async def get_user_ids_with_permission(self, incarnation_id: int) -> List[int]:
-        query = select(user_incarnation_permission.c.user_id).where(
-            (user_incarnation_permission.c.incarnation_id == incarnation_id)
+    async def get_unresolved_user_permissions(self, incarnation_id: int) -> List[UnresolvedUserPermissionsInDB]:
+        query = select(user_incarnation_permission).where(
+            user_incarnation_permission.c.incarnation_id == incarnation_id
         )
 
         async with self.engine.begin() as conn:
             rows = await conn.execute(query)
-            return [row[0] for row in rows]
+            return [UnresolvedUserPermissionsInDB.model_validate(row) for row in rows]
 
-    async def get_group_ids_with_permission(self, incarnation_id: int) -> List[int]:
-        query = select(group_incarnation_permission.c.group_id).where(
-            (group_incarnation_permission.c.incarnation_id == incarnation_id)
+    async def get_unresolved_group_permissions(self, incarnation_id: int) -> List[UnresolvedGroupPermissionsInDB]:
+        query = select(group_incarnation_permission).where(
+            group_incarnation_permission.c.incarnation_id == incarnation_id
         )
 
         async with self.engine.begin() as conn:
             rows = await conn.execute(query)
-            return [row[0] for row in rows]
+            return [UnresolvedGroupPermissionsInDB.model_validate(row) for row in rows]
 
     async def set_user_permissions(self, incarnation_id: int, user_permissions: List[UserPermission]):
         query = insert(user_incarnation_permission).values(
@@ -187,3 +189,15 @@ class IncarnationRepository:
                 raise IncarnationNotFoundError(incarnation_id) from e
 
             return IncarnationInDB.model_validate(row)
+
+    async def get_owner_id(self, incarnation_id: int) -> int:
+        query = select(incarnations.c.owner).where(incarnations.c.id == incarnation_id)
+
+        async with self.engine.begin() as conn:
+            result = await conn.execute(query)
+            try:
+                row = result.one()
+            except NoResultFound as e:
+                raise IncarnationNotFoundError(incarnation_id) from e
+
+            return row[0]

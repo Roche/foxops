@@ -250,7 +250,5 @@ def authorization(
     _static_token: None = Depends(static_token_auth_scheme),
     _user_schema: None = Depends(user_auth_scheme),
     current_user: UserWithGroups = Depends(group_auth_scheme),
-    user_service: UserService = Depends(get_user_service),
-    group_service: GroupService = Depends(get_group_service),
 ) -> AuthorizationService:
-    return AuthorizationService(current_user=current_user, user_service=user_service, group_service=group_service)
+    return AuthorizationService(current_user=current_user)

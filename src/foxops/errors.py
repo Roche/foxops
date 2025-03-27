@@ -48,3 +48,21 @@ class IncarnationAlreadyInitializedError(ReconciliationUserError):
         super().__init__(
             f"Incarnation at '{incarnation_repository}' and target directory '{target_directory}' already initialized."
         )
+
+
+class ForbiddenError(FoxopsError):
+    pass
+
+
+class ResourceForbiddenError(ForbiddenError):
+    """Exception raised when a user is not allowed to access a certain resource"""
+
+    def __init__(self):
+        super().__init__("You are not allowed to perfom the action on this resource")
+
+
+class GeneralForbiddenError(ForbiddenError):
+    """Exception raised when a user is not allowed to perform a certain action"""
+
+    def __init__(self, message: str):
+        super().__init__(message)

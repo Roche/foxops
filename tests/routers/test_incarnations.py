@@ -12,10 +12,12 @@ from foxops.database.repositories.change.repository import ChangeRepository
 from foxops.database.repositories.incarnation.errors import IncarnationNotFoundError
 from foxops.database.repositories.incarnation.repository import IncarnationRepository
 from foxops.database.repositories.user.repository import UserRepository
-from foxops.dependencies import get_change_service
+from foxops.dependencies import get_change_service, get_incarnation_service
 from foxops.models.change import Change
+from foxops.models.incarnation import IncarnationPermissions
 from foxops.models.user import User
 from foxops.services.change import ChangeService, IncarnationAlreadyExists
+from foxops.services.incarnation import IncarnationService
 
 pytestmark = [pytest.mark.api]
 
@@ -84,6 +86,15 @@ def incarnation_repository_mock(app: FastAPI):
     app.dependency_overrides[IncarnationRepository] = lambda: incarnation_repository
 
     return incarnation_repository
+
+
+@pytest.fixture
+def incarnation_service_mock(app: FastAPI):
+    incarnation_service = Mock(spec=IncarnationService)
+
+    app.dependency_overrides[get_incarnation_service] = lambda: incarnation_service
+
+    return incarnation_service
 
 
 async def test_api_get_incarnations_returns_empty_list_for_empty_incarnation_inventory(
@@ -207,8 +218,16 @@ async def test_api_delete_incarnation_removes_incarnation_from_inventory(
 async def test_api_get_diff_returns_diff_for_incarnation(
     api_client: AsyncClient,
     change_service_mock: ChangeService,
+    incarnation_service_mock: IncarnationService,
     mocker: MockFixture,
 ):
+    incarnation_service_mock.get_permissions = mocker.AsyncMock(
+        return_value=IncarnationPermissions(
+            owner_id=1,
+            user_permissions=[],
+            group_permissions=[],
+        )
+    )  # type: ignore
     change_service_mock.diff_incarnation = mocker.AsyncMock(return_value=MOCK_DIFF_OUTPUT)  # type: ignore
 
     response = await api_client.get("/incarnations/1/diff")

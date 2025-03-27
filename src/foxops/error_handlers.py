@@ -16,7 +16,13 @@ from foxops.database.repositories.user.errors import (
     UserAlreadyExistsError,
     UserNotFoundError,
 )
-from foxops.errors import FoxopsError, FoxopsUserError
+from foxops.errors import (
+    ForbiddenError,
+    FoxopsError,
+    FoxopsUserError,
+    GeneralForbiddenError,
+    ResourceForbiddenError,
+)
 from foxops.logger import get_logger
 
 #: Holds the module logger instance
@@ -35,6 +41,10 @@ EXCEPTION_TO_STATUS_CODE = {
     # User errors
     UserNotFoundError: status.HTTP_404_NOT_FOUND,
     UserAlreadyExistsError: status.HTTP_409_CONFLICT,
+    # Access
+    ForbiddenError: status.HTTP_403_FORBIDDEN,
+    GeneralForbiddenError: status.HTTP_403_FORBIDDEN,
+    ResourceForbiddenError: status.HTTP_403_FORBIDDEN,
 }
 
 
@@ -62,8 +72,8 @@ async def catch_all(_: Request, exc: Exception):
 
 
 __error_handlers__ = {
-    FoxopsError: catch_all_foxops_exception,
     RequestValidationError: validation_exception_handler,
     FoxopsUserError: foxops_user_error,
+    FoxopsError: catch_all_foxops_exception,
     Exception: catch_all,
 }

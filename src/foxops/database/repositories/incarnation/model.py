@@ -28,3 +28,17 @@ class UserPermissionInDB(BaseModel):
     incarnation_id: int
     type: Permission
     model_config = ConfigDict(from_attributes=True)
+
+
+class UnresolvedUserPermissionsInDB(BaseModel):
+    user_id: int
+    incarnation_id: int
+    type: Permission
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UnresolvedGroupPermissionsInDB(BaseModel):
+    group_id: int
+    incarnation_id: int
+    type: Permission
+    model_config = ConfigDict(from_attributes=True)

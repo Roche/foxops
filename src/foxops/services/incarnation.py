@@ -4,8 +4,10 @@ from foxops.database.repositories.group.repository import GroupRepository
 from foxops.database.repositories.incarnation.repository import IncarnationRepository
 from foxops.database.repositories.user.repository import UserRepository
 from foxops.hosters import Hoster
+from foxops.models.group import Group
 from foxops.models.incarnation import (
     GroupPermission,
+    IncarnationPermissions,
     UnresolvedGroupPermissions,
     UnresolvedUserPermissions,
     UserPermission,
@@ -118,8 +120,51 @@ class IncarnationService:
     async def set_owner(self, incarnation_id: int, user_id: int):
         await self.incarnation_repository.set_owner(incarnation_id, user_id)
 
-    async def get_user_ids_with_access(self, incarnation_id: int) -> list[int]:
-        return await self.incarnation_repository.get_user_ids_with_permission(incarnation_id)
+    async def get_user_permissions(self, incarnation_id: int) -> list[UserPermission]:
+        return [
+            UserPermission(
+                user=User(
+                    id=permission.user_id,
+                    username=permission.user_username,
+                    is_admin=permission.user_is_admin,
+                ),
+                type=permission.type,
+            )
+            for permission in await self.incarnation_repository.get_user_permissions(incarnation_id)
+        ]
 
-    async def get_group_ids_with_access(self, incarnation_id: int) -> list[int]:
-        return await self.incarnation_repository.get_group_ids_with_permission(incarnation_id)
+    async def get_group_permissions(self, incarnation_id: int) -> list[GroupPermission]:
+        return [
+            GroupPermission(
+                group=Group(
+                    id=permission.group_id,
+                    system_name=permission.group_system_name,
+                    display_name=permission.group_display_name,
+                ),
+                type=permission.type,
+            )
+            for permission in await self.incarnation_repository.get_group_permissions(incarnation_id)
+        ]
+
+    async def get_unresolved_user_permissions(self, incarnation_id: int) -> list[UnresolvedUserPermissions]:
+        return [
+            UnresolvedUserPermissions.model_validate(permission)
+            for permission in await self.incarnation_repository.get_unresolved_user_permissions(incarnation_id)
+        ]
+
+    async def get_unresolved_group_permissions(self, incarnation_id: int) -> list[UnresolvedGroupPermissions]:
+        return [
+            UnresolvedGroupPermissions.model_validate(permission)
+            for permission in await self.incarnation_repository.get_unresolved_group_permissions(incarnation_id)
+        ]
+
+    async def get_permissions(self, incarnation_id: int) -> IncarnationPermissions:
+        user_permissions = await self.get_unresolved_user_permissions(incarnation_id)
+        group_permissions = await self.get_unresolved_group_permissions(incarnation_id)
+        owner_id = await self.incarnation_repository.get_owner_id(incarnation_id)
+
+        return IncarnationPermissions(
+            user_permissions=user_permissions,
+            group_permissions=group_permissions,
+            owner_id=owner_id,
+        )
