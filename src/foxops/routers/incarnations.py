@@ -3,9 +3,6 @@ from typing import Self
 from fastapi import APIRouter, Depends, Response, status
 from pydantic import BaseModel, model_validator
 
-from foxops.database.repositories.group.errors import GroupNotFoundError
-from foxops.database.repositories.incarnation.errors import IncarnationNotFoundError
-from foxops.database.repositories.user.errors import UserNotFoundError
 from foxops.dependencies import (
     authorization,
     get_change_service,
@@ -178,11 +175,7 @@ async def read_incarnation(
     change_service: ChangeService = Depends(get_change_service),
 ):
     """Returns the details of the incarnation from the inventory."""
-    try:
-        return await change_service.get_incarnation_with_details(incarnation_id)
-    except IncarnationNotFoundError as exc:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        return ApiError(message=str(exc))
+    return await change_service.get_incarnation_with_details(incarnation_id)
 
 
 class IncarnationResetRequest(BaseModel):
@@ -236,9 +229,6 @@ async def reset_incarnation(
             message=f"could not initialize the incarnation as the provided template data "
             f"is invalid: {'; '.join(error_messages)}"
         )
-    except IncarnationNotFoundError as exc:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        return ApiError(message=str(exc))
     except ChangeRejectedDueToNoChanges:
         response.status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
         return ApiError(message="The incarnation does not have any customizations. Nothing to reset.")
@@ -279,9 +269,6 @@ async def _create_change(
             message=f"could not initialize the incarnation as the provided template data "
             f"is invalid: {'; '.join(error_messages)}"
         )
-    except IncarnationNotFoundError as exc:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        return ApiError(message=str(exc))
     except ChangeRejectedDueToPreviousUnfinishedChange:
         response.status_code = status.HTTP_409_CONFLICT
         return ApiError(message="There is a previous change that is still open. Please merge/close it first.")
@@ -350,32 +337,11 @@ async def update_incarnation(
     """
 
     await incarnation_service.remove_all_permissions(incarnation_id)
-    try:
-        await incarnation_service.set_user_permissions(incarnation_id, request.user_permissions)
-    except UserNotFoundError as exc:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        return ApiError(message=str(exc))
-    except IncarnationNotFoundError as exc:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        return ApiError(message=str(exc))
+    await incarnation_service.set_user_permissions(incarnation_id, request.user_permissions)
 
-    try:
-        await incarnation_service.set_group_permissions(incarnation_id, request.group_permissions)
-    except GroupNotFoundError as exc:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        return ApiError(message=str(exc))
-    except IncarnationNotFoundError as exc:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        return ApiError(message=str(exc))
+    await incarnation_service.set_group_permissions(incarnation_id, request.group_permissions)
 
-    try:
-        await incarnation_service.set_owner(incarnation_id, request.owner_id)
-    except UserNotFoundError as exc:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        return ApiError(message=str(exc))
-    except IncarnationNotFoundError as exc:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        return ApiError(message=str(exc))
+    await incarnation_service.set_owner(incarnation_id, request.owner_id)
 
     return await _create_change(
         incarnation_id=incarnation_id,
@@ -410,7 +376,8 @@ class PatchIncarnationRequest(BaseModel):
             and self.owner_id is None
         ):
             raise ValueError(
-                "One of the following fields must be set: requested_version, requested_data, user_permission, group_permission"
+                "One of the following fields must be set: requested_version, "
+                "requested_data, user_permission, group_permission, owner_id"
             )
 
         if (self.requested_data is not None or self.requested_version is not None) and self.automerge is None:
@@ -461,36 +428,15 @@ async def patch_incarnation(
     requested_data = request.requested_data or {}
 
     if request.group_permissions is not None:
-        try:
-            await incarnation_service.remove_all_group_permissions(incarnation_id)
-            await incarnation_service.set_group_permissions(incarnation_id, request.group_permissions)
-        except GroupNotFoundError as exc:
-            response.status_code = status.HTTP_404_NOT_FOUND
-            return ApiError(message=str(exc))
-        except IncarnationNotFoundError as exc:
-            response.status_code = status.HTTP_404_NOT_FOUND
-            return ApiError(message=str(exc))
+        await incarnation_service.remove_all_group_permissions(incarnation_id)
+        await incarnation_service.set_group_permissions(incarnation_id, request.group_permissions)
 
     if request.user_permissions is not None:
-        try:
-            await incarnation_service.remove_all_user_permissions(incarnation_id)
-            await incarnation_service.set_user_permissions(incarnation_id, request.user_permissions)
-        except UserNotFoundError as exc:
-            response.status_code = status.HTTP_404_NOT_FOUND
-            return ApiError(message=str(exc))
-        except IncarnationNotFoundError as exc:
-            response.status_code = status.HTTP_404_NOT_FOUND
-            return ApiError(message=str(exc))
+        await incarnation_service.remove_all_user_permissions(incarnation_id)
+        await incarnation_service.set_user_permissions(incarnation_id, request.user_permissions)
 
     if request.owner_id is not None:
-        try:
-            await incarnation_service.set_owner(incarnation_id, request.owner_id)
-        except UserNotFoundError as exc:
-            response.status_code = status.HTTP_404_NOT_FOUND
-            return ApiError(message=str(exc))
-        except IncarnationNotFoundError as exc:
-            response.status_code = status.HTTP_404_NOT_FOUND
-            return ApiError(message=str(exc))
+        await incarnation_service.set_owner(incarnation_id, request.owner_id)
 
     if request.requested_version is not None or request.requested_data is not None:
         return await _create_change(
@@ -503,12 +449,8 @@ async def patch_incarnation(
             change_service=change_service,
             initialized_by=authorization_serive.current_user.id,
         )
-    else:
-        try:
-            return await change_service.get_incarnation_with_details(incarnation_id)
-        except IncarnationNotFoundError as exc:
-            response.status_code = status.HTTP_404_NOT_FOUND
-            return ApiError(message=str(exc))
+
+    return await change_service.get_incarnation_with_details(incarnation_id)
 
 
 @router.delete(
@@ -526,9 +468,9 @@ async def patch_incarnation(
             "model": ApiError,
         },
     },
+    status_code=status.HTTP_204_NO_CONTENT,
 )
 async def delete_incarnation(
-    response: Response,
     incarnation_id: int,
     incarnation_service: IncarnationService = Depends(get_incarnation_service),
 ):
@@ -540,11 +482,7 @@ async def delete_incarnation(
     incarnation from the inventory.
     """
 
-    try:
-        incarnation = await incarnation_service.get_by_id(incarnation_id)
-    except IncarnationNotFoundError as exc:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        return ApiError(message=str(exc))
+    incarnation = await incarnation_service.get_by_id(incarnation_id)
 
     await incarnation_service.delete(incarnation)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -564,19 +502,13 @@ async def delete_incarnation(
     },
 )
 async def diff_incarnation(
-    response: Response,
     incarnation_id: int,
     change_service: ChangeService = Depends(get_change_service),
 ):
     """Returns the diff which shows all changes manually applied to the incarnation."""
-    try:
-        diff = await change_service.diff_incarnation(incarnation_id)
+    diff = await change_service.diff_incarnation(incarnation_id)
 
-        return Response(
-            content=diff,
-            media_type="text/plain",
-        )
-
-    except IncarnationNotFoundError as exc:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        return ApiError(message=str(exc))
+    return Response(
+        content=diff,
+        media_type="text/plain",
+    )

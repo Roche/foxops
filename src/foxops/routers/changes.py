@@ -2,15 +2,15 @@ import enum
 from datetime import datetime
 from typing import Annotated, Self
 
-from fastapi import APIRouter, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Depends, Path, Response, status
 from pydantic import BaseModel
 
-from foxops.database.repositories.change.errors import ChangeNotFoundError
 from foxops.database.repositories.change.model import ChangeType as DatabaseChangeType
 from foxops.dependencies import authorization, get_change_service
 from foxops.engine import TemplateData
 from foxops.hosters.types import MergeRequestStatus
 from foxops.models.change import Change, ChangeWithMergeRequest
+from foxops.models.errors import ApiError
 from foxops.models.user import User
 from foxops.services.authorization import AuthorizationService
 from foxops.services.change import CannotRepairChangeException, ChangeService
@@ -23,10 +23,7 @@ async def get_change_id(
     revision: Annotated[int, Path(description="Change revision within the given incarnation")],
     change_service: Annotated[ChangeService, Depends(get_change_service)],
 ) -> int:
-    try:
-        return await change_service.get_change_id_by_revision(incarnation_id, revision)
-    except ChangeNotFoundError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Change not found")
+    return await change_service.get_change_id_by_revision(incarnation_id, revision)
 
 
 async def get_change(
@@ -143,7 +140,7 @@ async def list_changes(
 @router.get(
     "/{revision}",
     responses={
-        status.HTTP_404_NOT_FOUND: {"description": "Change not found"},
+        status.HTTP_404_NOT_FOUND: {"description": "Change not found", "model": ApiError},
     },
 )
 async def get_change_details(
@@ -159,15 +156,21 @@ async def get_change_details(
     "This can happen if the change was started in foxops, but then pushing the change to the "
     "incarnation repository failed, for example because the hoster was down.",
     responses={
-        status.HTTP_404_NOT_FOUND: {"description": "Change not found"},
-        status.HTTP_422_UNPROCESSABLE_ENTITY: {"description": "The change cannot be repaired automatically"},
+        status.HTTP_204_NO_CONTENT: {"description": "Change fixed"},
+        status.HTTP_404_NOT_FOUND: {"description": "Change not found", "model": ApiError},
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {
+            "description": "The change cannot be repaired automatically",
+            "model": ApiError,
+        },
     },
 )
 async def fix_incomplete_change(
+    response: Response,
     change_id: Annotated[int, Depends(get_change_id)],
     change_service: Annotated[ChangeService, Depends(get_change_service)],
 ):
     try:
         await change_service.update_incomplete_change(change_id)
     except CannotRepairChangeException as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+        response.status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+        return ApiError(message=str(e))

@@ -131,6 +131,7 @@ class ChangeRepository:
                     template_data_full=template_data_full,
                     commit_sha=commit_sha,
                     commit_pushed=False,
+                    initialized_by=owner_id,
                 )
                 .returning(*change.columns)
             )
