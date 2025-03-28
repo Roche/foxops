@@ -107,8 +107,9 @@ def get_group_repository(database_engine: AsyncEngine = Depends(get_database_eng
 
 def get_group_service(
     group_repository: GroupRepository = Depends(get_group_repository),
+    user_repository: UserRepository = Depends(get_user_repository),
 ) -> GroupService:
-    return GroupService(group_repository=group_repository)
+    return GroupService(group_repository=group_repository, user_repository=user_repository)
 
 
 def get_user_service(

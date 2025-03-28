@@ -9,7 +9,6 @@ from foxops.dependencies import get_change_service, get_incarnation_service
 from foxops.hosters.types import MergeRequestStatus
 from foxops.models.change import Change, ChangeWithMergeRequest
 from foxops.models.incarnation import IncarnationPermissions
-from foxops.models.user import User
 from foxops.services.change import ChangeService
 from foxops.services.incarnation import IncarnationService
 

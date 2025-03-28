@@ -11,5 +11,15 @@ class User(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class GroupWithUsers(Group):
+    id: int
+    system_name: str
+    display_name: str
+
+    users: list[User]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class UserWithGroups(User):
     groups: list[Group]

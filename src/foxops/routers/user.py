@@ -104,7 +104,7 @@ async def delete_user(
     await user_service.delete_user(user_id)
 
 
-class UserUpdatePatchRequest(BaseModel):
+class UserPatchRequest(BaseModel):
     is_admin: bool
 
 
@@ -129,7 +129,7 @@ class UserUpdatePatchRequest(BaseModel):
 async def update_user(
     response: Response,
     user_id: int,
-    request: UserUpdatePatchRequest,
+    request: UserPatchRequest,
     user_service: UserService = Depends(get_user_service),
     authorization_service: AuthorizationService = Depends(authorization),
 ):

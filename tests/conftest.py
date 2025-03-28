@@ -109,8 +109,8 @@ async def user_service(user_repository: UserRepository, group_repository: GroupR
 
 
 @pytest.fixture
-async def group_service(group_repository: GroupRepository) -> GroupService:
-    return GroupService(group_repository)
+async def group_service(group_repository: GroupRepository, user_repository: UserRepository) -> GroupService:
+    return GroupService(group_repository, user_repository)
 
 
 @pytest.fixture

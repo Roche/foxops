@@ -40,7 +40,7 @@ class GroupRepository:
             return GroupInDB.model_validate(row)
 
     async def get_by_userid(self, user_id: int) -> list[GroupInDB]:
-        query = select(group).join(group_user).where(group_user.c.user_id == user_id)
+        query = select(group_user, group).where(group_user.c.user_id == user_id).join(group)
         groups = []
 
         async with self.engine.begin() as conn:
@@ -60,4 +60,34 @@ class GroupRepository:
                 row = result.one()
             except NoResultFound as e:
                 raise GroupNotFoundError(id=group_id) from e
+            return GroupInDB.model_validate(row)
+
+    async def list_paginated(
+        self,
+        limit: int,
+        offset: int,
+    ) -> list[GroupInDB]:
+        query = select(group).limit(limit).offset(offset)
+
+        async with self.engine.begin() as conn:
+            result = await conn.execute(query)
+
+            return [GroupInDB.model_validate(row) for row in result]
+
+    async def delete(self, group_id: int) -> None:
+        async with self.engine.begin() as conn:
+            query = group.delete().where(group.c.id == group_id)
+            await conn.execute(query)
+
+    async def set_display_name(self, group_id: int, display_name: str) -> GroupInDB:
+        async with self.engine.begin() as conn:
+            query = group.update().where(group.c.id == group_id).values(display_name=display_name).returning(group)
+
+            result = await conn.execute(query)
+
+            try:
+                row = result.one()
+            except NoResultFound as e:
+                raise GroupNotFoundError(id=group_id) from e
+
             return GroupInDB.model_validate(row)

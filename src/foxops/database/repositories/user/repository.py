@@ -102,3 +102,12 @@ class UserRepository:
                 raise UserNotFoundError(id=user_id) from e
 
             return UserInDB.model_validate(row)
+
+    async def get_users_of_group(self, group_id: int) -> list[UserInDB]:
+        query = select(group_user, user).where(group_user.c.group_id == group_id).join(user)
+
+        async with self.engine.begin() as conn:
+            result = await conn.execute(query)
+            rows = result.all()
+
+            return [UserInDB.model_validate(row) for row in rows]
