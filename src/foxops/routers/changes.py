@@ -14,6 +14,7 @@ from foxops.models.errors import ApiError
 from foxops.models.user import User
 from foxops.services.authorization import AuthorizationService
 from foxops.services.change import CannotRepairChangeException, ChangeService
+from foxops.authz import read_access_on_incarnation, write_access_on_incarnation
 
 router = APIRouter()
 
@@ -90,7 +91,7 @@ class ChangeDetails(BaseModel):
                 raise NotImplementedError(f"Unknown change type {type(obj)}")
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(write_access_on_incarnation)])
 async def create_change(
     incarnation_id: int,
     request: CreateChangeRequest,
@@ -127,7 +128,7 @@ async def create_change(
     return ChangeDetails.from_service_object(change)
 
 
-@router.get("")
+@router.get("", dependencies=[Depends(read_access_on_incarnation)])
 async def list_changes(
     incarnation_id: int,
     change_service: ChangeService = Depends(get_change_service),
@@ -142,6 +143,7 @@ async def list_changes(
     responses={
         status.HTTP_404_NOT_FOUND: {"description": "Change not found", "model": ApiError},
     },
+    dependencies=[Depends(read_access_on_incarnation)],
 )
 async def get_change_details(
     change: Change = Depends(get_change),
@@ -163,6 +165,7 @@ async def get_change_details(
             "model": ApiError,
         },
     },
+    dependencies=[Depends(write_access_on_incarnation)],
 )
 async def fix_incomplete_change(
     response: Response,
