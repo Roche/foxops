@@ -221,13 +221,13 @@ async def test_api_get_diff_returns_diff_for_incarnation(
     incarnation_service_mock: IncarnationService,
     mocker: MockFixture,
 ):
-    incarnation_service_mock.get_permissions = mocker.AsyncMock(
+    incarnation_service_mock.get_permissions = mocker.AsyncMock(  # type: ignore
         return_value=IncarnationPermissions(
             owner_id=1,
             user_permissions=[],
             group_permissions=[],
         )
-    )  # type: ignore
+    )
     change_service_mock.diff_incarnation = mocker.AsyncMock(return_value=MOCK_DIFF_OUTPUT)  # type: ignore
 
     response = await api_client.get("/incarnations/1/diff")

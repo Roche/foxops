@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, FastAPI
+from fastapi import APIRouter, Depends, FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse
@@ -7,6 +7,7 @@ from foxops.dependencies import authorization, get_settings
 from foxops.error_handlers import __error_handlers__
 from foxops.logger import get_logger, setup_logging
 from foxops.middlewares import request_id_middleware, request_time_middleware
+from foxops.models.errors import ApiError
 from foxops.openapi import custom_openapi
 from foxops.routers import auth, incarnations, not_found, version
 
@@ -46,7 +47,20 @@ def create_app():
     public_router.include_router(auth.router)
 
     # Add routes to the protected router (authentication required)
-    protected_router = APIRouter(dependencies=[Depends(authorization)])
+    protected_router = APIRouter(
+        dependencies=[Depends(authorization)],
+        responses={
+            status.HTTP_401_UNAUTHORIZED: {
+                "description": "The provided API Token is invalid or missing. You have to provide a valid API Token in the format 'Bearer \<token\>'.",
+                "model": ApiError,
+            },
+            status.HTTP_403_FORBIDDEN: {
+                "description": "You are not allowed to access the requested resource or perform the requested action.",
+                "model": ApiError,
+            },
+        },
+    )
+
     protected_router.include_router(incarnations.router)
 
     app.include_router(public_router)

@@ -17,6 +17,9 @@ def custom_openapi(app: FastAPI):
         openapi_schema["info"]["x-logo"] = {
             "url": "https://emoji.beeimg.com/%F0%9F%A6%8A",
         }
+        openapi_schema["info"]["contact"] = {
+            "url": "https://foxops.readthedocs.io/en/latest/",
+        }
         app.openapi_schema = openapi_schema
         return app.openapi_schema
 
