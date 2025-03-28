@@ -26,3 +26,10 @@ async def write_access_on_incarnation(
 
     if not authorization_service.has_write_access(permissions):
         raise ResourceForbiddenError
+
+
+async def access_to_admin_only(
+    authorization_service: AuthorizationService = Depends(authorization),
+) -> None:
+    if not authorization_service.current_user.is_admin:
+        raise ResourceForbiddenError("Only administrators are allowed to access this endpoint")

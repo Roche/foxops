@@ -18,3 +18,10 @@ class UserNotFoundError(FoxopsError):
 class UserAlreadyExistsError(Exception):
     def __init__(self, username: str):
         super().__init__(f"User with username '{username}' already exists.")
+
+
+class UserOwnerOfResourcesError(FoxopsError):
+    def __init__(self, id: int):
+        super().__init__(
+            f"User with id '{id}' is the owner of resources and cannot be deleted. Delete the resources first."
+        )

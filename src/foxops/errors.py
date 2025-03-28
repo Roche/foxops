@@ -1,3 +1,6 @@
+from typing import Optional
+
+
 class FoxopsError(Exception):
     """Base class for all foxops errors."""
 
@@ -57,8 +60,9 @@ class ForbiddenError(FoxopsError):
 class ResourceForbiddenError(ForbiddenError):
     """Exception raised when a user is not allowed to access a certain resource"""
 
-    def __init__(self):
-        super().__init__("You are not allowed to perfom the action on this resource")
+    def __init__(self, message: Optional[str] = None):
+        message = message or "You are not allowed to perfom the action on this resource"
+        super().__init__(message)
 
 
 class GeneralForbiddenError(ForbiddenError):

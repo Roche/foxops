@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from foxops.database.repositories.user.errors import (
     UserAlreadyExistsError,
     UserNotFoundError,
+    UserOwnerOfResourcesError,
 )
 from foxops.database.repositories.user.model import UserInDB
 from foxops.database.schema import group_user, user
@@ -62,6 +63,37 @@ class UserRepository:
         query = select(user).where(user.c.id == user_id)
 
         async with self.engine.begin() as conn:
+            result = await conn.execute(query)
+
+            try:
+                row = result.one()
+            except NoResultFound as e:
+                raise UserNotFoundError(id=user_id) from e
+
+            return UserInDB.model_validate(row)
+
+    async def list_paginated(self, limit: int, offset: int) -> list[UserInDB]:
+        query = select(user).limit(limit).offset(offset)
+
+        async with self.engine.begin() as conn:
+            result = await conn.execute(query)
+            rows = result.all()
+
+            return [UserInDB.model_validate(row) for row in rows]
+
+    async def delete_by_id(self, user_id: int) -> None:
+        async with self.engine.begin() as conn:
+            query = user.delete().where(user.c.id == user_id)
+
+            try:
+                await conn.execute(query)
+            except IntegrityError as e:
+                raise UserOwnerOfResourcesError(id=user_id) from e
+
+    async def set_is_admin(self, user_id: int, is_admin: bool) -> UserInDB:
+        async with self.engine.begin() as conn:
+            query = user.update().where(user.c.id == user_id).values(is_admin=is_admin).returning(user)
+
             result = await conn.execute(query)
 
             try:

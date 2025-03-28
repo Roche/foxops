@@ -15,6 +15,7 @@ from foxops.database.repositories.incarnation.errors import IncarnationNotFoundE
 from foxops.database.repositories.user.errors import (
     UserAlreadyExistsError,
     UserNotFoundError,
+    UserOwnerOfResourcesError,
 )
 from foxops.errors import (
     ForbiddenError,
@@ -41,6 +42,7 @@ EXCEPTION_TO_STATUS_CODE = {
     # User errors
     UserNotFoundError: status.HTTP_404_NOT_FOUND,
     UserAlreadyExistsError: status.HTTP_409_CONFLICT,
+    UserOwnerOfResourcesError: status.HTTP_409_CONFLICT,
     # Access
     ForbiddenError: status.HTTP_403_FORBIDDEN,
     GeneralForbiddenError: status.HTTP_403_FORBIDDEN,

@@ -5,6 +5,7 @@ from typing import Annotated, Self
 from fastapi import APIRouter, Depends, Path, Response, status
 from pydantic import BaseModel
 
+from foxops.authz import read_access_on_incarnation, write_access_on_incarnation
 from foxops.database.repositories.change.model import ChangeType as DatabaseChangeType
 from foxops.dependencies import authorization, get_change_service
 from foxops.engine import TemplateData
@@ -14,7 +15,6 @@ from foxops.models.errors import ApiError
 from foxops.models.user import User
 from foxops.services.authorization import AuthorizationService
 from foxops.services.change import CannotRepairChangeException, ChangeService
-from foxops.authz import read_access_on_incarnation, write_access_on_incarnation
 
 router = APIRouter()
 
@@ -81,7 +81,6 @@ class ChangeDetails(BaseModel):
 
     @classmethod
     def from_service_object(cls, obj: Change | ChangeWithMergeRequest) -> Self:
-        print(obj)
         match obj:
             case ChangeWithMergeRequest():
                 return cls(type=ChangeType.MERGE_REQUEST, **obj.model_dump())

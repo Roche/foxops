@@ -9,7 +9,7 @@ from foxops.logger import get_logger, setup_logging
 from foxops.middlewares import request_id_middleware, request_time_middleware
 from foxops.models.errors import ApiError
 from foxops.openapi import custom_openapi
-from foxops.routers import auth, incarnations, not_found, version
+from foxops.routers import auth, incarnations, not_found, user, version
 
 #: Holds the module logger instance
 logger = get_logger(__name__)
@@ -51,7 +51,8 @@ def create_app():
         dependencies=[Depends(authorization)],
         responses={
             status.HTTP_401_UNAUTHORIZED: {
-                "description": "The provided API Token is invalid or missing. You have to provide a valid API Token in the format 'Bearer \<token\>'.",
+                "description": ("The provided API Token is invalid or missing. "
+                                "You have to provide a valid API Token in the format 'Bearer \\<token\\>'."),
                 "model": ApiError,
             },
             status.HTTP_403_FORBIDDEN: {
@@ -62,6 +63,7 @@ def create_app():
     )
 
     protected_router.include_router(incarnations.router)
+    protected_router.include_router(user.router)
 
     app.include_router(public_router)
     app.include_router(protected_router)
