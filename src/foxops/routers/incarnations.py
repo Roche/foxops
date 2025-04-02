@@ -1,6 +1,6 @@
 from typing import Self
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from pydantic import BaseModel, model_validator
 
 from foxops.authz import read_access_on_incarnation, write_access_on_incarnation
@@ -64,8 +64,10 @@ class IncarnationWithPermissions(IncarnationWithDetails):
 )
 async def list_incarnations(
     response: Response,
-    incarnation_repository: str | None = None,
-    target_directory: str = ".",
+    incarnation_repository: str
+    | None = Query(None, description="The incarnation repository of the incarnation to search for"),
+    target_directory: str = Query(".", description="The target directory of the incarnation to search for"),
+    owner: str | None = Query(None, description="List all incarnations for this given user with this username"),
     change_service: ChangeService = Depends(get_change_service),
     incarnation_service: IncarnationService = Depends(get_incarnation_service),
     authorization_service: AuthorizationService = Depends(authorization),
@@ -76,10 +78,16 @@ async def list_incarnations(
 
     TODO: implement pagination
     """
+    if incarnation_repository is not None and owner is not None:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return ApiError(message="You can only filter by either `incarnation_repository` or `owner`, but not both")
+
     if incarnation_repository is None and authorization_service.admin:
-        return await change_service.list_incarnations()
+        return await change_service.list_incarnations(owner_username=owner)
     elif incarnation_repository is None:
-        return await change_service.list_incarnations_with_user_access(authorization_service.current_user)
+        return await change_service.list_incarnations_with_user_access(
+            authorization_service.current_user, owner_username=owner
+        )
 
     try:
         incarnation = await change_service.get_incarnation_by_repo_and_target_directory(

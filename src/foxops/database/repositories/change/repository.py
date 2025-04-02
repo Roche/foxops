@@ -192,7 +192,7 @@ class ChangeRepository:
                 return ChangeInDB.model_validate(row)
 
     def _incarnations_with_changes_summary_query(
-        self, incarnation_id: set[int] | None = None, owner_id: int | None = None
+        self, incarnation_ids: set[int] | None = None, owner_id: int | None = None, owner_filter: int | None = None
     ):
         alias_change = change.alias("change")
         alias_change_newer = change.alias("change_newer")
@@ -213,8 +213,12 @@ class ChangeRepository:
             user.c.id.label("owner_id"),
         ).select_from(incarnations)
 
-        if incarnation_id is not None and owner_id is not None:
-            query = query.where((incarnations.c.id.in_(incarnation_id)) | (incarnations.c.owner == owner_id))
+        if incarnation_ids is not None and owner_id is not None:
+            query = query.where((incarnations.c.id.in_(incarnation_ids)) | (incarnations.c.owner == owner_id))
+        elif incarnation_ids is not None:
+            query = query.where(incarnations.c.id.in_(incarnation_ids))
+        if owner_filter is not None:
+            query = query.where(incarnations.c.owner == owner_filter)
 
         return (
             incarnations.c,
@@ -245,6 +249,15 @@ class ChangeRepository:
             for row in await conn.execute(query):
                 yield IncarnationWithChangesSummary.model_validate(row)
 
+    async def list_incarnations_with_changes_summary_of_owner(
+        self, owner_id: int
+    ) -> AsyncIterator[IncarnationWithChangesSummary]:
+        _, _, query = self._incarnations_with_changes_summary_query(owner_filter=owner_id)
+
+        async with self.engine.connect() as conn:
+            for row in await conn.execute(query):
+                yield IncarnationWithChangesSummary.model_validate(row)
+
     async def list_incarnations_with_changes_summary_and_access(
         self, user_id: int, group_ids: list[int]
     ) -> AsyncIterator[IncarnationWithChangesSummary]:
@@ -265,6 +278,30 @@ class ChangeRepository:
             incarnation_ids.update(row[0] for row in await group_result)
 
             _, _, query = self._incarnations_with_changes_summary_query(incarnation_ids, user_id)
+
+            for row in await conn.execute(query):
+                yield IncarnationWithChangesSummary.model_validate(row)
+
+    async def list_incarnations_with_changes_summary_and_access_of_owner(
+        self, user_id: int, group_ids: list[int], owner_id: int
+    ) -> AsyncIterator[IncarnationWithChangesSummary]:
+        user_query = select(user_incarnation_permission.c.incarnation_id).where(
+            (user_incarnation_permission.c.user_id == user_id)
+        )
+
+        group_query = select(group_incarnation_permission.c.incarnation_id).where(
+            group_incarnation_permission.c.group_id.in_(group_ids)
+        )
+
+        async with self.engine.connect() as conn:
+            user_result = conn.execute(user_query)
+            group_result = conn.execute(group_query)
+
+            incarnation_ids = set(row[0] for row in await user_result)
+
+            incarnation_ids.update(row[0] for row in await group_result)
+
+            _, _, query = self._incarnations_with_changes_summary_query(incarnation_ids, owner_filter=owner_id)
 
             for row in await conn.execute(query):
                 yield IncarnationWithChangesSummary.model_validate(row)

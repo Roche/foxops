@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import AsyncIterator
+from typing import AsyncIterator, Optional
 
 import foxops.engine as fengine
 from foxops.database.repositories.change.model import (
@@ -143,21 +143,29 @@ class ChangeService:
             merge_request_url=merge_request_url,
         )
 
-    async def list_incarnations(self) -> list[IncarnationWithLatestChangeDetails]:
-        return [
-            await self._incarnation_with_latest_change_details_from_dbobj(inc)
-            async for inc in self._change_repository.list_incarnations_with_changes_summary()
-        ]
+    async def list_incarnations(self, owner_username: Optional[str] = None) -> list[IncarnationWithLatestChangeDetails]:
+        if owner_username is not None:
+            owner = await self._user_repository.get_by_username(owner_username)
+            generator = self._change_repository.list_incarnations_with_changes_summary_of_owner(owner_id=owner.id)
+        else:
+            generator = self._change_repository.list_incarnations_with_changes_summary()
+
+        return [await self._incarnation_with_latest_change_details_from_dbobj(inc) async for inc in generator]
 
     async def list_incarnations_with_user_access(
-        self, user: UserWithGroups
+        self, user: UserWithGroups, owner_username: Optional[str] = None
     ) -> list[IncarnationWithLatestChangeDetails]:
-        return [
-            await self._incarnation_with_latest_change_details_from_dbobj(inc)
-            async for inc in self._change_repository.list_incarnations_with_changes_summary_and_access(
+        if owner_username is not None:
+            owner = await self._user_repository.get_by_username(owner_username)
+            generator = self._change_repository.list_incarnations_with_changes_summary_and_access_of_owner(
+                user.id, [group.id for group in user.groups], owner.id
+            )
+        else:
+            generator = self._change_repository.list_incarnations_with_changes_summary_and_access(
                 user.id, [group.id for group in user.groups]
             )
-        ]
+
+        return [await self._incarnation_with_latest_change_details_from_dbobj(inc) async for inc in generator]
 
     async def get_incarnation_by_repo_and_target_directory(
         self, repo: str, target_directory: str
