@@ -10,12 +10,18 @@ export default defineConfig({
     envPlugin({
       FOXOPS_API_URL: "",
       FOXOPS_STATIC_TOKEN: "",
+      FOXOPS_STATIC_USERNAME: "",
+      FOXOPS_STATIC_GROUPS: "",
     }),
     tsconfigPaths(),
   ],
   server: {
     proxy: {
       "/api": {
+        target: "http://localhost:5001",
+        changeOrigin: true,
+      },
+      "/auth/test": {
         target: "http://localhost:5001",
         changeOrigin: true,
       },
