@@ -9,7 +9,7 @@ import { Hug } from '../../common/Hug/Hug'
 import { IconButton } from '../../common/IconButton/IconButton'
 import { DarkMode } from '../../common/Icons/DarkMode'
 import { LightMode } from '../../common/Icons/LightMode'
-import { User } from '../../common/Icons/User'
+import { ProfilePicture } from '../../common/Icons/ProfilePicture'
 import { Logo } from '../../common/Logo/Logo'
 import { Popover } from '../../common/Popover/Popover'
 import { ToolbarProgress } from '../../common/ToolbarProgress/ToolbarProgress'
@@ -71,7 +71,7 @@ export const Toolbar = () => {
           ref={setProfileIconEl}
           active={profileOpen}
           onClick={onProfileClick}>
-          <User />
+          <ProfilePicture />
         </IconButton>
         <Popover open={profileOpen} anchorEl={profileIconEl} onClickOutside={onClose}>
           <Button onClick={onLogout}>Logout</Button>

@@ -58,6 +58,7 @@ export const EditIncarnationForm = () => {
       resetIncarnation={(templateVersion: string, templateData: Record<string, string>) => incarnations.reset(id, templateVersion, templateData)}
       diffChanges={diffCount}
       isEdit
+      incarnation={data}
     />
   ) : (
     <Section>

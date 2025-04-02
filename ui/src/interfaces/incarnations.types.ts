@@ -1,3 +1,6 @@
+import { Group, GroupApiView } from './group.types'
+import { User, UserApiView } from './user.types'
+
 export interface IncarnationBaseApiView {
   id: number,
   incarnation_repository: string,
@@ -48,6 +51,11 @@ export interface IncarnationApiView {
   template_repository_version_hash: string
   template_data: Record<string, string> | null,
   template_data_full: Record<string, never> | null,
+  owner: User,
+  user_permissions: IncarnationUserPermissionApiView[],
+  group_permissions: IncarnationGroupPermissionApiView[],
+  current_user_permissions: IncarnationPermissionsAPIView,
+
 }
 
 export interface ChangeApiView {
@@ -87,6 +95,32 @@ export interface IncarnationResetApiInput {
   requested_data: Record<string, string>
 }
 
+export interface IncarnationUserPermission{
+  user: User,
+  type: 'write' | 'read',
+}
+
+export interface IncarnationGroupPermission{
+  group: Group,
+  type: 'write' | 'read',
+}
+
+export interface IncarnationGroupPermissionApiView{
+  group: GroupApiView,
+  type: 'write' | 'read',
+}
+
+export interface IncarnationUserPermissionApiView{
+  user: UserApiView,
+  type: 'write' | 'read',
+}
+
+export interface IncarnationPermissionsAPIView {
+  can_read: boolean,
+  can_update: boolean,
+  can_reset: boolean,
+  can_delete: boolean,
+}
 export interface Incarnation {
   id: number,
   incarnationRepository: string,
@@ -102,13 +136,24 @@ export interface Incarnation {
   templateRepositoryVersion: string,
   templateRepositoryVersionHash: string,
   templateData: Record<string, string>,
-  templateDataFull: Record<string, never>
+  templateDataFull: Record<string, never>,
+  owner: User,
+  userPermissions: IncarnationUserPermission[],
+  groupPermissions: IncarnationGroupPermission[],
+  currentUserPermissions?: IncarnationPermissions,
+}
+
+export interface IncarnationPermissions {
+  canRead: boolean,
+  canUpdate: boolean,
+  canReset: boolean,
+  canDelete: boolean,
 }
 
 export interface IncarnationUpdateApiInput {
-  template_repository_version: string,
-  template_data: Record<string, string>,
-  automerge: boolean
+  requested_version: string,
+  requested_data: Record<string, string>,
+  automerge: boolean,
 }
 
 export interface IncarnationApiInput {

@@ -4,7 +4,7 @@ type Formats = 'json' | 'text';
 
 interface MakeRequestOptions<Req, Res> {
   url: string,
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
   body?: Req,
   authorized?: boolean,
   mockedData?: Res,
@@ -23,6 +23,7 @@ interface API {
   post: RequestFunc,
   put: RequestFunc,
   delete: RequestFunc,
+  patch: RequestFunc,
   makeUrl: (path: string, apiPrefix: string) => string,
 }
 
@@ -122,5 +123,10 @@ export const api: API = {
     url,
     ...options,
     method: 'DELETE'
+  }),
+  patch: <Req, Res>(url: string, options: Omit<MakeRequestOptions<Req, Res>, 'method' | 'url'> = {}): Promise<Res> => api.makeRequest({
+    url,
+    ...options,
+    method: 'PATCH'
   })
 }
