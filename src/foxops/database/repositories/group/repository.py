@@ -41,25 +41,23 @@ class GroupRepository:
 
     async def get_by_userid(self, user_id: int) -> list[GroupInDB]:
         query = select(group_user, group).where(group_user.c.user_id == user_id).join(group)
-        groups = []
 
         async with self.engine.begin() as conn:
             result = await conn.execute(query)
 
-            for row in result:
-                groups.append(GroupInDB.model_validate(row))
-
-            return groups
+            return [GroupInDB.model_validate(row) for row in result]
 
     async def get_by_id(self, group_id: int) -> GroupInDB:
         query = select(group).where(group.c.id == group_id)
 
         async with self.engine.begin() as conn:
             result = await conn.execute(query)
+
             try:
                 row = result.one()
             except NoResultFound as e:
                 raise GroupNotFoundError(id=group_id) from e
+
             return GroupInDB.model_validate(row)
 
     async def list_paginated(

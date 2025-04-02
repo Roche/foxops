@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, Path, Query, Response, status
 from pydantic import BaseModel
 
 from foxops.authz import access_to_admin_only
@@ -31,6 +31,11 @@ async def list_groups(
     limit: int = Query(25, ge=1, le=200, description="Number of groups to return"),
     page: int = Query(1, ge=1, description="Page number"),
 ):
+    """
+    Returns a list of all groups in the system.
+
+    The list is paginated, so you can specify the number of groups to return and the page number to return.
+    """
     groups = await group_service.list_groups_paginated(limit, page)
 
     # It is possible, that 0 groups exist in the db.
@@ -59,10 +64,15 @@ async def list_groups(
     dependencies=[Depends(access_to_admin_only)],
 )
 async def get_group(
-    group_id: int,
+    group_id: int = Path(..., description="The ID of the group"),
     group_service: GroupService = Depends(get_group_service),
     resolve_users: bool = Query(False, description="Resolve the users of the group"),
 ):
+    """ "
+    Returns the group with the given ID.
+
+    If `resolve_users` is set to `True`, the users which are part of the group are also returned.
+    """
     if resolve_users:
         return await group_service.get_group_by_id_with_users(group_id)
 
@@ -84,10 +94,15 @@ async def get_group(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def delete_group(
-    group_id: int,
+    group_id: int = Path(..., description="The ID of the group"),
     group_service: GroupService = Depends(get_group_service),
 ):
+    """
+    Deletes the group with the given ID.
+    """
     await group_service.delete_group(group_id)
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 class GroupPatchRequest(BaseModel):
@@ -109,8 +124,15 @@ class GroupPatchRequest(BaseModel):
     dependencies=[Depends(access_to_admin_only)],
 )
 async def patch_group(
-    group_id: int,
     request: GroupPatchRequest,
+    group_id: int = Path(..., description="The ID of the group"),
     group_service: GroupService = Depends(get_group_service),
 ):
+    """
+    Updates the display name of the group with the given ID.
+
+    It is currently not possible to update the system name of the group.
+    Updating the display name has no direct effect on the authentication system,
+    since the api authenticates groups by their system name, which is not inmutable.
+    """
     return await group_service.set_display_name(group_id, request.display_name)

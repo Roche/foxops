@@ -51,7 +51,7 @@ EXCEPTION_TO_STATUS_CODE = {
 
 
 async def validation_exception_handler(_: Request, exc: RequestValidationError):
-    return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"message": str(exc)})
+    return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content={"message": str(exc)})
 
 
 async def foxops_user_error(_: Request, exc: FoxopsUserError):
@@ -60,6 +60,7 @@ async def foxops_user_error(_: Request, exc: FoxopsUserError):
 
 
 async def catch_all_foxops_exception(_: Request, exc: FoxopsError):
+    logger.warning(f"A foxops error happend: {str(exc)}")
     if exc.__class__ in EXCEPTION_TO_STATUS_CODE:
         return JSONResponse(
             status_code=EXCEPTION_TO_STATUS_CODE[exc.__class__],
@@ -70,7 +71,11 @@ async def catch_all_foxops_exception(_: Request, exc: FoxopsError):
 
 async def catch_all(_: Request, exc: Exception):
     logger.exception(str(exc))
-    return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"message": str(exc)})
+    # We don't know what exeption this is and if it contains any sensitive information
+    # so we just return a generic error message
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"message": "An unexpected error occurred."}
+    )
 
 
 __error_handlers__ = {

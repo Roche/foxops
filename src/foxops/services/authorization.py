@@ -6,6 +6,7 @@ from foxops.models.user import UserWithGroups
 class AuthorizationService:
     def __init__(self, current_user: UserWithGroups) -> None:
         self.current_user = current_user
+        self.group_ids = set(group.id for group in current_user.groups)
 
     @property
     def admin(self) -> bool:
@@ -20,9 +21,9 @@ class AuthorizationService:
             return True
 
         user_ids_with_access = [p.user.id for p in incarnation.user_permissions]
-        group_ids_with_access = [p.group.id for p in incarnation.group_permissions]
+
         return self.id in user_ids_with_access or any(
-            group.id in group_ids_with_access for group in self.current_user.groups
+            p.group.id in self.group_ids for p in incarnation.group_permissions
         )
 
     def _write_access_incarnation_with_details(self, incarnation: IncarnationWithDetails) -> bool:
@@ -30,10 +31,9 @@ class AuthorizationService:
             return True
 
         user_ids_with_access = [p.user.id for p in incarnation.user_permissions if p.type == Permission.WRITE]
-        group_ids_with_access = [p.group.id for p in incarnation.group_permissions if p.type == Permission.WRITE]
 
         return self.id in user_ids_with_access or any(
-            group.id in group_ids_with_access for group in self.current_user.groups
+            p.group.id in self.group_ids for p in incarnation.group_permissions if p.type == Permission.WRITE
         )
 
     def _read_access_incarnation_permissions(self, permissions: IncarnationPermissions) -> bool:
@@ -41,10 +41,9 @@ class AuthorizationService:
             return True
 
         user_ids_with_access = [p.user_id for p in permissions.user_permissions]
-        group_ids_with_access = [p.group_id for p in permissions.group_permissions]
 
         return self.id in user_ids_with_access or any(
-            group.id in group_ids_with_access for group in self.current_user.groups
+            p.group_id in self.group_ids for p in permissions.group_permissions
         )
 
     def _write_access_incarnation_permissions(self, permissions: IncarnationPermissions) -> bool:
@@ -53,10 +52,8 @@ class AuthorizationService:
 
         user_ids_with_access = [p.user_id for p in permissions.user_permissions if p.type == Permission.WRITE]
 
-        group_ids_with_access = [p.group_id for p in permissions.group_permissions if p.type == Permission.WRITE]
-
         return self.id in user_ids_with_access or any(
-            group.id in group_ids_with_access for group in self.current_user.groups
+            p.group_id in self.group_ids for p in permissions.group_permissions if p.type == Permission.WRITE
         )
 
     def has_read_access(self, object: object) -> bool:

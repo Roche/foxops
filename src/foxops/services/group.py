@@ -48,7 +48,7 @@ class GroupService:
 
         return Group.model_validate(group)
 
-    async def get_group_by_id_with_users(self, group_id: int) -> Group:
+    async def get_group_by_id_with_users(self, group_id: int) -> GroupWithUsers:
         group = await self.group_repository.get_by_id(group_id)
 
         users = await self.user_repository.get_users_of_group(group_id)

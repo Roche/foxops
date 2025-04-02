@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, Path, Query, Response, status
 from pydantic import BaseModel
 
 from foxops.authz import access_to_admin_only
@@ -31,6 +31,10 @@ async def list_users(
     limit: int = Query(25, ge=1, le=200, description="Number of users to return"),
     page: int = Query(1, ge=1, description="Page number"),
 ):
+    """
+    Returns a list of all users in the system.
+    The list is paginated, so you can specify the number of users to return and the page number to return.
+    """
     users = await user_service.list_users_paginated(limit, page)
 
     # There is not case, where 0 users exist in the db, since at least
@@ -59,10 +63,16 @@ async def list_users(
     dependencies=[Depends(access_to_admin_only)],
 )
 async def get_user(
-    user_id: int,
+    user_id: int = Path(..., description="The ID of the user"),
     user_service: UserService = Depends(get_user_service),
     resolve_groups: bool = Query(False, description="Resolve the groups of the user"),
 ):
+    """
+    Returns the user with the given ID.
+    If the user is not found, a 404 error is returned.
+
+    If the `resolve_groups` parameter is set to true, the groups of which the user is a member are also returned.
+    """
     if resolve_groups:
         return await user_service.get_user_by_id_with_groups(user_id)
 
@@ -92,16 +102,27 @@ async def get_user(
     dependencies=[Depends(access_to_admin_only)],
 )
 async def delete_user(
-    user_id: int,
     response: Response,
+    user_id: int = Path(..., description="The ID of the user"),
     user_service: UserService = Depends(get_user_service),
     authorization_service: AuthorizationService = Depends(authorization),
 ):
+    """
+    Deletes a user with the given ID.
+
+    It is not possible to delete a user which is still the owner of some resources (e.g. incarnations).
+    If the user is still the owner of some resources,
+    you first have to either delete the resources or change the owner of the resources.
+
+    It is also not possible to delete yourself.
+    """
     if authorization_service.id == user_id:
         response.status_code = status.HTTP_400_BAD_REQUEST
         return ApiError(message="You can't delete yourself")
 
     await user_service.delete_user(user_id)
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 class UserPatchRequest(BaseModel):
@@ -128,11 +149,15 @@ class UserPatchRequest(BaseModel):
 )
 async def update_user(
     response: Response,
-    user_id: int,
     request: UserPatchRequest,
+    user_id: int = Path(..., description="The ID of the user"),
     user_service: UserService = Depends(get_user_service),
     authorization_service: AuthorizationService = Depends(authorization),
 ):
+    """
+    Give or remove admin rights from a user.
+    It is not possible to change your own admin status.
+    """
     if authorization_service.id == user_id:
         response.status_code = status.HTTP_400_BAD_REQUEST
         return ApiError(message="You can't change your own admin status")

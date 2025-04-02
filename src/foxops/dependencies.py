@@ -149,7 +149,16 @@ def get_change_service(
 
 class StaticTokenHeaderAuth(SecurityBase):
     def __init__(self):
-        self.model = APIKey(**{"in": APIKeyIn.header}, name="Authorization")
+        self.model = APIKey(
+            **{
+                "in": APIKeyIn.header,
+                "description": (
+                    "The static token for authentication. This field is required for all endpoints which require authentication. "
+                    "It has to be provided in the format `Bearer <token>`."
+                ),
+            },
+            name="Authorization",
+        )
         self.scheme_name = self.__class__.__name__
 
     async def __call__(self, request: Request, settings: Settings = Depends(get_settings)) -> None:
@@ -171,7 +180,15 @@ class StaticTokenHeaderAuth(SecurityBase):
 
 class UserHeaderAuth(SecurityBase):
     def __init__(self):
-        self.model = APIKey(**{"in": APIKeyIn.header}, name="User")
+        self.model = APIKey(
+            **{
+                "in": APIKeyIn.header,
+                "description": (
+                    "The Username of the current user. This field is required for all endpoints which require authentication."
+                ),
+            },
+            name="User",
+        )
         self.scheme_name = self.__class__.__name__
 
     async def __call__(self) -> None:
@@ -181,7 +198,18 @@ class UserHeaderAuth(SecurityBase):
 
 class GroupHeaderAuth(SecurityBase):
     def __init__(self):
-        self.model = APIKey(**{"in": APIKeyIn.header}, name="Groups")
+        self.model = APIKey(
+            **{
+                "in": APIKeyIn.header,
+                "description": (
+                    "The Groups of the current user. Multiple groups can be specified by separating them with commas. "
+                    "This field is optional and may be empty. "
+                    "The groupname must be alphanumeric and may contain underscores, colons and dashes. "
+                    "The groupname **is** case sensitive."
+                ),
+            },
+            name="Groups",
+        )
         self.scheme_name = self.__class__.__name__
 
     async def get_user(self, user_header: str | None, user_service: UserService) -> User:
@@ -204,7 +232,7 @@ class GroupHeaderAuth(SecurityBase):
         for group in group_header.split(","):
             group = group.strip()
 
-            if not re.match(r"^[a-zA-Z0-9_\-]+$", group):
+            if not re.match(r"^[a-zA-Z0-9_\-:]+$", group):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Group names must be alphanumeric and may contain underscores and dashes",

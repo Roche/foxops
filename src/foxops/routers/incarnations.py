@@ -199,7 +199,10 @@ async def create_incarnation(
 )
 async def read_incarnation(
     incarnation_id: int,
-    show_permissions: bool = False,
+    show_permissions: bool = Query(
+        False,
+        description="If set to `true`, the response will also include the permissions of the current user.",
+    ),
     change_service: ChangeService = Depends(get_change_service),
     authorization_service: AuthorizationService = Depends(authorization),
 ):
@@ -265,7 +268,7 @@ async def reset_incarnation(
             incarnation_id,
             request.requested_version,
             request.requested_data,
-            initialized_by=authorization_service.current_user.id,
+            initialized_by=authorization_service.id,
         )
     except ProvidedTemplateDataInvalidError as e:
         response.status_code = status.HTTP_400_BAD_REQUEST
@@ -279,6 +282,7 @@ async def reset_incarnation(
         return ApiError(message="The incarnation does not have any customizations. Nothing to reset.")
 
     incarnation = await incarnation_service.get_by_id(incarnation_id)
+
     return IncarnationResetResponse(
         incarnation_id=incarnation_id,
         merge_request_id=change.merge_request_id,
@@ -493,6 +497,7 @@ async def patch_incarnation(
         await incarnation_service.set_user_permissions(incarnation_id, request.user_permissions)
 
     if request.owner_id is not None:
+        # This additional check is needed, since only the owner or an admin can change the owner
         if authorization_serive.admin or authorization_serive.id == old_incarnation.owner.id:
             await incarnation_service.set_owner(incarnation_id, request.owner_id)
         else:
