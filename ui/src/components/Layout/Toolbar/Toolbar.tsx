@@ -31,10 +31,33 @@ const Box = styled.div`
   background: ${p => p.theme.colors.baseBg};
 `
 
+const WelcomeBackMessage = styled.h1(({ theme }) => ({
+  fontSize: 16,
+  fontWeight: 500,
+  margin: '0.5rem 0',
+  color: theme.colors.text,
+  textAlign: 'center'
+}))
+
+const GroupText = styled.span(({ theme }) => ({
+  fontSize: 12,
+  color: theme.colors.text,
+  textAlign: 'center',
+  marginBottom: '0.5rem'
+}))
+
+const Groups = styled.span(({ theme }) => ({
+  fontSize: 12,
+  color: theme.colors.text,
+  textAlign: 'center',
+  marginBottom: '0.5rem',
+  display: 'block'
+}))
+
 export const Toolbar = () => {
   const [profileOpen, setProfileOpen] = useState(false)
   const { mode, toggleMode } = useThemeModeStore()
-  const { setToken } = useAuthStore()
+  const { setToken, setUser, user } = useAuthStore()
   const [profileIconEl, setProfileIconEl] = useState<HTMLButtonElement | null>(null)
 
   const onProfileClick = () => setProfileOpen(x => !x)
@@ -46,6 +69,7 @@ export const Toolbar = () => {
   const queryClient = useQueryClient()
   const onLogout = () => {
     setToken(null)
+    setUser(null)
     queryClient.removeQueries(['incarnations'])
   }
   return (
@@ -74,7 +98,14 @@ export const Toolbar = () => {
           <ProfilePicture />
         </IconButton>
         <Popover open={profileOpen} anchorEl={profileIconEl} onClickOutside={onClose}>
-          <Button onClick={onLogout}>Logout</Button>
+          <Hug flex={['fxdc']} miw="10rem">
+            <WelcomeBackMessage>Welcome Back {user?.username}</WelcomeBackMessage>
+            { user?.groups?.length ? <GroupText>You are member of the following groups: </GroupText> : <GroupText>You are not member of any group</GroupText>}
+            <Groups>
+              {user?.groups.map(group => group.displayName).join(', ')}
+            </Groups>
+            <Button onClick={onLogout}>Logout</Button>
+          </Hug>
         </Popover>
       </Hug>
     </Box>

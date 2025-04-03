@@ -3,8 +3,9 @@ import { api } from '../services/api'
 import { Change, ChangeApiView, Incarnation, IncarnationApiInput, IncarnationApiView, IncarnationBase, IncarnationBaseApiView, IncarnationGroupPermission, IncarnationGroupPermissionApiView, IncarnationPermissions, IncarnationPermissionsAPIView, IncarnationResetApiInput, IncarnationUpdateApiInput, IncarnationUserPermission, IncarnationUserPermissionApiView } from '../interfaces/incarnations.types'
 import { User, UserApiView } from 'interfaces/user.types'
 import { Group, GroupApiView } from 'interfaces/group.types'
+import { Paths } from 'shared/types'
 
-export const INCARNATION_SEARCH_FIELDS: (keyof IncarnationBase)[] = [
+export const INCARNATION_SEARCH_FIELDS: (Paths<IncarnationBase>)[] = [
   'id',
   'incarnationRepository',
   'targetDirectory',
@@ -49,7 +50,8 @@ export const convertToUiBaseIncarnation = (incarnation: IncarnationBaseApiView):
   templateRepository: incarnation.template_repository,
   type: incarnation.type,
   revison: incarnation.revision,
-  templateVersion: '' // UI only
+  templateVersion: '', // UI only,
+  owner: convertToUiUser(incarnation.owner)
 })
 
 const convertToUiUser = (user: UserApiView): User => ({

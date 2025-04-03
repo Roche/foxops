@@ -1,7 +1,8 @@
+import { Paths } from 'shared/types'
 import { IncarnationBase } from '../interfaces/incarnations.types'
 
 export interface IncarnationTableColumn {
-  id: keyof IncarnationBase,
+  id: Paths<IncarnationBase>, // keyof doesn't apply to nested objects!
   header: string,
   size: number,
   minSize?: number
@@ -82,6 +83,12 @@ export const INCARNATION_TABLE_COLUMNS: IncarnationTableColumn[] = [
   makeColumn({
     header: 'Merge Request Url',
     id: 'mergeRequestUrl',
+    size: 250,
+    minSize: 100
+  }),
+  makeColumn({
+    header: 'Owner',
+    id: 'owner.username',
     size: 250,
     minSize: 100
   })

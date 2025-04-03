@@ -13,7 +13,8 @@ export interface IncarnationBaseApiView {
   commit_sha: string,
   commit_url: string,
   merge_request_id: null | string,
-  merge_request_url: null | string
+  merge_request_url: null | string,
+  owner: UserApiView,
 }
 
 export type MergeRequestStatus = 'open' | 'merged' | 'closed' | 'unknown'
@@ -33,6 +34,7 @@ export interface IncarnationBase {
   commitUrl: string,
   mergeRequestId: null | string,
   mergeRequestUrl: null | string
+  owner: User
   templateVersion: string // UI only
 }
 export interface IncarnationApiView {

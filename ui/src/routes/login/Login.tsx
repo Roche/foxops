@@ -70,7 +70,7 @@ export const Login = () => {
 
   const [loading, setLoading] = useState(false)
   const [stage, setStage] = useState(STAGES.FIRST_INTERACTION)
-  const { token, setToken } = useAuthStore()
+  const { token, setToken, setUser } = useAuthStore()
 
   if (token) return (<Navigate to="/incarnations" />)
   const onProceedLinkClick = () => setStage(STAGES.TOKEN_INPUT_SHOWN)
@@ -90,7 +90,8 @@ export const Login = () => {
     api.setToken(TOKEN)
     setLoading(true)
     try {
-      await auth.checkToken()
+      const user = await auth.checkToken()
+      setUser(user)
       setToken(TOKEN)
     } catch (error) {
       console.log('error', error)

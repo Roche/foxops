@@ -1,3 +1,4 @@
+import { Paths } from 'shared/types'
 import { searchBy } from '.'
 import { IncarnationBase } from '../interfaces/incarnations.types'
 import { INCARNATION_SEARCH_FIELDS } from '../services/incarnations'
@@ -18,9 +19,10 @@ const mergeIncarnations = (a: IncarnationBase[], b: IncarnationBase[]) => {
   return result
 }
 
-export const makeSortBySemVer = (semVerField: keyof IncarnationBase) => (a: IncarnationBase, b: IncarnationBase) => {
-  const valA = a[semVerField]
-  const valB = b[semVerField]
+export const makeSortBySemVer = (semVerField: Paths<IncarnationBase>) => (a: IncarnationBase, b: IncarnationBase) => {
+  const valA = semVerField.split('.').reduce((p: any, c: string) => p && p[c] || null, a)  // eslint-disable-line
+  const valB = semVerField.split('.').reduce((p: any, c: string) => p && p[c] || null, b)  // eslint-disable-line
+
   if (typeof valA !== 'string' || typeof valB !== 'string') return 1
   const sv1 = semverRegex().exec(valA)?.[0]
   const sv2 = semverRegex().exec(valB)?.[0]
