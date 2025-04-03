@@ -1,8 +1,11 @@
+import pytest
 from fastapi import FastAPI, status
 from httpx import AsyncClient
 
 from foxops.dependencies import group_auth_scheme, user_auth_scheme
 from foxops.models.user import UserWithGroups
+
+pytestmark = [pytest.mark.api]
 
 
 async def test_returns_err_if_authorization_header_is_missing(app: FastAPI):

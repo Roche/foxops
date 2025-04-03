@@ -34,32 +34,6 @@ index 636af66..336f590 100644
 """
 
 
-class ChangeServiceMock(Mock):
-    def __init__(self):
-        super().__init__(spec=ChangeService)
-
-    async def create_incarnation(
-        self,
-        incarnation_repository: str,
-        template_repository: str,
-        template_repository_version: str,
-        template_data: dict[str, str],
-        target_directory: str = ".",
-        owner_id: int = 1,
-    ) -> Change:
-        return Change(
-            id=1,
-            incarnation_id=1,
-            revision=1,
-            requested_version_hash="template_commit_sha",
-            requested_version=template_repository_version,
-            requested_data=template_data,
-            template_data_full=template_data,
-            created_at=datetime.now(),
-            commit_sha="commit_sha",
-        )
-
-
 @pytest.fixture
 async def user(user_repository: UserRepository) -> User:
     return User.model_validate(
@@ -72,7 +46,19 @@ async def user(user_repository: UserRepository) -> User:
 
 @pytest.fixture
 def change_service_mock(app: FastAPI):
-    change_service = ChangeServiceMock()
+    change_service = Mock(spec=ChangeService)
+
+    change_service.create_incarnation.return_value = Change(
+        id=1,
+        incarnation_id=1,
+        revision=1,
+        requested_version_hash="template_commit_sha",
+        requested_version="test",
+        requested_data={"foo": "bar"},
+        template_data_full={"foo": "bar"},
+        created_at=datetime.now(),
+        commit_sha="commit_sha",
+    )
 
     app.dependency_overrides[get_change_service] = lambda: change_service
 
@@ -250,3 +236,73 @@ async def test_api_get_diff_of_non_existing_incarnation_returns_not_found(
 
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.json() == {"message": "Incarnation with id '1' not found."}
+
+
+async def test_api_create_incarnation_assigns_owner(
+    api_client: AsyncClient,
+    mocker: MockFixture,
+    change_service_mock: ChangeService,
+    priviliged_api_user: User,
+):
+    requested_incarnation = {
+        "incarnation_repository": "test",
+        "target_directory": "test",
+        "template_repository": "template",
+        "template_repository_version": "test",
+        "template_data": {"foo": "bar"},
+    }
+
+    change_service_mock.get_incarnation_with_details = mocker.AsyncMock(return_value="dummy-object")  # type: ignore
+
+    response = await api_client.post(
+        "/incarnations",
+        json=requested_incarnation,
+    )
+
+    assert response.status_code == HTTPStatus.CREATED
+    assert change_service_mock.create_incarnation.call_count == 1  # type: ignore
+
+    called_owner_id = change_service_mock.create_incarnation.call_args.kwargs.get("owner_id")  # type: ignore
+
+    assert called_owner_id == priviliged_api_user.id
+
+
+async def test_administrator_see_all_incarnations(
+    api_client: AsyncClient,
+    change_repository: ChangeRepository,
+    priviliged_api_user: User,
+    unprivileged_api_user: User,
+):
+    incarnation1 = await change_repository.create_incarnation_with_first_change(
+        incarnation_repository="test1",
+        target_directory="test1",
+        template_repository="template1",
+        commit_sha="commit_sha1",
+        requested_version="v1.0",
+        requested_version_hash="template_commit_sha1",
+        requested_data=json.dumps({"foo": "bar"}),
+        template_data_full=json.dumps({"foo": "bar"}),
+        owner_id=priviliged_api_user.id,
+    )
+
+    incarnation2 = await change_repository.create_incarnation_with_first_change(
+        incarnation_repository="test2",
+        target_directory="test2",
+        template_repository="template2",
+        commit_sha="commit_sha2",
+        requested_version="v1.0",
+        requested_version_hash="template_commit_sha2",
+        requested_data=json.dumps({"foo": "bar"}),
+        template_data_full=json.dumps({"foo": "bar"}),
+        owner_id=unprivileged_api_user.id,
+    )
+
+    response = await api_client.get("/incarnations")
+
+    assert response.status_code == HTTPStatus.OK
+
+    incarnations = response.json()
+
+    assert len(incarnations) == 2
+
+    assert {incarnation1.id, incarnation2.id} == {i["id"] for i in incarnations}

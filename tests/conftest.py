@@ -27,6 +27,7 @@ from foxops.dependencies import (
 )
 from foxops.hosters.local import LocalHoster
 from foxops.logger import setup_logging
+from foxops.models.user import User
 from foxops.services.group import GroupService
 from foxops.services.user import UserService
 
@@ -123,6 +124,16 @@ def get_static_api_token() -> str:
     return "test-token"
 
 
+@pytest.fixture()
+async def priviliged_api_user(user_repository: UserRepository):
+    return await user_repository.get_by_username("root")
+
+
+@pytest.fixture
+async def unprivileged_api_user(user_repository: UserRepository):
+    return await user_repository.create(username="user", is_admin=False)
+
+
 @pytest.fixture(name="unauthenticated_client")
 async def create_unauthenticated_client(
     app: FastAPI,
@@ -148,9 +159,11 @@ async def create_unauthenticated_client(
 
 
 @pytest.fixture(name="authenticated_client")
-async def create_authenticated_client(unauthenticated_client: AsyncClient, static_api_token: str) -> AsyncClient:
+async def create_authenticated_client(
+    unauthenticated_client: AsyncClient, static_api_token: str, priviliged_api_user: User
+) -> AsyncClient:
     unauthenticated_client.headers["Authorization"] = f"Bearer {static_api_token}"
-    unauthenticated_client.headers["User"] = "root"
+    unauthenticated_client.headers["User"] = priviliged_api_user.username
     return unauthenticated_client
 
 
@@ -158,3 +171,18 @@ async def create_authenticated_client(unauthenticated_client: AsyncClient, stati
 async def create_api_client(authenticated_client: AsyncClient) -> AsyncClient:
     authenticated_client.base_url = f"{authenticated_client.base_url}/api"  # type: ignore
     return authenticated_client
+
+
+@pytest.fixture(name="unprivileged_authenticated_client")
+async def create_unprivileged_authenticated_client(
+    unauthenticated_client: AsyncClient, static_api_token: str, unprivileged_api_user: User
+) -> AsyncClient:
+    unauthenticated_client.headers["Authorization"] = f"Bearer {static_api_token}"
+    unauthenticated_client.headers["User"] = unprivileged_api_user.username
+    return unauthenticated_client
+
+
+@pytest.fixture(name="unprivileged_api_client")
+async def create_unprivileged_api_client(unprivileged_authenticated_client: AsyncClient) -> AsyncClient:
+    unprivileged_authenticated_client.base_url = f"{unprivileged_authenticated_client.base_url}/api"  # type: ignore
+    return unprivileged_authenticated_client
