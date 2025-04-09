@@ -13,6 +13,7 @@ tutorials/index
 :caption: References
 
 reference/templates
+reference/authorization
 terminology
 api
 ```
