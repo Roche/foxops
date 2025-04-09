@@ -8,7 +8,7 @@ from foxops.models.group import Group
 from foxops.models.user import GroupWithUsers
 from foxops.services.group import GroupService
 
-router = APIRouter(prefix="/api/group", tags=["group"])
+router = APIRouter(prefix="/api/groups", tags=["group"])
 
 
 @router.get(

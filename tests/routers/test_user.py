@@ -8,7 +8,7 @@ async def test_cant_delete_own_user(
     api_client: AsyncClient, user_repository: UserRepository, priviliged_api_user: User
 ):
     response = await api_client.delete(
-        f"/user/{priviliged_api_user.id}",
+        f"/users/{priviliged_api_user.id}",
     )
 
     assert response.status_code == 400

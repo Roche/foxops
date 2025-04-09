@@ -94,14 +94,14 @@ async def test_user_and_group_get_created_on_request(
 @pytest.mark.parametrize(
     "method,endpoint",
     [
-        ("GET", "/user"),
-        ("GET", "/user/1"),
-        ("PATCH", "/user/1"),
-        ("DELETE", "/user/1"),
-        ("GET", "/group"),
-        ("GET", "/group/1"),
-        ("PATCH", "/group/1"),
-        ("DELETE", "/group/1"),
+        ("GET", "/users"),
+        ("GET", "/users/1"),
+        ("PATCH", "/users/1"),
+        ("DELETE", "/users/1"),
+        ("GET", "/groups"),
+        ("GET", "/groups/1"),
+        ("PATCH", "/groups/1"),
+        ("DELETE", "/groups/1"),
     ],
 )
 async def test_unpriviliged_user_cant_access_group_and_user_endpoints(
@@ -118,14 +118,14 @@ async def test_unpriviliged_user_cant_access_group_and_user_endpoints(
 @pytest.mark.parametrize(
     "method,endpoint,body,expected_status",
     [
-        ("GET", "/user", None, status.HTTP_200_OK),
-        ("GET", "/user/{user_id}", None, status.HTTP_200_OK),
-        ("PATCH", "/user/{user_id}", {"is_admin": True}, status.HTTP_200_OK),
-        ("DELETE", "/user/{user_id}", None, status.HTTP_204_NO_CONTENT),
-        ("GET", "/group", None, status.HTTP_200_OK),
-        ("GET", "/group/{group_id}", None, status.HTTP_200_OK),
-        ("PATCH", "/group/{group_id}", {"display_name": "new_display_name"}, status.HTTP_200_OK),
-        ("DELETE", "/group/{group_id}", None, status.HTTP_204_NO_CONTENT),
+        ("GET", "/users", None, status.HTTP_200_OK),
+        ("GET", "/users/{user_id}", None, status.HTTP_200_OK),
+        ("PATCH", "/users/{user_id}", {"is_admin": True}, status.HTTP_200_OK),
+        ("DELETE", "/users/{user_id}", None, status.HTTP_204_NO_CONTENT),
+        ("GET", "/groups", None, status.HTTP_200_OK),
+        ("GET", "/groups/{group_id}", None, status.HTTP_200_OK),
+        ("PATCH", "/groups/{group_id}", {"display_name": "new_display_name"}, status.HTTP_200_OK),
+        ("DELETE", "/groups/{group_id}", None, status.HTTP_204_NO_CONTENT),
     ],
 )
 async def test_priviliged_user_can_access_group_and_user_endpoints(

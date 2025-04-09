@@ -8,7 +8,7 @@ from foxops.models.user import User, UserWithGroups
 from foxops.services.authorization import AuthorizationService
 from foxops.services.user import UserService
 
-router = APIRouter(prefix="/api/user", tags=["user"])
+router = APIRouter(prefix="/api/users", tags=["user"])
 
 
 @router.get(

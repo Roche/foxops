@@ -61,14 +61,14 @@ Users which have admin rights are allowed to perform any actions on any endpoint
 | `/incarnations/{id}/changes` | POST | write or is the owner |
 | `/incarnations/{id}/changes/{revision}` | GET | read or is the owner |
 | `/incarnations/{id}/changes/{revision}/fix` | POST | write or is the owner |
-| `/user` | GET | Admin only |
-| `/user/{id}` | GET | Admin only |
-| `/user/{id}` | PATCH | Admin only |
-| `/user/{id}` | DELETE | Admin only |
-| `/group` | GET | Admin only |
-| `/group/{id}` | GET | Admin only |
-| `/group/{id}` | PATCH | Admin only |
-| `/group/{id}` | DELETE | Admin only |
+| `/users` | GET | Admin only |
+| `/users/{id}` | GET | Admin only |
+| `/users/{id}` | PATCH | Admin only |
+| `/users/{id}` | DELETE | Admin only |
+| `/groups` | GET | Admin only |
+| `/groups/{id}` | GET | Admin only |
+| `/groups/{id}` | PATCH | Admin only |
+| `/groups/{id}` | DELETE | Admin only |
 
 ## Productive Setup
 While the FoxOps API currently doesn't authenticate the User and Groups headers, it is still possible to use this setup in a productive environment. An example of such a setup is described below.
