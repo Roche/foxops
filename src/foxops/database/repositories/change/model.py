@@ -30,6 +30,8 @@ class ChangeInDB(BaseModel):
 
     merge_request_id: str | None
     merge_request_branch_name: str | None
+    initialized_by: int | None
+
     model_config = ConfigDict(from_attributes=True)
 
     @classmethod
@@ -55,4 +57,9 @@ class IncarnationWithChangesSummary(BaseModel):
     requested_version: str
     merge_request_id: str | None
     created_at: datetime
+
+    owner_id: int
+    owner_username: str
+    owner_is_admin: bool
+
     model_config = ConfigDict(from_attributes=True)

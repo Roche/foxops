@@ -5,10 +5,12 @@ import pytest
 from fastapi import FastAPI, status
 from httpx import AsyncClient
 
-from foxops.dependencies import get_change_service
+from foxops.dependencies import get_change_service, get_incarnation_service
 from foxops.hosters.types import MergeRequestStatus
 from foxops.models.change import Change, ChangeWithMergeRequest
+from foxops.models.incarnation import IncarnationPermissions
 from foxops.services.change import ChangeService
+from foxops.services.incarnation import IncarnationService
 
 
 @pytest.fixture
@@ -20,7 +22,26 @@ def change_service_mock(app: FastAPI):
     return change_service
 
 
-async def test_create_change(api_client: AsyncClient, change_service_mock: ChangeService):
+@pytest.fixture
+def incarnation_service_mock(app: FastAPI):
+    incarnation_service = Mock(spec_set=IncarnationService)
+
+    incarnation_service.get_permissions = AsyncMock(  # type: ignore
+        return_value=IncarnationPermissions(
+            owner_id=1,
+            user_permissions=[],
+            group_permissions=[],
+        )
+    )
+
+    app.dependency_overrides[get_incarnation_service] = lambda: incarnation_service
+
+    return incarnation_service
+
+
+async def test_create_change(
+    api_client: AsyncClient, change_service_mock: ChangeService, incarnation_service_mock: IncarnationService
+):
     # GIVEN
     change_service_mock.create_change_direct = AsyncMock(  # type: ignore
         return_value=Change(
@@ -46,7 +67,9 @@ async def test_create_change(api_client: AsyncClient, change_service_mock: Chang
     assert response.json()["revision"] == 2
 
 
-async def test_list_changes(api_client: AsyncClient, change_service_mock: ChangeService):
+async def test_list_changes(
+    api_client: AsyncClient, change_service_mock: ChangeService, incarnation_service_mock: IncarnationService
+):
     # GIVEN
     change_service_mock.list_changes = AsyncMock(  # type: ignore
         return_value=[

@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends
-from fastapi.responses import PlainTextResponse
 
-from foxops.dependencies import static_token_auth_scheme
+from foxops.dependencies import authorization
+from foxops.models.user import UserWithGroups
+from foxops.services.authorization import AuthorizationService
 
 #: Holds the router for the version endpoint
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
 
-@router.get("/test", response_class=PlainTextResponse, dependencies=[Depends(static_token_auth_scheme)])
-def test_authentication_route():
-    return "OK"
+@router.get("/test")
+def test_authentication_route(authorization_service: AuthorizationService = Depends(authorization)) -> UserWithGroups:
+    return authorization_service.current_user

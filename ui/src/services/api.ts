@@ -1,8 +1,10 @@
+import { AuthorizationToken } from 'interfaces/authz.types'
+
 type Formats = 'json' | 'text';
 
 interface MakeRequestOptions<Req, Res> {
   url: string,
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
   body?: Req,
   authorized?: boolean,
   mockedData?: Res,
@@ -14,13 +16,14 @@ type MakeRequestFunc = <Req, Res>(options: MakeRequestOptions<Req, Res>) => Prom
 type RequestFunc = <Req, Res>(url: string, options?: Omit<MakeRequestOptions<Req, Res>, 'method' | 'url'>) => Promise<Res>
 
 interface API {
-  token: string | null,
-  setToken: (token: string | null) => void,
+  token: AuthorizationToken | null,
+  setToken: (token: AuthorizationToken | null) => void,
   makeRequest: MakeRequestFunc
   get: RequestFunc,
   post: RequestFunc,
   put: RequestFunc,
   delete: RequestFunc,
+  patch: RequestFunc,
   makeUrl: (path: string, apiPrefix: string) => string,
 }
 
@@ -37,7 +40,7 @@ export interface ApiErrorResponse {
 }
 export const api: API = {
   token: null,
-  setToken: (token: string | null) => {
+  setToken: (token: AuthorizationToken | null) => {
     api.token = token
   },
   makeUrl: (path, apiPrefix) => `${process.env.FOXOPS_API_URL ?? ''}${apiPrefix}${path}`,
@@ -56,7 +59,16 @@ export const api: API = {
     ])
     if (authorized) {
       if (!api.token) throw new Error('No token provided for authorized request')
-      headers.append('Authorization', `Bearer ${api.token}`)
+      headers.append('Authorization', `Bearer ${api.token.token}`)
+      headers.append('User', api.token.user)
+      const groups = api.token.groups
+      if (groups) {
+        if (typeof groups === 'string') {
+          headers.append('Groups', groups)
+        } else {
+          headers.append('Groups', groups.join(','))
+        }
+      }
     }
 
     // handle request body stuff
@@ -111,5 +123,10 @@ export const api: API = {
     url,
     ...options,
     method: 'DELETE'
+  }),
+  patch: <Req, Res>(url: string, options: Omit<MakeRequestOptions<Req, Res>, 'method' | 'url'> = {}): Promise<Res> => api.makeRequest({
+    url,
+    ...options,
+    method: 'PATCH'
   })
 }

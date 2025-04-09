@@ -15,7 +15,12 @@ const data: IncarnationBaseApiView[] = [
     created_at: '2021-01-01T00:00:00.000Z',
     requested_version: 'test-version',
     revision: 1,
-    type: 'direct'
+    type: 'direct',
+    owner: {
+      id: 1,
+      username: 'test-user',
+      is_admin: false
+    }
   },
   {
     id: 1632,
@@ -29,7 +34,12 @@ const data: IncarnationBaseApiView[] = [
     created_at: '2021-01-01T00:00:00.000Z',
     requested_version: 'test-version',
     revision: 1,
-    type: 'merge_request'
+    type: 'merge_request',
+    owner: {
+      id: 1,
+      username: 'test-user',
+      is_admin: false
+    }
   },
   {
     id: 659,
@@ -43,7 +53,12 @@ const data: IncarnationBaseApiView[] = [
     created_at: '2021-02-01T00:00:00.000Z',
     requested_version: 'test-version',
     revision: 2,
-    type: 'direct'
+    type: 'direct',
+    owner: {
+      id: 1,
+      username: 'test-user',
+      is_admin: false
+    }
   },
   {
     id: 1636,
@@ -57,7 +72,12 @@ const data: IncarnationBaseApiView[] = [
     created_at: '2021-01-01T00:00:00.000Z',
     requested_version: 'test-version',
     revision: 1,
-    type: 'merge_request'
+    type: 'merge_request',
+    owner: {
+      id: 1,
+      username: 'test-user',
+      is_admin: false
+    }
   },
   {
     id: 1337,
@@ -71,7 +91,12 @@ const data: IncarnationBaseApiView[] = [
     created_at: '2021-01-01T00:00:00.000Z',
     requested_version: 'test-version',
     revision: 1,
-    type: 'merge_request'
+    type: 'merge_request',
+    owner: {
+      id: 1,
+      username: 'test-user',
+      is_admin: false
+    }
   }
 ]
 

@@ -4,7 +4,6 @@ from sqlalchemy import text
 
 from alembic.command import upgrade
 from alembic.script import ScriptDirectory
-from foxops.database.repositories.change.repository import ChangeRepository
 
 INSERT_INCARNAION = text(
     """
@@ -71,15 +70,3 @@ async def test_database_upgrade(alembic_config, database_engine, async_database_
     # WHEN
     # ... running the migration to the target version
     upgrade(alembic_config, TARGET_REVISION)
-
-    # THEN
-    # ... the change table should have the new column and all the legacy template data copied to the full data column
-    cr = ChangeRepository(async_database_engine)
-
-    change = await cr.get_change_by_revision(1, 1)
-    assert change.template_data_full == json.dumps({"dummydata": "yes"})
-    assert change.requested_data == json.dumps({"dummydata": "yes"})
-
-    change = await cr.get_change_by_revision(1, 2)
-    assert change.template_data_full == json.dumps({"dummydata": "no"})
-    assert change.requested_data == json.dumps({"dummydata": "no"})

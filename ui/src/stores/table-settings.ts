@@ -4,8 +4,9 @@ import { INCARNATION_TABLE_COLUMNS, IncarnationTableColumn } from '../constants/
 import { IncarnationBase } from '../interfaces/incarnations.types'
 import { OnChangeFn, PaginationState, SortingState } from '@tanstack/react-table'
 import { STORAGE_KEYS } from '../services/storage'
+import { Paths } from 'shared/types'
 
-const DEFAULT_COLUMNS_IDS: (keyof IncarnationBase)[] = [
+const DEFAULT_COLUMNS_IDS: (Paths<IncarnationBase>)[] = [
   'incarnationRepository',
   'targetDirectory',
   'templateRepository',
@@ -25,7 +26,7 @@ interface TableSettingsStore {
   withPagination: boolean,
   pagination: PaginationState
   sorting: SortingState
-  setVisibleColumns: (visibleColumns: (keyof IncarnationBase)[]) => void
+  setVisibleColumns: (visibleColumns: (Paths<IncarnationBase>)[]) => void
   setDensity: (tableDensity: TableDensity) => void
   setActionsSimplified: (actionsSimplified: boolean) => void,
   setWithPagination: (withPagination: boolean) => void,
@@ -46,7 +47,7 @@ export const useTableSettingsStore = create<TableSettingsStore>()(
           pageIndex: 0,
           pageSize: 50
         },
-        setVisibleColumns: (visibleColumns: (keyof IncarnationBase)[]) => set(() => ({
+        setVisibleColumns: (visibleColumns: (Paths<IncarnationBase>)[]) => set(() => ({
           visibleColumns: INCARNATION_TABLE_COLUMNS.filter(x => visibleColumns.includes(x.id))
         })),
         setDensity: (tableDensity: TableDensity) => set(() => ({ tableDensity })),

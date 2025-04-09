@@ -16,6 +16,7 @@ import isUrl from 'is-url'
 import { OpenInNew } from '../../components/common/Icons/OpenInNew'
 import { ToggleSwitch } from '../../components/common/ToggleSwitch/ToggleSwitch'
 import {
+  Incarnation,
   IncarnationApiView,
   MergeRequestStatus
 } from 'interfaces/incarnations.types'
@@ -24,11 +25,21 @@ import { Tabs } from 'components/common/Tabs/Tabs'
 import { useNavigate } from 'react-router-dom'
 import { Dialog } from 'components/common/Dialog/Dialog'
 import { useErrorStore } from 'stores/error'
+import { PermissionChip } from './parts/PermissionChip'
 
 const DeleteIncarnationLink = styled.span`
   cursor: pointer;
   text-decoration: underline;
 `
+
+const ReadOnlyMessage = styled.span(({ theme }) => ({
+  display: 'inline-block',
+  color: theme.colors.orange,
+  width: 'fit-content',
+  marginLeft: 'auto',
+  marginTop: '.5rem',
+  fontStyle: 'italic'
+}))
 
 export type DiffChanges = {
   added: number,
@@ -45,7 +56,8 @@ type FormProps = {
   incarnationMergeRequestStatus?: MergeRequestStatus | null,
   mergeRequestUrl?: string | null,
   commitUrl?: string,
-  templateDataFull?: Record<string, never>
+  templateDataFull?: Record<string, never>,
+  incarnation?: Incarnation | null,
 }
 
 type ChangeSquareProps = {
@@ -119,7 +131,8 @@ export const IncarnationsForm = ({
   incarnationMergeRequestStatus,
   mergeRequestUrl,
   commitUrl,
-  templateDataFull
+  templateDataFull,
+  incarnation
 }: FormProps) => {
   const {
     register,
@@ -175,7 +188,6 @@ export const IncarnationsForm = ({
   const onSubmit: SubmitHandler<IncarnationInput> = async incarnation => {
     errorStore.clearError()
     try {
-      console.log(incarnation)
       await mutateAsync(incarnation)
       await delay(1000)
       queryClient.invalidateQueries(['incarnations'])
@@ -189,8 +201,9 @@ export const IncarnationsForm = ({
   const buttonTitle = isEdit ? 'Update' : 'Create'
 
   let resetIncarnationDisabled = null
-
-  if (diffChanges === null || diffChanges === undefined) {
+  if (!incarnation?.currentUserPermissions?.canReset) {
+    resetIncarnationDisabled = 'You do not have permission to reset this incarnation'
+  } else if (diffChanges === null || diffChanges === undefined) {
     resetIncarnationDisabled = 'Waiting for changes to be calculated'
   } else if (diffChanges.added === 0 && diffChanges.removed === 0) {
     resetIncarnationDisabled = 'No changes to reset'
@@ -200,6 +213,12 @@ export const IncarnationsForm = ({
     resetIncarnationDisabled = 'Reset successful. Check the merge request to finalize the reset'
   } else if (incarnationMergeRequestStatus === 'open') {
     resetIncarnationDisabled = 'There is already an open merge request'
+  }
+
+  let buttonTooltip = `${buttonTitle} incarnation`
+
+  if (incarnation?.currentUserPermissions && !incarnation?.currentUserPermissions?.canUpdate) {
+    buttonTooltip = 'You do not have permission to update this incarnation'
   }
 
   const editTemplateDataController = (
@@ -226,6 +245,7 @@ export const IncarnationsForm = ({
           invalid={invalid}
           error={error?.message}
           height="100%"
+          readOnly={incarnation?.currentUserPermissions && !incarnation?.currentUserPermissions?.canUpdate && !incarnation?.currentUserPermissions?.canReset}
         />
       )}
     />
@@ -292,7 +312,7 @@ export const IncarnationsForm = ({
             <Hug mb={16}>
               <TextField
                 label="Template version"
-                disabled={isLoading}
+                disabled={isLoading || (incarnation?.currentUserPermissions && !incarnation?.currentUserPermissions?.canUpdate && !incarnation?.currentUserPermissions?.canReset)}
                 size="large"
                 hasError={!!errors.templateVersion}
                 required
@@ -301,20 +321,27 @@ export const IncarnationsForm = ({
             </Hug>
             {isEdit && (
               <Hug mb={16}>
-                <Controller
-                  control={control}
-                  name="automerge"
-                  render={({ field: { onChange, value } }) => (
-                    <ToggleSwitch
-                      checked={value}
-                      label="Automerge"
-                      disabled={isLoading}
-                      onChange={e => onChange(e.target.checked)}
-                    />
-                  )}
-                />
+                <TextField
+                  label="Owner"
+                  size="large"
+                  disabled
+                  value={incarnation?.owner.username}
+                >
+                </TextField>
               </Hug>
             )}
+            {
+              (isEdit && incarnation) && (
+                <Hug mb={16} flex={['aic']}>
+                  {
+                    incarnation?.userPermissions.map(permission => <PermissionChip key={'user_' + permission.user.id} permission={permission.type} name={permission.user.username} type="user" />)
+                  }
+                  {
+                    incarnation?.groupPermissions.map(permission => <PermissionChip key={'group_' + permission.group.id} permission={permission.type} name={permission.group.displayName} type="group" />)
+                  }
+                </Hug>
+              )
+            }
           </Hug>
           <Hug w="calc(60% - 2rem)" h="100%">
             {isEdit ? (
@@ -356,34 +383,56 @@ export const IncarnationsForm = ({
             )}
           </Hug>
         </Hug>
-        <Hug flex={['jcfe', 'aic']} mt="auto">
-          <Hug ml={8}>
-            {isEdit && (<Tooltip title={resetIncarnationDisabled ?? 'Remove all manuall applied changes'} placement="top">
-              <Button
-                type="button"
-                minWidth="6.5rem"
-                disabled={resetIncarnationDisabled !== null}
-                loading={resetMutation.isLoading}
-                onClick={() => {
-                  setResetDialogOpen(true)
-                }}
-              >
-                Reset
-              </Button>
-            </Tooltip>
+        <Hug flex={['fxdc']} w="100%" h="100%">
+          <Hug flex={['jcfe', 'aic']} mt="auto">
+            { isEdit && (
+              <Hug mr="1rem" mt="auto" mb="auto">
+                <Controller
+                  control={control}
+                  name="automerge"
+                  render={({ field: { onChange, value } }) => (
+                    <ToggleSwitch
+                      checked={value}
+                      label="Automerge"
+                      disabled={isLoading || (incarnation?.currentUserPermissions && !incarnation?.currentUserPermissions?.canUpdate && !incarnation?.currentUserPermissions?.canReset)}
+                      onChange={e => onChange(e.target.checked)}
+                    />
+                  )}
+                />
+              </Hug>
             )}
-          </Hug>
 
-          <Hug ml={8}>
-            <Button
-              loading={isLoading}
-              minWidth="6.5rem"
-              type="submit"
-              disabled={isLoading}
-            >
-              {buttonTitle}
-            </Button>
+            <Hug ml={8}>
+              {isEdit && (<Tooltip title={resetIncarnationDisabled ?? 'Remove all manuall applied changes'} placement="top">
+                <Button
+                  type="button"
+                  minWidth="6.5rem"
+                  disabled={resetIncarnationDisabled !== null || !incarnation?.currentUserPermissions?.canReset}
+                  loading={resetMutation.isLoading}
+                  onClick={() => {
+                    setResetDialogOpen(true)
+                  }}
+                >
+                Reset
+                </Button>
+              </Tooltip>
+              )}
+            </Hug>
+
+            <Hug ml={8}>
+              <Tooltip title={buttonTooltip}>
+                <Button
+                  loading={isLoading}
+                  minWidth="6.5rem"
+                  type="submit"
+                  disabled={isLoading || (isEdit && !incarnation?.currentUserPermissions?.canUpdate)}
+                >
+                  {buttonTitle}
+                </Button>
+              </Tooltip>
+            </Hug>
           </Hug>
+          { incarnation?.currentUserPermissions && !incarnation?.currentUserPermissions?.canUpdate && <ReadOnlyMessage>You only have read permissions on this incarnation</ReadOnlyMessage>}
         </Hug>
       </Hug>
     </Hug>
@@ -437,12 +486,12 @@ export const IncarnationsForm = ({
                 size="large"
               />
               <Hug ml={4}>
-                <Tooltip title="Delete incarnation">
+                <Tooltip title={incarnation?.currentUserPermissions?.canDelete ? 'Delete incarnation' : 'You do not have permission to delete this incarnation'}>
                   <Button
                     minWidth="6.5rem"
                     variant="danger"
                     disabled={
-                      deleteMutation.isLoading || deleteMutation.isSuccess
+                      deleteMutation.isLoading || deleteMutation.isSuccess || !incarnation?.currentUserPermissions?.canDelete
                     }
                     loading={deleteMutation.isLoading}
                     onClick={() => setDeleteDialogOpen(true)}

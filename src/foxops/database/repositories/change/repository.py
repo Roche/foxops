@@ -16,7 +16,13 @@ from foxops.database.repositories.change.model import (
     ChangeType,
     IncarnationWithChangesSummary,
 )
-from foxops.database.schema import change, incarnations
+from foxops.database.schema import (
+    change,
+    group_incarnation_permission,
+    incarnations,
+    user,
+    user_incarnation_permission,
+)
 from foxops.errors import IncarnationNotFoundError
 from foxops.logger import get_logger
 
@@ -40,6 +46,7 @@ class ChangeRepository:
         template_data_full: str,
         merge_request_id: str | None = None,
         merge_request_branch_name: str | None = None,
+        initialized_by: int | None = None,
     ) -> ChangeInDB:
         """
         Create a new change for the given incarnation with the given "revision" number.
@@ -67,6 +74,7 @@ class ChangeRepository:
                     commit_pushed=commit_pushed,
                     merge_request_id=merge_request_id,
                     merge_request_branch_name=merge_request_branch_name,
+                    initialized_by=initialized_by,
                 )
                 .returning(*change.columns)
             )
@@ -90,6 +98,7 @@ class ChangeRepository:
         requested_version: str,
         requested_data: str,
         template_data_full: str,
+        owner_id: int,
     ) -> ChangeInDB:
         logger = self.log.bind(function="create_incarnation_with_first_change")
         logger.debug(
@@ -106,6 +115,7 @@ class ChangeRepository:
                     incarnation_repository=incarnation_repository,
                     target_directory=target_directory,
                     template_repository=template_repository,
+                    owner=owner_id,
                 )
                 .returning(incarnations.c.id)
             )
@@ -127,6 +137,7 @@ class ChangeRepository:
                     template_data_full=template_data_full,
                     commit_sha=commit_sha,
                     commit_pushed=False,
+                    initialized_by=owner_id,
                 )
                 .returning(*change.columns)
             )
@@ -180,29 +191,41 @@ class ChangeRepository:
             else:
                 return ChangeInDB.model_validate(row)
 
-    def _incarnations_with_changes_summary_query(self):
+    def _incarnations_with_changes_summary_query(
+        self, incarnation_ids: set[int] | None = None, owner_id: int | None = None, owner_filter: int | None = None
+    ):
         alias_change = change.alias("change")
         alias_change_newer = change.alias("change_newer")
+        query = select(
+            incarnations.c.id,
+            incarnations.c.incarnation_repository,
+            incarnations.c.target_directory,
+            incarnations.c.template_repository,
+            incarnations.c.owner,
+            alias_change.c.revision,
+            alias_change.c.type,
+            alias_change.c.requested_version,
+            alias_change.c.commit_sha,
+            alias_change.c.merge_request_id,
+            alias_change.c.created_at,
+            user.c.username.label("owner_username"),
+            user.c.is_admin.label("owner_is_admin"),
+            user.c.id.label("owner_id"),
+        ).select_from(incarnations)
+
+        if incarnation_ids is not None and owner_id is not None:
+            query = query.where((incarnations.c.id.in_(incarnation_ids)) | (incarnations.c.owner == owner_id))
+        elif incarnation_ids is not None:
+            query = query.where(incarnations.c.id.in_(incarnation_ids))
+        if owner_filter is not None:
+            query = query.where(incarnations.c.owner == owner_filter)
 
         return (
             incarnations.c,
             alias_change.c,
             (
-                select(
-                    incarnations.c.id,
-                    incarnations.c.incarnation_repository,
-                    incarnations.c.target_directory,
-                    incarnations.c.template_repository,
-                    alias_change.c.revision,
-                    alias_change.c.type,
-                    alias_change.c.requested_version,
-                    alias_change.c.commit_sha,
-                    alias_change.c.merge_request_id,
-                    alias_change.c.created_at,
-                )
-                .select_from(incarnations)
                 # join incarnations with the corresponding latest change
-                .join(alias_change, alias_change.c.incarnation_id == incarnations.c.id)
+                query.join(alias_change, alias_change.c.incarnation_id == incarnations.c.id)
                 .join(
                     alias_change_newer,
                     and_(
@@ -215,6 +238,7 @@ class ChangeRepository:
                 # where the joined `change` is already the latest one
                 .where(alias_change_newer.c.id.is_(None))
                 .order_by(incarnations.c.id)
+                .join(user, user.c.id == incarnations.c.owner)
             ),
         )
 
@@ -222,6 +246,63 @@ class ChangeRepository:
         _, _, query = self._incarnations_with_changes_summary_query()
 
         async with self.engine.connect() as conn:
+            for row in await conn.execute(query):
+                yield IncarnationWithChangesSummary.model_validate(row)
+
+    async def list_incarnations_with_changes_summary_of_owner(
+        self, owner_id: int
+    ) -> AsyncIterator[IncarnationWithChangesSummary]:
+        _, _, query = self._incarnations_with_changes_summary_query(owner_filter=owner_id)
+
+        async with self.engine.connect() as conn:
+            for row in await conn.execute(query):
+                yield IncarnationWithChangesSummary.model_validate(row)
+
+    async def list_incarnations_with_changes_summary_and_access(
+        self, user_id: int, group_ids: list[int]
+    ) -> AsyncIterator[IncarnationWithChangesSummary]:
+        user_query = select(user_incarnation_permission.c.incarnation_id).where(
+            (user_incarnation_permission.c.user_id == user_id)
+        )
+
+        group_query = select(group_incarnation_permission.c.incarnation_id).where(
+            group_incarnation_permission.c.group_id.in_(group_ids)
+        )
+
+        async with self.engine.connect() as conn:
+            user_result = conn.execute(user_query)
+            group_result = conn.execute(group_query)
+
+            incarnation_ids = set(row[0] for row in await user_result)
+
+            incarnation_ids.update(row[0] for row in await group_result)
+
+            _, _, query = self._incarnations_with_changes_summary_query(incarnation_ids, user_id)
+
+            for row in await conn.execute(query):
+                yield IncarnationWithChangesSummary.model_validate(row)
+
+    async def list_incarnations_with_changes_summary_and_access_of_owner(
+        self, user_id: int, group_ids: list[int], owner_id: int
+    ) -> AsyncIterator[IncarnationWithChangesSummary]:
+        user_query = select(user_incarnation_permission.c.incarnation_id).where(
+            (user_incarnation_permission.c.user_id == user_id)
+        )
+
+        group_query = select(group_incarnation_permission.c.incarnation_id).where(
+            group_incarnation_permission.c.group_id.in_(group_ids)
+        )
+
+        async with self.engine.connect() as conn:
+            user_result = conn.execute(user_query)
+            group_result = conn.execute(group_query)
+
+            incarnation_ids = set(row[0] for row in await user_result)
+
+            incarnation_ids.update(row[0] for row in await group_result)
+
+            _, _, query = self._incarnations_with_changes_summary_query(incarnation_ids, owner_filter=owner_id)
+
             for row in await conn.execute(query):
                 yield IncarnationWithChangesSummary.model_validate(row)
 

@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from foxops.engine import TemplateData
 from foxops.hosters.types import MergeRequestStatus
+from foxops.models.user import User
 
 
 class Change(BaseModel):
@@ -20,6 +21,8 @@ class Change(BaseModel):
 
     created_at: datetime
     commit_sha: str
+
+    initialized_by: User | None = None
 
 
 class ChangeWithMergeRequest(Change):

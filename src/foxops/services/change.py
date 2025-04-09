@@ -6,12 +6,10 @@ import shutil
 import uuid
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import AsyncIterator
-
-from pydantic import BaseModel
+from typing import AsyncIterator, Optional
 
 import foxops.engine as fengine
 from foxops.database.repositories.change.model import (
@@ -20,6 +18,7 @@ from foxops.database.repositories.change.model import (
 )
 from foxops.database.repositories.change.repository import ChangeRepository
 from foxops.database.repositories.incarnation.repository import IncarnationRepository
+from foxops.database.repositories.user.repository import UserRepository
 from foxops.engine import TemplateData
 from foxops.engine.patching.git_diff_patch import PatchResult
 from foxops.errors import RetryableError
@@ -28,6 +27,13 @@ from foxops.hosters import Hoster
 from foxops.hosters.types import MergeRequestStatus
 from foxops.models import IncarnationWithDetails
 from foxops.models.change import Change, ChangeWithMergeRequest
+from foxops.models.group import Group
+from foxops.models.incarnation import (
+    GroupPermission,
+    IncarnationWithLatestChangeDetails,
+    UserPermission,
+)
+from foxops.models.user import User, UserWithGroups
 from foxops.utils import get_logger
 
 
@@ -51,24 +57,6 @@ class ChangeRejectedDueToConflicts(Exception):
     def __init__(self, conflicting_paths: list[Path], deleted_paths: list[Path]):
         self.conflicting_paths = conflicting_paths
         self.deleted_paths = deleted_paths
-
-
-class IncarnationWithLatestChangeDetails(BaseModel):
-    id: int
-    incarnation_repository: str
-    target_directory: str
-    template_repository: str
-
-    revision: int
-    type: ChangeType
-    requested_version: str
-    created_at: datetime
-
-    commit_sha: str
-    commit_url: str
-
-    merge_request_id: str | None
-    merge_request_url: str | None
 
 
 class ChangeFailed(Exception):
@@ -114,12 +102,17 @@ async def tmp_empty_dir():
 
 class ChangeService:
     def __init__(
-        self, hoster: Hoster, incarnation_repository: IncarnationRepository, change_repository: ChangeRepository
+        self,
+        hoster: Hoster,
+        incarnation_repository: IncarnationRepository,
+        change_repository: ChangeRepository,
+        user_repository: UserRepository,
     ):
         self._hoster = hoster
 
         self._incarnation_repository = incarnation_repository
         self._change_repository = change_repository
+        self._user_repository = user_repository
 
         self._log = get_logger("change_service")
 
@@ -132,6 +125,8 @@ class ChangeService:
                 dbobj.incarnation_repository, dbobj.merge_request_id
             )
 
+        owner = User(id=dbobj.owner_id, username=dbobj.owner_username, is_admin=dbobj.owner_is_admin)
+
         return IncarnationWithLatestChangeDetails(
             id=dbobj.id,
             incarnation_repository=dbobj.incarnation_repository,
@@ -142,16 +137,35 @@ class ChangeService:
             requested_version=dbobj.requested_version,
             created_at=dbobj.created_at,
             commit_sha=dbobj.commit_sha,
+            owner=owner,
             commit_url=await self._hoster.get_commit_url(dbobj.incarnation_repository, dbobj.commit_sha),
             merge_request_id=dbobj.merge_request_id,
             merge_request_url=merge_request_url,
         )
 
-    async def list_incarnations(self) -> list[IncarnationWithLatestChangeDetails]:
-        return [
-            await self._incarnation_with_latest_change_details_from_dbobj(inc)
-            async for inc in self._change_repository.list_incarnations_with_changes_summary()
-        ]
+    async def list_incarnations(self, owner_username: Optional[str] = None) -> list[IncarnationWithLatestChangeDetails]:
+        if owner_username is not None:
+            owner = await self._user_repository.get_by_username(owner_username)
+            generator = self._change_repository.list_incarnations_with_changes_summary_of_owner(owner_id=owner.id)
+        else:
+            generator = self._change_repository.list_incarnations_with_changes_summary()
+
+        return [await self._incarnation_with_latest_change_details_from_dbobj(inc) async for inc in generator]
+
+    async def list_incarnations_with_user_access(
+        self, user: UserWithGroups, owner_username: Optional[str] = None
+    ) -> list[IncarnationWithLatestChangeDetails]:
+        if owner_username is not None:
+            owner = await self._user_repository.get_by_username(owner_username)
+            generator = self._change_repository.list_incarnations_with_changes_summary_and_access_of_owner(
+                user.id, [group.id for group in user.groups], owner.id
+            )
+        else:
+            generator = self._change_repository.list_incarnations_with_changes_summary_and_access(
+                user.id, [group.id for group in user.groups]
+            )
+
+        return [await self._incarnation_with_latest_change_details_from_dbobj(inc) async for inc in generator]
 
     async def get_incarnation_by_repo_and_target_directory(
         self, repo: str, target_directory: str
@@ -166,6 +180,7 @@ class ChangeService:
         template_repository: str,
         template_repository_version: str,
         template_data: TemplateData,
+        owner_id: int,
         target_directory: str = ".",
     ) -> Change:
         if await self._hoster.get_incarnation_state(incarnation_repository, target_directory) is not None:
@@ -198,6 +213,7 @@ class ChangeService:
                 requested_version=template_repository_version,
                 requested_data=json.dumps(incarnation_state.template_data),
                 template_data_full=json.dumps(incarnation_state.template_data_full),
+                owner_id=owner_id,
             )
 
             try:
@@ -208,7 +224,9 @@ class ChangeService:
 
         return await self.get_change(change.id)
 
-    async def reset_incarnation(self, incarnation_id: int, version: str, data: TemplateData) -> ChangeWithMergeRequest:
+    async def reset_incarnation(
+        self, incarnation_id: int, version: str, data: TemplateData, initialized_by: int | None = None
+    ) -> ChangeWithMergeRequest:
         """
         Resets an incarnation by removing all customizations that were done to it
         ... and bring it back to a pristine state as if it was just created freshly from the template.
@@ -258,6 +276,7 @@ class ChangeService:
                 requested_data=json.dumps(incarnation_state.template_data),
                 template_data_full=json.dumps(incarnation_state.template_data_full),
                 merge_request_branch_name=reset_branch_name,
+                initialized_by=initialized_by,
             )
 
             await self._push_change_commit_and_update_database(incarnation_git, change_in_db.id)
@@ -282,7 +301,7 @@ class ChangeService:
         return await self.get_change_with_merge_request(change_in_db.id)
 
     async def create_change_direct(
-        self, incarnation_id: int, requested_version: str, requested_data: TemplateData
+        self, incarnation_id: int, requested_version: str, requested_data: TemplateData, initialized_by: int
     ) -> Change:
         """
         Perform a DIRECT change on the given incarnation.
@@ -317,6 +336,7 @@ class ChangeService:
                 requested_version=env.to_version,
                 requested_data=json.dumps(env.to_data),
                 template_data_full=json.dumps(env.to_data_full),
+                initialized_by=initialized_by,
             )
 
             # if some failure happens after this point, the database object can be cleaned
@@ -330,6 +350,7 @@ class ChangeService:
         incarnation_id: int,
         requested_version: str | None,
         requested_data: TemplateData,
+        initialized_by: int | None = None,
         automerge: bool = False,
         patch: bool = False,
     ) -> ChangeWithMergeRequest:
@@ -356,6 +377,7 @@ class ChangeService:
                 requested_data=json.dumps(env.to_data),
                 template_data_full=json.dumps(env.to_data_full),
                 merge_request_branch_name=env.branch_name,
+                initialized_by=initialized_by,
             )
 
             await self._push_change_commit_and_update_database(env.incarnation_repository, change_in_db.id)
@@ -456,6 +478,11 @@ class ChangeService:
         """
 
         change = await self._change_repository.get_change(change_id)
+
+        initialized_by = None
+        if change.initialized_by is not None:
+            initialized_by = await self._user_repository.get_by_id(change.initialized_by)
+
         if not change.commit_pushed:
             raise IncompleteChange(
                 "the given change is in an incomplete state (commit_pushed=False). "
@@ -472,6 +499,7 @@ class ChangeService:
             template_data_full=json.loads(change.template_data_full),
             created_at=change.created_at,
             commit_sha=change.commit_sha,
+            initialized_by=initialized_by,
         )
 
     async def get_change_with_merge_request(self, change_id: int) -> ChangeWithMergeRequest:
@@ -568,6 +596,27 @@ class ChangeService:
             pipeline_timeout=timedelta(seconds=10),
         )
 
+        owner = await self._user_repository.get_by_id(incarnation.owner)
+
+        user_permissions = [
+            UserPermission(
+                type=permission.type,
+                user=User(id=permission.user_id, username=permission.user_username, is_admin=permission.user_is_admin),
+            )
+            for permission in await self._incarnation_repository.get_user_permissions(incarnation_id)
+        ]
+        group_permissions = [
+            GroupPermission(
+                type=permission.type,
+                group=Group(
+                    id=permission.group_id,
+                    system_name=permission.group_system_name,
+                    display_name=permission.group_display_name,
+                ),
+            )
+            for permission in await self._incarnation_repository.get_group_permissions(incarnation_id)
+        ]
+
         return IncarnationWithDetails(
             id=incarnation.id,
             incarnation_repository=incarnation.incarnation_repository,
@@ -578,6 +627,9 @@ class ChangeService:
             merge_request_url=merge_request_url,
             merge_request_status=merge_request_status,
             status=status,
+            owner=User.model_validate(owner),
+            group_permissions=group_permissions,
+            user_permissions=user_permissions,
             revision=change.revision,
             template_repository=incarnation.template_repository,
             template_repository_version=change.requested_version,

@@ -290,6 +290,9 @@ async def test_put_incarnation_updates_incarnation_with_merge_request(
             "template_repository_version": "v2.0.0",
             "template_data": {"name": "Jon", "age": 18},
             "automerge": False,
+            "owner_id": 1,
+            "user_permissions": [],
+            "group_permissions": [],
         },
     )
     response.raise_for_status()
@@ -334,6 +337,9 @@ async def test_put_incarnation_updates_incarnation_with_merge_request_and_autome
             "template_repository_version": "v2.0.0",
             "template_data": {"name": "Jon", "age": 18},
             "automerge": True,
+            "owner_id": 1,
+            "user_permissions": [],
+            "group_permissions": [],
         },
     )
     response.raise_for_status()
@@ -389,8 +395,12 @@ async def test_put_incarnation_creates_merge_request_with_conflicts(
             "template_repository_version": "v2.0.0",
             "template_data": {"name": "Jon", "age": 18},
             "automerge": automerge,
+            "owner_id": 1,
+            "user_permissions": [],
+            "group_permissions": [],
         },
     )
+
     response.raise_for_status()
     incarnation = response.json()
 
@@ -440,6 +450,9 @@ async def test_put_incarnation_fails_if_insufficient_template_data_is_provided(
             "template_repository_version": "v1.0.0",
             "template_data": {"name": "Jane"},
             "automerge": True,
+            "owner_id": 1,
+            "user_permissions": [],
+            "group_permissions": [],
         },
     )
 
@@ -460,6 +473,9 @@ async def test_patch_incarnation_returns_error_if_the_previous_one_has_not_been_
             "template_repository_version": "v1.0.0",
             "template_data": {"name": "Jon", "age": 19},
             "automerge": False,
+            "owner_id": 1,
+            "user_permissions": [],
+            "group_permissions": [],
         },
     )
     response.raise_for_status()
@@ -628,6 +644,9 @@ async def test_delete_incarnation_removes_incarnation_when_there_are_changes(
             "template_repository_version": "v2.0.0",
             "template_data": {"name": "Jon", "age": 18},
             "automerge": True,
+            "owner_id": 1,
+            "user_permissions": [],
+            "group_permissions": [],
         },
     )
     response.raise_for_status()

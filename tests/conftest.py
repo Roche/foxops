@@ -9,20 +9,27 @@ from typing import AsyncGenerator
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from foxops.__main__ import create_app
 from foxops.database.engine import create_engine
 from foxops.database.repositories.change.repository import ChangeRepository
+from foxops.database.repositories.group.repository import GroupRepository
 from foxops.database.repositories.incarnation.repository import IncarnationRepository
+from foxops.database.repositories.user.repository import UserRepository
 from foxops.database.schema import meta
 from foxops.dependencies import (
     get_change_repository,
+    get_database_engine,
     get_hoster,
     get_incarnation_repository,
 )
 from foxops.hosters.local import LocalHoster
 from foxops.logger import setup_logging
+from foxops.models.user import User
+from foxops.services.group import GroupService
+from foxops.services.user import UserService
 
 pytest_plugins = [
     "tests._plugins.fixtures_database",
@@ -64,6 +71,8 @@ async def test_async_engine() -> AsyncGenerator[AsyncEngine, None]:
 
     async with async_engine.begin() as conn:
         await conn.run_sync(meta.create_all)
+        # Default admin user to have all priviliges for testings
+        await conn.execute(text("INSERT INTO foxops_user (id, username, is_admin) VALUES (1, 'root', 1)"))
 
     yield async_engine
 
@@ -86,6 +95,26 @@ async def change_repository(test_async_engine: AsyncEngine) -> ChangeRepository:
 
 
 @pytest.fixture
+async def user_repository(test_async_engine: AsyncEngine) -> UserRepository:
+    return UserRepository(test_async_engine)
+
+
+@pytest.fixture
+async def group_repository(test_async_engine: AsyncEngine) -> GroupRepository:
+    return GroupRepository(test_async_engine)
+
+
+@pytest.fixture
+async def user_service(user_repository: UserRepository, group_repository: GroupRepository) -> UserService:
+    return UserService(user_repository, group_repository)
+
+
+@pytest.fixture
+async def group_service(group_repository: GroupRepository, user_repository: UserRepository) -> GroupService:
+    return GroupService(group_repository, user_repository)
+
+
+@pytest.fixture
 def local_hoster(tmp_path: Path) -> LocalHoster:
     return LocalHoster(tmp_path)
 
@@ -95,16 +124,32 @@ def get_static_api_token() -> str:
     return "test-token"
 
 
+@pytest.fixture()
+async def priviliged_api_user(user_repository: UserRepository):
+    return await user_repository.get_by_username("root")
+
+
+@pytest.fixture
+async def unprivileged_api_user(user_repository: UserRepository):
+    return await user_repository.create(username="user", is_admin=False)
+
+
 @pytest.fixture(name="unauthenticated_client")
 async def create_unauthenticated_client(
     app: FastAPI,
     incarnation_repository: IncarnationRepository,
     change_repository: ChangeRepository,
     local_hoster: LocalHoster,
+    test_async_engine: AsyncEngine,
 ) -> AsyncGenerator[AsyncClient, None]:
     app.dependency_overrides[get_incarnation_repository] = lambda: incarnation_repository
     app.dependency_overrides[get_change_repository] = lambda: change_repository
     app.dependency_overrides[get_hoster] = lambda: local_hoster
+    app.dependency_overrides[
+        get_database_engine
+    ] = (
+        lambda: test_async_engine
+    )  # We need this, since the api now requires a working db -> to create the user in the request\
 
     async with AsyncClient(
         app=app,
@@ -114,8 +159,11 @@ async def create_unauthenticated_client(
 
 
 @pytest.fixture(name="authenticated_client")
-async def create_authenticated_client(unauthenticated_client: AsyncClient, static_api_token: str) -> AsyncClient:
+async def create_authenticated_client(
+    unauthenticated_client: AsyncClient, static_api_token: str, priviliged_api_user: User
+) -> AsyncClient:
     unauthenticated_client.headers["Authorization"] = f"Bearer {static_api_token}"
+    unauthenticated_client.headers["User"] = priviliged_api_user.username
     return unauthenticated_client
 
 
@@ -123,3 +171,18 @@ async def create_authenticated_client(unauthenticated_client: AsyncClient, stati
 async def create_api_client(authenticated_client: AsyncClient) -> AsyncClient:
     authenticated_client.base_url = f"{authenticated_client.base_url}/api"  # type: ignore
     return authenticated_client
+
+
+@pytest.fixture(name="unprivileged_authenticated_client")
+async def create_unprivileged_authenticated_client(
+    unauthenticated_client: AsyncClient, static_api_token: str, unprivileged_api_user: User
+) -> AsyncClient:
+    unauthenticated_client.headers["Authorization"] = f"Bearer {static_api_token}"
+    unauthenticated_client.headers["User"] = unprivileged_api_user.username
+    return unauthenticated_client
+
+
+@pytest.fixture(name="unprivileged_api_client")
+async def create_unprivileged_api_client(unprivileged_authenticated_client: AsyncClient) -> AsyncClient:
+    unprivileged_authenticated_client.base_url = f"{unprivileged_authenticated_client.base_url}/api"  # type: ignore
+    return unprivileged_authenticated_client

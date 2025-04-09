@@ -152,6 +152,7 @@ async def foxops_client(gitlab_address: str, gitlab_access_token: str, foxops_da
         base_url="http://test",
     ) as client:
         client.headers["Authorization"] = f"Bearer {static_token}"
+        client.headers["User"] = "root"
 
         yield client
 

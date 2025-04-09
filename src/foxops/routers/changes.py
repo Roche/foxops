@@ -2,15 +2,18 @@ import enum
 from datetime import datetime
 from typing import Annotated, Self
 
-from fastapi import APIRouter, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Depends, Path, Response, status
 from pydantic import BaseModel
 
-from foxops.database.repositories.change.errors import ChangeNotFoundError
+from foxops.authz import read_access_on_incarnation, write_access_on_incarnation
 from foxops.database.repositories.change.model import ChangeType as DatabaseChangeType
-from foxops.dependencies import get_change_service
+from foxops.dependencies import authorization, get_change_service
 from foxops.engine import TemplateData
 from foxops.hosters.types import MergeRequestStatus
 from foxops.models.change import Change, ChangeWithMergeRequest
+from foxops.models.errors import ApiError
+from foxops.models.user import User
+from foxops.services.authorization import AuthorizationService
 from foxops.services.change import CannotRepairChangeException, ChangeService
 
 router = APIRouter()
@@ -21,10 +24,7 @@ async def get_change_id(
     revision: Annotated[int, Path(description="Change revision within the given incarnation")],
     change_service: Annotated[ChangeService, Depends(get_change_service)],
 ) -> int:
-    try:
-        return await change_service.get_change_id_by_revision(incarnation_id, revision)
-    except ChangeNotFoundError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Change not found")
+    return await change_service.get_change_id_by_revision(incarnation_id, revision)
 
 
 async def get_change(
@@ -73,6 +73,8 @@ class ChangeDetails(BaseModel):
     created_at: datetime
     commit_sha: str
 
+    initialized_by: User | None = None
+
     merge_request_id: str | None = None
     merge_request_branch_name: str | None = None
     merge_request_status: MergeRequestStatus | None = None
@@ -88,24 +90,36 @@ class ChangeDetails(BaseModel):
                 raise NotImplementedError(f"Unknown change type {type(obj)}")
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(write_access_on_incarnation)])
 async def create_change(
     incarnation_id: int,
     request: CreateChangeRequest,
     change_service: ChangeService = Depends(get_change_service),
+    authorization_serive: AuthorizationService = Depends(authorization),
 ) -> ChangeDetails:
     match request.change_type:
         case CreateChangeType.DIRECT:
             change = await change_service.create_change_direct(
-                incarnation_id, request.requested_version, request.requested_data
+                incarnation_id,
+                request.requested_version,
+                request.requested_data,
+                initialized_by=authorization_serive.current_user.id,
             )
         case CreateChangeType.MERGE_REQUEST_MANUAL:
             change = await change_service.create_change_merge_request(
-                incarnation_id, request.requested_version, request.requested_data, automerge=False
+                incarnation_id,
+                request.requested_version,
+                request.requested_data,
+                automerge=False,
+                initialized_by=authorization_serive.current_user.id,
             )
         case CreateChangeType.MERGE_REQUEST_AUTOMERGE:
             change = await change_service.create_change_merge_request(
-                incarnation_id, request.requested_version, request.requested_data, automerge=True
+                incarnation_id,
+                request.requested_version,
+                request.requested_data,
+                automerge=True,
+                initialized_by=authorization_serive.current_user.id,
             )
         case _:
             raise NotImplementedError(f"Unknown change type {request.change_type}")
@@ -113,7 +127,7 @@ async def create_change(
     return ChangeDetails.from_service_object(change)
 
 
-@router.get("")
+@router.get("", dependencies=[Depends(read_access_on_incarnation)])
 async def list_changes(
     incarnation_id: int,
     change_service: ChangeService = Depends(get_change_service),
@@ -126,8 +140,9 @@ async def list_changes(
 @router.get(
     "/{revision}",
     responses={
-        status.HTTP_404_NOT_FOUND: {"description": "Change not found"},
+        status.HTTP_404_NOT_FOUND: {"description": "Change not found", "model": ApiError},
     },
+    dependencies=[Depends(read_access_on_incarnation)],
 )
 async def get_change_details(
     change: Change = Depends(get_change),
@@ -142,15 +157,22 @@ async def get_change_details(
     "This can happen if the change was started in foxops, but then pushing the change to the "
     "incarnation repository failed, for example because the hoster was down.",
     responses={
-        status.HTTP_404_NOT_FOUND: {"description": "Change not found"},
-        status.HTTP_422_UNPROCESSABLE_ENTITY: {"description": "The change cannot be repaired automatically"},
+        status.HTTP_204_NO_CONTENT: {"description": "Change fixed"},
+        status.HTTP_404_NOT_FOUND: {"description": "Change not found", "model": ApiError},
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {
+            "description": "The change cannot be repaired automatically",
+            "model": ApiError,
+        },
     },
+    dependencies=[Depends(write_access_on_incarnation)],
 )
 async def fix_incomplete_change(
+    response: Response,
     change_id: Annotated[int, Depends(get_change_id)],
     change_service: Annotated[ChangeService, Depends(get_change_service)],
 ):
     try:
         await change_service.update_incomplete_change(change_id)
     except CannotRepairChangeException as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+        response.status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+        return ApiError(message=str(e))

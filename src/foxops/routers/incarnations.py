@@ -1,18 +1,30 @@
 from typing import Self
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from pydantic import BaseModel, model_validator
 
-from foxops.database.repositories.incarnation.errors import IncarnationNotFoundError
-from foxops.dependencies import get_change_service, get_hoster, get_incarnation_service
+from foxops.authz import read_access_on_incarnation, write_access_on_incarnation
+from foxops.dependencies import (
+    authorization,
+    get_change_service,
+    get_hoster,
+    get_incarnation_service,
+)
 from foxops.engine import TemplateData
 from foxops.engine.errors import ProvidedTemplateDataInvalidError
+from foxops.errors import GeneralForbiddenError
 from foxops.errors import IncarnationNotFoundError as IncarnationNotFoundLegacyError
 from foxops.hosters import Hoster
 from foxops.logger import bind, get_logger
-from foxops.models import IncarnationBasic, IncarnationWithDetails
+from foxops.models import IncarnationWithDetails
 from foxops.models.errors import ApiError
+from foxops.models.incarnation import (
+    IncarnationWithLatestChangeDetails,
+    UnresolvedGroupPermissions,
+    UnresolvedUserPermissions,
+)
 from foxops.routers import changes
+from foxops.services.authorization import AuthorizationService
 from foxops.services.change import (
     ChangeRejectedDueToNoChanges,
     ChangeRejectedDueToPreviousUnfinishedChange,
@@ -29,12 +41,16 @@ router.include_router(changes.router, prefix="/{incarnation_id}/changes", tags=[
 logger = get_logger(__name__)
 
 
+class IncarnationWithPermissions(IncarnationWithDetails):
+    current_user_permissions: dict[str, bool]
+
+
 @router.get(
     "",
     responses={
         status.HTTP_200_OK: {
             "description": "The list of incarnations in the inventory",
-            "model": list[IncarnationBasic],
+            "model": list[IncarnationWithLatestChangeDetails],
         },
         status.HTTP_400_BAD_REQUEST: {
             "description": "The `incarnation_repository` and `target_directory` settings where inconsistent",
@@ -48,9 +64,13 @@ logger = get_logger(__name__)
 )
 async def list_incarnations(
     response: Response,
-    incarnation_repository: str | None = None,
-    target_directory: str = ".",
+    incarnation_repository: str
+    | None = Query(None, description="The incarnation repository of the incarnation to search for"),
+    target_directory: str = Query(".", description="The target directory of the incarnation to search for"),
+    owner: str | None = Query(None, description="List all incarnations for this given user with this username"),
     change_service: ChangeService = Depends(get_change_service),
+    incarnation_service: IncarnationService = Depends(get_incarnation_service),
+    authorization_service: AuthorizationService = Depends(authorization),
 ):
     """Returns a list of all known incarnations.
 
@@ -58,16 +78,33 @@ async def list_incarnations(
 
     TODO: implement pagination
     """
-    if incarnation_repository is None:
-        return await change_service.list_incarnations()
+    if incarnation_repository is not None and owner is not None:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return ApiError(message="You can only filter by either `incarnation_repository` or `owner`, but not both")
+
+    if incarnation_repository is None and authorization_service.admin:
+        return await change_service.list_incarnations(owner_username=owner)
+    elif incarnation_repository is None:
+        return await change_service.list_incarnations_with_user_access(
+            authorization_service.current_user, owner_username=owner
+        )
 
     try:
-        return [
-            await change_service.get_incarnation_by_repo_and_target_directory(incarnation_repository, target_directory)
-        ]
+        incarnation = await change_service.get_incarnation_by_repo_and_target_directory(
+            incarnation_repository, target_directory
+        )
+
     except IncarnationNotFoundLegacyError:
         response.status_code = status.HTTP_404_NOT_FOUND
         return ApiError(message="No incarnation found for the given repository and target directory")
+
+    permissions = await incarnation_service.get_permissions(incarnation.id)
+
+    if authorization_service.has_read_access(permissions):
+        return [incarnation]
+
+    # We don't want to leak metadata to prevent side channel attacks
+    return ApiError(message="No incarnation found for the given repository and target directory")
 
 
 class CreateIncarnationRequest(BaseModel):
@@ -100,11 +137,13 @@ class CreateIncarnationRequest(BaseModel):
             "model": ApiError,
         },
     },
+    status_code=status.HTTP_201_CREATED,
 )
 async def create_incarnation(
     response: Response,
     request: CreateIncarnationRequest,
     change_service: ChangeService = Depends(get_change_service),
+    authorization_serive: AuthorizationService = Depends(authorization),
 ):
     """Initializes a new incarnation and adds it to the inventory.
 
@@ -122,6 +161,7 @@ async def create_incarnation(
             template_repository=request.template_repository,
             template_repository_version=request.template_repository_version,
             template_data=template_data,
+            owner_id=authorization_serive.current_user.id,
         )
     except ProvidedTemplateDataInvalidError as e:
         response.status_code = status.HTTP_400_BAD_REQUEST
@@ -155,18 +195,34 @@ async def create_incarnation(
             "model": ApiError,
         },
     },
+    dependencies=[Depends(read_access_on_incarnation)],
 )
 async def read_incarnation(
-    response: Response,
     incarnation_id: int,
+    show_permissions: bool = Query(
+        False,
+        description="If set to `true`, the response will also include the permissions of the current user.",
+    ),
     change_service: ChangeService = Depends(get_change_service),
+    authorization_service: AuthorizationService = Depends(authorization),
 ):
     """Returns the details of the incarnation from the inventory."""
-    try:
-        return await change_service.get_incarnation_with_details(incarnation_id)
-    except IncarnationNotFoundError as exc:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        return ApiError(message=str(exc))
+    incarnation = await change_service.get_incarnation_with_details(incarnation_id)
+
+    if not show_permissions:
+        return incarnation
+
+    can_write = authorization_service.has_write_access(incarnation)
+
+    return IncarnationWithPermissions(
+        **incarnation.model_dump(),
+        current_user_permissions={
+            "can_read": True,
+            "can_update": can_write,
+            "can_delete": can_write,
+            "can_reset": can_write,
+        },
+    )
 
 
 class IncarnationResetRequest(BaseModel):
@@ -196,6 +252,7 @@ class IncarnationResetResponse(BaseModel):
             "model": ApiError,
         },
     },
+    dependencies=[Depends(write_access_on_incarnation)],
 )
 async def reset_incarnation(
     incarnation_id: int,
@@ -204,10 +261,14 @@ async def reset_incarnation(
     incarnation_service: IncarnationService = Depends(get_incarnation_service),
     change_service: ChangeService = Depends(get_change_service),
     hoster: Hoster = Depends(get_hoster),
+    authorization_service: AuthorizationService = Depends(authorization),
 ):
     try:
         change = await change_service.reset_incarnation(
-            incarnation_id, request.requested_version, request.requested_data
+            incarnation_id,
+            request.requested_version,
+            request.requested_data,
+            initialized_by=authorization_service.id,
         )
     except ProvidedTemplateDataInvalidError as e:
         response.status_code = status.HTTP_400_BAD_REQUEST
@@ -216,14 +277,12 @@ async def reset_incarnation(
             message=f"could not initialize the incarnation as the provided template data "
             f"is invalid: {'; '.join(error_messages)}"
         )
-    except IncarnationNotFoundError:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        return ApiError(message="The incarnation was not found in the inventory")
     except ChangeRejectedDueToNoChanges:
         response.status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
         return ApiError(message="The incarnation does not have any customizations. Nothing to reset.")
 
     incarnation = await incarnation_service.get_by_id(incarnation_id)
+
     return IncarnationResetResponse(
         incarnation_id=incarnation_id,
         merge_request_id=change.merge_request_id,
@@ -241,6 +300,7 @@ async def _create_change(
     patch: bool,
     response: Response,
     change_service: ChangeService,
+    initialized_by: int,
 ) -> IncarnationWithDetails | ApiError:
     try:
         await change_service.create_change_merge_request(
@@ -249,6 +309,7 @@ async def _create_change(
             requested_data=requested_data,
             automerge=automerge,
             patch=patch,
+            initialized_by=initialized_by,
         )
     except ProvidedTemplateDataInvalidError as e:
         response.status_code = status.HTTP_400_BAD_REQUEST
@@ -257,9 +318,6 @@ async def _create_change(
             message=f"could not initialize the incarnation as the provided template data "
             f"is invalid: {'; '.join(error_messages)}"
         )
-    except IncarnationNotFoundError as exc:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        return ApiError(message=str(exc))
     except ChangeRejectedDueToPreviousUnfinishedChange:
         response.status_code = status.HTTP_409_CONFLICT
         return ApiError(message="There is a previous change that is still open. Please merge/close it first.")
@@ -279,6 +337,10 @@ class UpdateIncarnationRequest(BaseModel):
 
     template_repository_version: str
     template_data: TemplateData
+    owner_id: int
+
+    user_permissions: list[UnresolvedUserPermissions]
+    group_permissions: list[UnresolvedGroupPermissions]
 
     automerge: bool
 
@@ -307,12 +369,15 @@ class UpdateIncarnationRequest(BaseModel):
             "model": ApiError,
         },
     },
+    dependencies=[Depends(write_access_on_incarnation)],
 )
 async def update_incarnation(
     response: Response,
     incarnation_id: int,
     request: UpdateIncarnationRequest,
     change_service: ChangeService = Depends(get_change_service),
+    incarnation_service: IncarnationService = Depends(get_incarnation_service),
+    authorization_serive: AuthorizationService = Depends(authorization),
 ):
     """Updates the incarnation to the given version and data.
 
@@ -320,6 +385,21 @@ async def update_incarnation(
     If you only want to do surgical patches (e.g. updating a single variable or bump the template version while
     reusing the previously set variable values), use the PATCH endpoint instead.
     """
+
+    old_incarnation = await incarnation_service.get_by_id(incarnation_id)
+
+    await incarnation_service.remove_all_permissions(incarnation_id)
+    await incarnation_service.set_user_permissions(incarnation_id, request.user_permissions)
+
+    await incarnation_service.set_group_permissions(incarnation_id, request.group_permissions)
+
+    if old_incarnation.owner.id != request.owner_id:
+        if authorization_serive.admin or old_incarnation.owner.id == authorization_serive.id:
+            await incarnation_service.set_owner(incarnation_id, request.owner_id)
+        else:
+            raise GeneralForbiddenError(
+                "Updating the 'owner' field can only be performed by the current owner or an administator."
+            )
 
     return await _create_change(
         incarnation_id=incarnation_id,
@@ -329,6 +409,7 @@ async def update_incarnation(
         patch=False,
         response=response,
         change_service=change_service,
+        initialized_by=authorization_serive.current_user.id,
     )
 
 
@@ -337,13 +418,28 @@ class PatchIncarnationRequest(BaseModel):
 
     requested_version: str | None = None
     requested_data: TemplateData | None = None
+    user_permissions: list[UnresolvedUserPermissions] | None = None
+    group_permissions: list[UnresolvedGroupPermissions] | None = None
+    owner_id: int | None = None
 
-    automerge: bool
+    automerge: bool | None = None
 
     @model_validator(mode="after")
     def check_either_version_or_data_change_requested(self) -> Self:
-        if self.requested_version is None and self.requested_data is None:
-            raise ValueError("Either requested_version or requested_data must be set")
+        if (
+            self.requested_version is None
+            and self.requested_data is None
+            and self.user_permissions is None
+            and self.group_permissions is None
+            and self.owner_id is None
+        ):
+            raise ValueError(
+                "One of the following fields must be set: requested_version, "
+                "requested_data, user_permission, group_permission, owner_id"
+            )
+
+        if (self.requested_data is not None or self.requested_version is not None) and self.automerge is None:
+            raise ValueError("The 'automerge' field must be set if a change is requested")
 
         return self
 
@@ -372,12 +468,15 @@ class PatchIncarnationRequest(BaseModel):
             "model": ApiError,
         },
     },
+    dependencies=[Depends(write_access_on_incarnation)],
 )
 async def patch_incarnation(
     response: Response,
     incarnation_id: int,
     request: PatchIncarnationRequest,
     change_service: ChangeService = Depends(get_change_service),
+    incarnation_service: IncarnationService = Depends(get_incarnation_service),
+    authorization_serive: AuthorizationService = Depends(authorization),
 ):
     """Updates the incarnation to the given version and data.
 
@@ -387,15 +486,38 @@ async def patch_incarnation(
 
     requested_data = request.requested_data or {}
 
-    return await _create_change(
-        incarnation_id=incarnation_id,
-        requested_version=request.requested_version,
-        requested_data=requested_data,
-        automerge=request.automerge,
-        patch=True,
-        response=response,
-        change_service=change_service,
-    )
+    old_incarnation = await incarnation_service.get_by_id(incarnation_id)
+
+    if request.group_permissions is not None:
+        await incarnation_service.remove_all_group_permissions(incarnation_id)
+        await incarnation_service.set_group_permissions(incarnation_id, request.group_permissions)
+
+    if request.user_permissions is not None:
+        await incarnation_service.remove_all_user_permissions(incarnation_id)
+        await incarnation_service.set_user_permissions(incarnation_id, request.user_permissions)
+
+    if request.owner_id is not None:
+        # This additional check is needed, since only the owner or an admin can change the owner
+        if authorization_serive.admin or authorization_serive.id == old_incarnation.owner.id:
+            await incarnation_service.set_owner(incarnation_id, request.owner_id)
+        else:
+            raise GeneralForbiddenError(
+                "Updating the 'owner' field can only be performed by the current owner or an administator."
+            )
+
+    if request.requested_version is not None or request.requested_data is not None:
+        return await _create_change(
+            incarnation_id=incarnation_id,
+            requested_version=request.requested_version,
+            requested_data=requested_data,
+            automerge=request.automerge or False,
+            patch=True,
+            response=response,
+            change_service=change_service,
+            initialized_by=authorization_serive.current_user.id,
+        )
+
+    return await change_service.get_incarnation_with_details(incarnation_id)
 
 
 @router.delete(
@@ -413,9 +535,10 @@ async def patch_incarnation(
             "model": ApiError,
         },
     },
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(write_access_on_incarnation)],
 )
 async def delete_incarnation(
-    response: Response,
     incarnation_id: int,
     incarnation_service: IncarnationService = Depends(get_incarnation_service),
 ):
@@ -426,12 +549,7 @@ async def delete_incarnation(
     This won't delete the incarnation repository itself, but only deletes the
     incarnation from the inventory.
     """
-
-    try:
-        incarnation = await incarnation_service.get_by_id(incarnation_id)
-    except IncarnationNotFoundError as exc:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        return ApiError(message=str(exc))
+    incarnation = await incarnation_service.get_by_id(incarnation_id)
 
     await incarnation_service.delete(incarnation)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -449,21 +567,17 @@ async def delete_incarnation(
             "model": ApiError,
         },
     },
+    dependencies=[Depends(read_access_on_incarnation)],
 )
 async def diff_incarnation(
-    response: Response,
     incarnation_id: int,
     change_service: ChangeService = Depends(get_change_service),
 ):
     """Returns the diff which shows all changes manually applied to the incarnation."""
-    try:
-        diff = await change_service.diff_incarnation(incarnation_id)
 
-        return Response(
-            content=diff,
-            media_type="text/plain",
-        )
+    diff = await change_service.diff_incarnation(incarnation_id)
 
-    except IncarnationNotFoundError as exc:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        return ApiError(message=str(exc))
+    return Response(
+        content=diff,
+        media_type="text/plain",
+    )

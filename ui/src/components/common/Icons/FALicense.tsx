@@ -1,0 +1,1 @@
+export const FALicense = () => <div dangerouslySetInnerHTML={{ __html: '<!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2025 Fonticons, Inc.-->' }} />

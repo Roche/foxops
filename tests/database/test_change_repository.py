@@ -13,14 +13,22 @@ from foxops.database.repositories.change.model import ChangeType
 from foxops.database.repositories.change.repository import ChangeRepository
 from foxops.database.repositories.incarnation.model import IncarnationInDB
 from foxops.database.repositories.incarnation.repository import IncarnationRepository
+from foxops.database.repositories.user.repository import UserRepository
+from foxops.models.user import User
+
+
+@fixture
+async def user(user_repository: UserRepository):
+    return await user_repository.create(
+        username="test",
+        is_admin=False,
+    )
 
 
 @fixture(scope="function")
-async def incarnation(incarnation_repository: IncarnationRepository) -> IncarnationInDB:
+async def incarnation(incarnation_repository: IncarnationRepository, user: User) -> IncarnationInDB:
     return await incarnation_repository.create(
-        incarnation_repository="test",
-        target_directory="test",
-        template_repository="test",
+        incarnation_repository="test", target_directory="test", template_repository="test", owner_id=user.id
     )
 
 
@@ -179,7 +187,7 @@ async def test_get_latest_change_for_incarnation_throws_exception_when_no_change
 
 
 async def test_list_incarnations_with_change_summary_returns_all_incarnations_with_latest_change_data(
-    change_repository: ChangeRepository,
+    change_repository: ChangeRepository, user: User
 ):
     # GIVEN
     incarnation1_change1 = await change_repository.create_incarnation_with_first_change(
@@ -191,6 +199,7 @@ async def test_list_incarnations_with_change_summary_returns_all_incarnations_wi
         requested_version="v1",
         requested_data=json.dumps({"foo": "bar"}),
         template_data_full=json.dumps({"foo": "bar"}),
+        owner_id=user.id,
     )
     incarnation1_change2 = await change_repository.create_change(
         incarnation_id=incarnation1_change1.id,
@@ -215,6 +224,7 @@ async def test_list_incarnations_with_change_summary_returns_all_incarnations_wi
         requested_version="v1",
         requested_data=json.dumps({"foo": "bar"}),
         template_data_full=json.dumps({"foo": "bar"}),
+        owner_id=user.id,
     )
 
     # WHEN
@@ -328,7 +338,7 @@ async def test_delete_change_raises_exception_when_not_found(change_repository: 
         await change_repository.delete_change(123)
 
 
-async def test_create_incarnation_with_first_change(change_repository: ChangeRepository):
+async def test_create_incarnation_with_first_change(change_repository: ChangeRepository, user: User):
     # WHEN
     change = await change_repository.create_incarnation_with_first_change(
         incarnation_repository="incarnation",
@@ -338,6 +348,7 @@ async def test_create_incarnation_with_first_change(change_repository: ChangeRep
         requested_version_hash="dummy template sha",
         requested_version="v1",
         requested_data=json.dumps({"foo": "bar"}),
+        owner_id=user.id,
         template_data_full=json.dumps({"foo": "bar"}),
     )
 
@@ -353,7 +364,7 @@ async def test_create_incarnation_with_first_change(change_repository: ChangeRep
     assert change.commit_pushed is False
 
 
-async def test_delete_incarnation_also_deletes_associated_changes(change_repository: ChangeRepository):
+async def test_delete_incarnation_also_deletes_associated_changes(change_repository: ChangeRepository, user: User):
     # GIVEN
     change = await change_repository.create_incarnation_with_first_change(
         incarnation_repository="incarnation",
@@ -364,6 +375,7 @@ async def test_delete_incarnation_also_deletes_associated_changes(change_reposit
         requested_version="v1",
         requested_data=json.dumps({"foo": "bar"}),
         template_data_full=json.dumps({"foo": "bar"}),
+        owner_id=user.id,
     )
     incarnation_id = change.incarnation_id
 

@@ -11,7 +11,7 @@ export interface SvgIconProps extends React.SVGAttributes<SVGElement> {
   height?: number,
 }
 export const SvgIcon = ({ children, width = 24, height = 24, ...props }: SvgIconProps) => (
-  <Svg width={width} height={height} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" {...props}>
+  <Svg width={width} height={height} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" {...props} >
     {children}
   </Svg>
 )
