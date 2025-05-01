@@ -29,7 +29,7 @@
     "clsx": "^1.2.1",
     "diff2html": "^3.4.51",
     "dompurify": "^3.2.4",
-    "framer-motion": "^10.18.0",
+    "framer-motion": "^12.9.4",
     "is-url": "^1.2.4",
     "lodash.isequal": "^4.5.0",
     "monaco-editor": "^0.44.0",
