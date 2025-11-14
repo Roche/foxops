@@ -94,7 +94,7 @@ An incarnation directory needs to follow a slightly different structure. It need
 To do this, run the following commands:
 
 ```shell
-mkdir -p merge_request
+mkdir -p merge_requests
 ```
 
 The next step is to create the git repository. You can do this by running the following commands:
