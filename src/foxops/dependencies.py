@@ -14,6 +14,7 @@ from foxops.hosters.local import LocalHoster
 from foxops.logger import get_logger
 from foxops.services.change import ChangeService
 from foxops.services.incarnation import IncarnationService
+from foxops.services.template import TemplateService
 from foxops.settings import (
     DatabaseSettings,
     GitlabHosterSettings,
@@ -92,6 +93,12 @@ def get_incarnation_service(
     hoster: Hoster = Depends(get_hoster),
 ) -> IncarnationService:
     return IncarnationService(incarnation_repository=incarnation_repository, hoster=hoster)
+
+
+def get_template_service(
+    hoster: Hoster = Depends(get_hoster),
+):
+    return TemplateService(hoster=hoster)
 
 
 def get_change_service(

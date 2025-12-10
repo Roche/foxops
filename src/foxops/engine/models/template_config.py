@@ -39,8 +39,16 @@ class BaseVariableDefinition(BaseModel, abc.ABC):
 
         ...
 
+    @abc.abstractmethod
+    def mock_data(self) -> Any:
+        """
+        Returns a mock data value for this variable.
+        """
 
-class BaseFlatVariableDefinition(BaseVariableDefinition):
+        ...
+
+
+class BaseFlatVariableDefinition(BaseVariableDefinition, abc.ABC):
     default: Any | None = None
 
     def pydantic_field_default(self) -> Any:
@@ -60,6 +68,9 @@ class StringVariableDefinition(BaseFlatVariableDefinition):
     def pydantic_field_model(self) -> Any:
         return Annotated[str, BeforeValidator(convert_to_string)]
 
+    def mock_data(self) -> Any:
+        return self.default or ""
+
 
 class IntegerVariableDefinition(BaseFlatVariableDefinition):
     type: Literal["int", "integer"] = "integer"
@@ -67,6 +78,9 @@ class IntegerVariableDefinition(BaseFlatVariableDefinition):
 
     def pydantic_field_model(self) -> Any:
         return int
+
+    def mock_data(self) -> Any:
+        return self.default or 0
 
 
 class BooleanVariableDefinition(BaseFlatVariableDefinition):
@@ -76,9 +90,15 @@ class BooleanVariableDefinition(BaseFlatVariableDefinition):
     def pydantic_field_model(self) -> Any:
         return bool
 
+    def mock_data(self) -> Any:
+        return self.default or False
 
-class BaseListVariableDefinition(BaseFlatVariableDefinition):
+
+class BaseListVariableDefinition(BaseFlatVariableDefinition, abc.ABC):
     type: Literal["list"] = "list"
+
+    def mock_data(self) -> Any:
+        return list(self.default) if self.default is not None else []
 
 
 class StringListVariableDefinition(BaseListVariableDefinition):
@@ -134,6 +154,9 @@ class ObjectVariableDefinition(BaseVariableDefinition):
         }
         return create_model("ObjectVariable", **fields)
 
+    def mock_data(self) -> Any:
+        return {name: child.mock_data() for name, child in self.children.items()}
+
 
 class TemplateRenderingConfig(BaseModel):
     excluded_files: list[str] = Field(
@@ -149,12 +172,16 @@ class TemplateConfig(BaseModel):
     variables: VariableDefinitions = Field(default_factory=dict)
 
     @classmethod
+    def from_string(cls, string) -> Self:
+        yaml = YAML(typ="safe")
+        obj = yaml.load(string)
+
+        return cls(**obj)
+
+    @classmethod
     def from_path(cls, path: Path) -> Self:
         if path.is_file():
-            yaml = YAML(typ="safe")
-            obj = yaml.load(path.read_text())
-
-            return cls(**obj)
+            cls.from_string(path.read_text())
 
         return cls()
 
@@ -168,6 +195,9 @@ class TemplateConfig(BaseModel):
             name: (var.pydantic_field_model(), var.pydantic_field_default()) for name, var in self.variables.items()
         }
         return create_model("TemplateDataModel", **fields)
+
+    def mock_data(self) -> dict[str, Any]:
+        return {name: var.mock_data() for name, var in self.variables.items()}
 
     def save(self, target: Path) -> None:
         target.write_text(self.yaml())

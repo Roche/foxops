@@ -86,7 +86,8 @@ const ErrorWrapper = styled.div({
   display: 'flex',
   alignItems: 'start',
   justifyContent: 'right',
-  paddingRight: '1rem'
+  paddingRight: '1rem',
+  pointerEvents: 'none'
 })
 
 const LoadbarWrapper = styled.div({

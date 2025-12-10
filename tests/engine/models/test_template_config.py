@@ -312,3 +312,81 @@ def test_template_string_variables_accept_integer_inputs_and_converts_them():
 
     # THEN
     assert parsed_data.test_string == "1"
+
+
+def test_mock_data():
+    # GIVEN
+    template_config = TemplateConfig.model_validate(
+        {
+            "variables": {
+                "test_string_with_default": {
+                    "type": "string",
+                    "description": "testdescription",
+                    "default": "test",
+                },
+                "test_string_without_default": {
+                    "type": "string",
+                    "description": "testdescription",
+                },
+                "test_integer_with_default": {
+                    "type": "integer",
+                    "description": "testdescription",
+                    "default": 1,
+                },
+                "test_integer_without_default": {
+                    "type": "integer",
+                    "description": "testdescription",
+                },
+                "test_boolean_with_default": {
+                    "type": "boolean",
+                    "description": "testdescription",
+                    "default": True,
+                },
+                "test_boolean_without_default": {
+                    "type": "boolean",
+                    "description": "testdescription",
+                },
+                "test_list_with_default": {
+                    "type": "list",
+                    "element_type": "string",
+                    "description": "testdescription",
+                    "default": ["abc", "def"],
+                },
+                "test_list_without_default": {
+                    "type": "list",
+                    "element_type": "string",
+                    "description": "testdescription",
+                },
+                "test_object": {
+                    "type": "object",
+                    "description": "testdescription",
+                    "children": {
+                        "test_string_with_default": {
+                            "type": "string",
+                            "description": "testdescription",
+                            "default": "test",
+                        },
+                        "test_string_without_default": {
+                            "type": "string",
+                            "description": "testdescription",
+                        },
+                    },
+                },
+            }
+        }
+    )
+
+    # WHEN
+    mock_data = template_config.mock_data()
+
+    # THEN
+    assert mock_data["test_string_with_default"] == "test"
+    assert mock_data["test_string_without_default"] == ""
+    assert mock_data["test_integer_with_default"] == 1
+    assert mock_data["test_integer_without_default"] == 0
+    assert mock_data["test_boolean_with_default"] is True
+    assert mock_data["test_boolean_without_default"] is False
+    assert mock_data["test_list_with_default"] == ["abc", "def"]
+    assert mock_data["test_list_without_default"] == []
+    assert mock_data["test_object"]["test_string_with_default"] == "test"
+    assert mock_data["test_object"]["test_string_without_default"] == ""
