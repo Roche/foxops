@@ -161,7 +161,7 @@ jobs:
           poetry install
       - run: make -C docs html
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: DocumentationHTML
           path: docs/build/html/
