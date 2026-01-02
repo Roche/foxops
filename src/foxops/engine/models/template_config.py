@@ -90,15 +90,33 @@ class StringListVariableDefinition(BaseListVariableDefinition):
         return list[str]
 
 
+ListVariableDefinition = Annotated[
+    Union[
+        StringListVariableDefinition,
+        "ObjectListVariableDefinition",
+    ],
+    Field(discriminator="element_type"),
+]
+
+
+def validate_variable_type(v: Any) -> Any:
+    if isinstance(v, dict):
+        t = v.get("type")
+        allowed_types = {"string", "integer", "boolean", "list", "object"}
+        if t not in allowed_types:
+            raise ValueError(f"Invalid variable type: '{t}'. Allowed types are: {', '.join(sorted(allowed_types))}")
+    return v
+
+
 VariableDefinition = Annotated[
     Union[
         StringVariableDefinition,
         IntegerVariableDefinition,
         BooleanVariableDefinition,
-        StringListVariableDefinition,
+        ListVariableDefinition,
         "ObjectVariableDefinition",
     ],
-    Field(..., discriminator="type"),
+    BeforeValidator(validate_variable_type),
 ]
 
 
@@ -115,6 +133,20 @@ def valid_variable_names(v: dict[str, Any]) -> dict[str, Any]:
 
 
 VariableDefinitions = Annotated[dict[str, VariableDefinition], AfterValidator(valid_variable_names)]
+
+
+class ObjectListVariableDefinition(BaseListVariableDefinition):
+    element_type: Literal["object"] = "object"
+    children: VariableDefinitions
+    default: list[dict[str, Any]] | None = None
+
+    def pydantic_field_model(self) -> Any:
+        fields: dict[str, Any] = {
+            name: (child.pydantic_field_model(), child.pydantic_field_default())
+            for name, child in self.children.items()
+        }
+        object_model = create_model("ObjectVariable", **fields)
+        return list[object_model]
 
 
 class ObjectVariableDefinition(BaseVariableDefinition):

@@ -1,6 +1,7 @@
 import asyncio
 import copy
 import logging
+import re
 from pathlib import Path
 from subprocess import PIPE, check_output
 from typing import Annotated, Any, Optional
@@ -67,11 +68,28 @@ def parse_template_data_arguments(raw_template_data: list[str]) -> TemplateData:
         # descend into the correct sub-dict of the template data object
         current_level = template_data
         for key_element in key_elements[:-1]:
-            current_level = current_level.setdefault(key_element, {})
+            if match := re.match(r"(.+)\[(\d+)\]$", key_element):
+                list_key = match.group(1)
+                index = int(match.group(2))
+
+                current_level = current_level.setdefault(list_key, [])
+                while len(current_level) <= index:
+                    current_level.append({})
+                current_level = current_level[index]
+            else:
+                current_level = current_level.setdefault(key_element, {})
 
         # now we can inject the value to the "current level"
         if key_elements[-1].endswith("[]"):  # in case we need to append to a list
             current_level.setdefault(key_elements[-1][:-2], []).append(value)
+        elif match := re.match(r"(.+)\[(\d+)\]$", key_elements[-1]):
+            list_key = match.group(1)
+            index = int(match.group(2))
+
+            current_level = current_level.setdefault(list_key, [])
+            while len(current_level) <= index:
+                current_level.append(None)
+            current_level[index] = value
         else:  # or we just want to add a "flat" value
             current_level[key_elements[-1]] = value
 
