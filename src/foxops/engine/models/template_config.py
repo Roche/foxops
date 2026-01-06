@@ -153,7 +153,11 @@ class ObjectListVariableDefinition(BaseListVariableDefinition):
             for name, child in self.children.items()
         }
         object_model = create_model("ObjectVariable", **fields)
-        return list[object_model]
+
+        # `create_model` function returns a class dynamically at runtime
+        # this dynamic behavior is intentional
+        # mypy doesn't recognize the dynamic model as a valid type for generics
+        return list[object_model]  # type: ignore[valid-type]
 
 
 class ObjectVariableDefinition(BaseVariableDefinition):
