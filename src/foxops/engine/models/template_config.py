@@ -13,6 +13,7 @@ from pydantic import (
     BaseModel,
     BeforeValidator,
     Field,
+    TypeAdapter,
     ValidationError,
     create_model,
 )
@@ -139,6 +140,12 @@ class ObjectListVariableDefinition(BaseListVariableDefinition):
     element_type: Literal["object"] = "object"
     children: VariableDefinitions
     default: list[dict[str, Any]] | None = None
+
+    def pydantic_field_default(self) -> Any:
+        if self.default is None:
+            return ...
+
+        return TypeAdapter(self.pydantic_field_model()).validate_python(self.default)
 
     def pydantic_field_model(self) -> Any:
         fields: dict[str, Any] = {
