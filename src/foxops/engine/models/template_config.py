@@ -102,7 +102,7 @@ ListVariableDefinition = Annotated[
 def validate_variable_type(v: Any) -> Any:
     if isinstance(v, dict):
         t = v.get("type")
-        allowed_types = {"string", "integer", "boolean", "list", "object"}
+        allowed_types = {"string", "str", "integer", "int", "boolean", "bool", "list", "object"}
         if t not in allowed_types:
             raise ValueError(f"Invalid variable type: '{t}'. Allowed types are: {', '.join(sorted(allowed_types))}")
     return v
