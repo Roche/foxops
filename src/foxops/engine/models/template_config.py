@@ -13,6 +13,7 @@ from pydantic import (
     BaseModel,
     BeforeValidator,
     Field,
+    TypeAdapter,
     ValidationError,
     create_model,
 )
@@ -90,15 +91,33 @@ class StringListVariableDefinition(BaseListVariableDefinition):
         return list[str]
 
 
+ListVariableDefinition = Annotated[
+    Union[
+        StringListVariableDefinition,
+        "ObjectListVariableDefinition",
+    ],
+    Field(discriminator="element_type"),
+]
+
+
+def validate_variable_type(v: Any) -> Any:
+    if isinstance(v, dict):
+        t = v.get("type")
+        allowed_types = {"string", "str", "integer", "int", "boolean", "bool", "list", "object"}
+        if t not in allowed_types:
+            raise ValueError(f"Invalid variable type: '{t}'. Allowed types are: {', '.join(sorted(allowed_types))}")
+    return v
+
+
 VariableDefinition = Annotated[
     Union[
         StringVariableDefinition,
         IntegerVariableDefinition,
         BooleanVariableDefinition,
-        StringListVariableDefinition,
+        ListVariableDefinition,
         "ObjectVariableDefinition",
     ],
-    Field(..., discriminator="type"),
+    BeforeValidator(validate_variable_type),
 ]
 
 
@@ -115,6 +134,30 @@ def valid_variable_names(v: dict[str, Any]) -> dict[str, Any]:
 
 
 VariableDefinitions = Annotated[dict[str, VariableDefinition], AfterValidator(valid_variable_names)]
+
+
+class ObjectListVariableDefinition(BaseListVariableDefinition):
+    element_type: Literal["object"] = "object"
+    children: VariableDefinitions
+    default: list[dict[str, Any]] | None = None
+
+    def pydantic_field_default(self) -> Any:
+        if self.default is None:
+            return ...
+
+        return TypeAdapter(self.pydantic_field_model()).validate_python(self.default)
+
+    def pydantic_field_model(self) -> Any:
+        fields: dict[str, Any] = {
+            name: (child.pydantic_field_model(), child.pydantic_field_default())
+            for name, child in self.children.items()
+        }
+        object_model = create_model("ObjectVariable", **fields)
+
+        # `create_model` function returns a class dynamically at runtime
+        # this dynamic behavior is intentional
+        # mypy doesn't recognize the dynamic model as a valid type for generics
+        return list[object_model]  # type: ignore[valid-type]
 
 
 class ObjectVariableDefinition(BaseVariableDefinition):

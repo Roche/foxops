@@ -46,24 +46,6 @@ The following basic types are supported:
 
 It is mandatory to give a description for every variable definition. A default value can also be specified as shown in the example above.
 
-(list-variables)=
-#### List Variables
-
-A variable can also be a list of values. For now, only string types are supported. Example:
-
-```yaml
-variables:
-  authors:
-    type: list
-    element_type: string
-    
-    description: List of authors
-    
-    default:
-      - John Doe
-      - Jane Doe
-```
-
 #### Nested Object Variables
 
 Variables can be nested arbitrarily deep. Default values can not be specified on the variables of type object itself - instead specify them on the nested variables. Example:
@@ -73,7 +55,6 @@ variables:
   address:
     type: object
     description: Address of the author
-    
     children:
       street:
         type: string
@@ -85,6 +66,39 @@ variables:
         type: string
         description: City name
         default: Zurich
+```
+
+(list-variables)=
+#### List Variables
+
+A variable can also be a list of values. For now, two types of variables are supported: string types and nested object type. Example:
+
+String list variable:
+```yaml
+variables:
+  authors:
+    type: list
+    element_type: string
+    description: List of authors
+    default:
+      - John Doe
+      - Jane Doe
+```
+
+Nested object list variable:
+```yaml
+variables:
+  my_object_list:
+    type: list
+    element_type: object
+    description: "A list of complex objects"
+    children:
+      name:
+        type: string
+        description: "Name of the item"
+      count:
+        type: integer
+        description: "Count of the item"
 ```
 
 ## Template Variables & Engine
