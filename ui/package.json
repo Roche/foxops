@@ -40,7 +40,7 @@
     "react-router-dom": "^6.29.0",
     "react-window": "^1.8.11",
     "semver": "^7.7.1",
-    "usehooks-ts": "^2.16.0",
+    "usehooks-ts": "^3.1.1",
     "yup": "^0.32.11",
     "zustand": "^4.5.6"
   },
