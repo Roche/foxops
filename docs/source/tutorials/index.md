@@ -5,4 +5,5 @@
 
 write-template-from-scratch
 backwards-compatible-template-changes
+reset-incarnation
 ```
