@@ -772,9 +772,28 @@ def _construct_merge_request_conflict_description(
     return "\n\n".join(description_paragraphs)
 
 
+def _load_fengine_reset_ignore(directory: Path) -> frozenset[str]:
+    """Load the content of .fengine-reset-ignore file from the given directory.
+    The file contains a list of file/folder names (one per line) that should be
+    skipped during file deletion in delete_all_files_in_local_git_repository.
+    """
+    ignore_file = directory / ".fengine-reset-ignore"
+    if not ignore_file.exists():
+        return frozenset()
+
+    content = ignore_file.read_text()
+    ignore_list = frozenset(line.strip() for line in content.splitlines() if line.strip())
+    return ignore_list
+
+
 def delete_all_files_in_local_git_repository(directory: Path) -> None:
+    ignore_list = _load_fengine_reset_ignore(directory)
+
     for file in directory.glob("*"):
         if file.name == ".git":
+            continue
+
+        if file.name in ignore_list:
             continue
 
         if file.is_dir():

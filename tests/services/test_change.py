@@ -714,3 +714,69 @@ async def test_diff_should_not_include_gitrepository(
     diff = await change_service.diff_incarnation(initialized_incarnation.id)
 
     assert diff == ""
+
+
+def test_delete_all_files_in_local_git_repository_respects_fengine_reset_ignore_for_files(tmp_path):
+    # GIVEN
+    (tmp_path / ".fengine-reset-ignore").write_text("keep_me.txt\nkeep_me_too.md")
+    (tmp_path / "keep_me.txt").write_text("I should remain")
+    (tmp_path / "keep_me_too.md").write_text("I should also remain")
+    (tmp_path / "delete_me.txt").write_text("I should be deleted")
+
+    # WHEN
+    delete_all_files_in_local_git_repository(tmp_path)
+
+    # THEN
+    assert (tmp_path / "keep_me.txt").exists()
+    assert (tmp_path / "keep_me_too.md").exists()
+    assert not (tmp_path / "delete_me.txt").exists()
+    assert not (tmp_path / ".fengine-reset-ignore").exists()
+
+
+def test_delete_all_files_in_local_git_repository_respects_fengine_reset_ignore_for_directories(tmp_path):
+    # GIVEN
+    (tmp_path / ".fengine-reset-ignore").write_text("keep_folder")
+    (tmp_path / "keep_folder").mkdir()
+    (tmp_path / "keep_folder" / "nested_file.txt").write_text("Nested content")
+    (tmp_path / "delete_folder").mkdir()
+    (tmp_path / "delete_folder" / "some_file.txt").write_text("To be deleted")
+
+    # WHEN
+    delete_all_files_in_local_git_repository(tmp_path)
+
+    # THEN
+    assert (tmp_path / "keep_folder").exists()
+    assert (tmp_path / "keep_folder" / "nested_file.txt").exists()
+    assert not (tmp_path / "delete_folder").exists()
+
+
+def test_delete_all_files_in_local_git_repository_handles_empty_lines_in_fengine_reset_ignore(tmp_path):
+    # GIVEN
+    (tmp_path / ".fengine-reset-ignore").write_text("keep_me.txt\n\n  \n\nkeep_me_too.md\n")
+    (tmp_path / "keep_me.txt").write_text("I should remain")
+    (tmp_path / "keep_me_too.md").write_text("I should also remain")
+    (tmp_path / "delete_me.txt").write_text("I should be deleted")
+
+    # WHEN
+    delete_all_files_in_local_git_repository(tmp_path)
+
+    # THEN
+    assert (tmp_path / "keep_me.txt").exists()
+    assert (tmp_path / "keep_me_too.md").exists()
+    assert not (tmp_path / "delete_me.txt").exists()
+
+
+def test_delete_all_files_in_local_git_repository_handles_whitespace_in_fengine_reset_ignore(tmp_path):
+    # GIVEN
+    (tmp_path / ".fengine-reset-ignore").write_text("  keep_me.txt  \n  keep_folder  ")
+    (tmp_path / "keep_me.txt").write_text("I should remain")
+    (tmp_path / "keep_folder").mkdir()
+    (tmp_path / "delete_me.txt").write_text("I should be deleted")
+
+    # WHEN
+    delete_all_files_in_local_git_repository(tmp_path)
+
+    # THEN
+    assert (tmp_path / "keep_me.txt").exists()
+    assert (tmp_path / "keep_folder").exists()
+    assert not (tmp_path / "delete_me.txt").exists()
