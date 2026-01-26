@@ -786,6 +786,35 @@ def _load_fengine_reset_ignore(directory: Path) -> frozenset[str]:
     return ignore_list
 
 
+def _is_path_ignored(path: Path, directory: Path, ignore_list: frozenset[str]) -> bool:
+    """Check if a path or any of its parent directories should be ignored."""
+    relative_path = path.relative_to(directory)
+    relative_path_str = str(relative_path)
+
+    # Check if this exact path is in the ignore list
+    if relative_path_str in ignore_list:
+        return True
+
+    # Check if the top-level name is in the ignore list (backward compatibility)
+    if relative_path.parts[0] in ignore_list:
+        return True
+
+    return False
+
+
+def _has_ignored_descendants(path: Path, directory: Path, ignore_list: frozenset[str]) -> bool:
+    """Check if a directory contains any files that should be ignored."""
+    relative_path = path.relative_to(directory)
+    relative_path_str = str(relative_path)
+
+    for ignored_item in ignore_list:
+        # Check if any ignored path is under this directory
+        if ignored_item.startswith(relative_path_str + "/"):
+            return True
+
+    return False
+
+
 def delete_all_files_in_local_git_repository(directory: Path) -> None:
     ignore_list = _load_fengine_reset_ignore(directory)
 
@@ -793,13 +822,32 @@ def delete_all_files_in_local_git_repository(directory: Path) -> None:
         if file.name == ".git":
             continue
 
-        if file.name in ignore_list:
+        if _is_path_ignored(file, directory, ignore_list):
             continue
 
         if file.is_dir():
-            shutil.rmtree(file)
+            if _has_ignored_descendants(file, directory, ignore_list):
+                # Directory has ignored descendants, need to process recursively
+                _delete_directory_contents_with_ignores(file, directory, ignore_list)
+            else:
+                shutil.rmtree(file)
         else:
             file.unlink()
+
+
+def _delete_directory_contents_with_ignores(path: Path, root_directory: Path, ignore_list: frozenset[str]) -> None:
+    """Recursively delete directory contents while respecting ignore list."""
+    for item in path.iterdir():
+        if _is_path_ignored(item, root_directory, ignore_list):
+            continue
+
+        if item.is_dir():
+            if _has_ignored_descendants(item, root_directory, ignore_list):
+                _delete_directory_contents_with_ignores(item, root_directory, ignore_list)
+            else:
+                shutil.rmtree(item)
+        else:
+            item.unlink()
 
 
 def generate_foxops_branch_name(prefix: str, target_directory: str, template_repository_version: str) -> str:

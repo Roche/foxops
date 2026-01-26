@@ -780,3 +780,50 @@ def test_delete_all_files_in_local_git_repository_handles_whitespace_in_fengine_
     assert (tmp_path / "keep_me.txt").exists()
     assert (tmp_path / "keep_folder").exists()
     assert not (tmp_path / "delete_me.txt").exists()
+
+
+def test_delete_all_files_in_local_git_repository_respects_nested_path_exclusions(tmp_path):
+    # GIVEN
+    (tmp_path / ".fengine-reset-ignore").write_text("example/file1")
+    (tmp_path / "example").mkdir()
+    (tmp_path / "example" / "file1").write_text("I should remain")
+    (tmp_path / "example" / "file2").write_text("I should be deleted")
+    (tmp_path / "example" / "nested").mkdir()
+    (tmp_path / "example" / "nested" / "file3").write_text("I should be deleted")
+    (tmp_path / "other_folder").mkdir()
+    (tmp_path / "other_folder" / "file4").write_text("I should be deleted")
+
+    # WHEN
+    delete_all_files_in_local_git_repository(tmp_path)
+
+    # THEN
+    assert (tmp_path / "example").exists()
+    assert (tmp_path / "example" / "file1").exists()
+    assert not (tmp_path / "example" / "file2").exists()
+    assert not (tmp_path / "example" / "nested").exists()
+    assert not (tmp_path / "other_folder").exists()
+
+
+def test_delete_all_files_in_local_git_repository_respects_multiple_nested_path_exclusions(tmp_path):
+    # GIVEN
+    (tmp_path / ".fengine-reset-ignore").write_text("example/file1\nexample/nested/deep_file")
+    (tmp_path / "example").mkdir()
+    (tmp_path / "example" / "file1").write_text("I should remain")
+    (tmp_path / "example" / "file2").write_text("I should be deleted")
+    (tmp_path / "example" / "nested").mkdir()
+    (tmp_path / "example" / "nested" / "deep_file").write_text("I should remain")
+    (tmp_path / "example" / "nested" / "other_file").write_text("I should be deleted")
+    (tmp_path / "other_folder").mkdir()
+    (tmp_path / "other_folder" / "file4").write_text("I should be deleted")
+
+    # WHEN
+    delete_all_files_in_local_git_repository(tmp_path)
+
+    # THEN
+    assert (tmp_path / "example").exists()
+    assert (tmp_path / "example" / "file1").exists()
+    assert not (tmp_path / "example" / "file2").exists()
+    assert (tmp_path / "example" / "nested").exists()
+    assert (tmp_path / "example" / "nested" / "deep_file").exists()
+    assert not (tmp_path / "example" / "nested" / "other_file").exists()
+    assert not (tmp_path / "other_folder").exists()
