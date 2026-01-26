@@ -25,6 +25,7 @@ from foxops.services.change import (
     ChangeService,
     IncarnationAlreadyExists,
     _construct_merge_request_conflict_description,
+    _is_ignored,
     _load_fengine_reset_ignore,
     delete_all_files_in_local_git_repository,
 )
@@ -739,82 +740,137 @@ def test_load_fengine_reset_ignore_handles_whitespace(tmp_path):
     assert result == frozenset({Path("keep_me.txt"), Path("keep_folder")})
 
 
-def test_delete_all_files_in_local_git_repository_respects_fengine_reset_ignore_for_files(tmp_path):
+def test_is_ignored_returns_true_for_exact_file_match():
     # GIVEN
-    (tmp_path / ".fengine-reset-ignore").write_text("keep_me.txt\nkeep_me_too.md")
-    (tmp_path / "keep_me.txt").write_text("I should remain")
-    (tmp_path / "keep_me_too.md").write_text("I should also remain")
-    (tmp_path / "delete_me.txt").write_text("I should be deleted")
+    directory = Path("/repo")
+    ignore_list = frozenset({Path("keep_me.txt")})
 
-    # WHEN
-    delete_all_files_in_local_git_repository(tmp_path)
-
-    # THEN
-    assert (tmp_path / "keep_me.txt").exists()
-    assert (tmp_path / "keep_me_too.md").exists()
-    assert not (tmp_path / "delete_me.txt").exists()
-    assert not (tmp_path / ".fengine-reset-ignore").exists()
+    # WHEN / THEN
+    assert _is_ignored(Path("/repo/keep_me.txt"), directory, ignore_list) is True
 
 
-def test_delete_all_files_in_local_git_repository_respects_fengine_reset_ignore_for_directories(tmp_path):
+def test_is_ignored_returns_false_for_non_matching_file():
     # GIVEN
-    (tmp_path / ".fengine-reset-ignore").write_text("keep_folder")
+    directory = Path("/repo")
+    ignore_list = frozenset({Path("keep_me.txt")})
+
+    # WHEN / THEN
+    assert _is_ignored(Path("/repo/delete_me.txt"), directory, ignore_list) is False
+
+
+def test_is_ignored_returns_true_for_directory_match():
+    # GIVEN
+    directory = Path("/repo")
+    ignore_list = frozenset({Path("keep_folder")})
+
+    # WHEN / THEN
+    assert _is_ignored(Path("/repo/keep_folder"), directory, ignore_list) is True
+
+
+def test_is_ignored_returns_true_for_nested_file_in_ignored_directory():
+    # GIVEN
+    directory = Path("/repo")
+    ignore_list = frozenset({Path("keep_folder")})
+
+    # WHEN / THEN
+    assert _is_ignored(Path("/repo/keep_folder/nested_file.txt"), directory, ignore_list) is True
+
+
+def test_is_ignored_returns_true_for_nested_path_exact_match():
+    # GIVEN
+    directory = Path("/repo")
+    ignore_list = frozenset({Path("example/file1")})
+
+    # WHEN / THEN
+    assert _is_ignored(Path("/repo/example/file1"), directory, ignore_list) is True
+
+
+def test_is_ignored_returns_false_for_sibling_of_nested_ignored_path():
+    # GIVEN
+    directory = Path("/repo")
+    ignore_list = frozenset({Path("example/file1")})
+
+    # WHEN / THEN
+    assert _is_ignored(Path("/repo/example/file2"), directory, ignore_list) is False
+
+
+def test_is_ignored_returns_false_for_parent_of_nested_ignored_path():
+    # GIVEN
+    directory = Path("/repo")
+    ignore_list = frozenset({Path("example/file1")})
+
+    # WHEN / THEN
+    assert _is_ignored(Path("/repo/example"), directory, ignore_list) is False
+
+
+def test_is_ignored_returns_true_for_deeply_nested_path():
+    # GIVEN
+    directory = Path("/repo")
+    ignore_list = frozenset({Path("example/nested/deep_file")})
+
+    # WHEN / THEN
+    assert _is_ignored(Path("/repo/example/nested/deep_file"), directory, ignore_list) is True
+
+
+def test_is_ignored_handles_multiple_ignore_entries():
+    # GIVEN
+    directory = Path("/repo")
+    ignore_list = frozenset({Path("file1.txt"), Path("folder1"), Path("nested/file2")})
+
+    # WHEN / THEN
+    assert _is_ignored(Path("/repo/file1.txt"), directory, ignore_list) is True
+    assert _is_ignored(Path("/repo/folder1"), directory, ignore_list) is True
+    assert _is_ignored(Path("/repo/folder1/child.txt"), directory, ignore_list) is True
+    assert _is_ignored(Path("/repo/nested/file2"), directory, ignore_list) is True
+    assert _is_ignored(Path("/repo/other.txt"), directory, ignore_list) is False
+
+
+def test_is_ignored_returns_false_for_empty_ignore_list():
+    # GIVEN
+    directory = Path("/repo")
+    ignore_list = frozenset()
+
+    # WHEN / THEN
+    assert _is_ignored(Path("/repo/any_file.txt"), directory, ignore_list) is False
+
+
+def test_delete_all_files_in_local_git_repository_respects_fengine_reset_ignore(tmp_path):
+    # GIVEN - comprehensive end-to-end test
+    (tmp_path / ".fengine-reset-ignore").write_text("keep_file.txt\nkeep_folder\nexample/nested/deep_file")
+
+    # Files to keep
+    (tmp_path / "keep_file.txt").write_text("I should remain")
     (tmp_path / "keep_folder").mkdir()
-    (tmp_path / "keep_folder" / "nested_file.txt").write_text("Nested content")
-    (tmp_path / "delete_folder").mkdir()
-    (tmp_path / "delete_folder" / "some_file.txt").write_text("To be deleted")
-
-    # WHEN
-    delete_all_files_in_local_git_repository(tmp_path)
-
-    # THEN
-    assert (tmp_path / "keep_folder").exists()
-    assert (tmp_path / "keep_folder" / "nested_file.txt").exists()
-    assert not (tmp_path / "delete_folder").exists()
-
-
-def test_delete_all_files_in_local_git_repository_respects_nested_path_exclusions(tmp_path):
-    # GIVEN
-    (tmp_path / ".fengine-reset-ignore").write_text("example/file1")
+    (tmp_path / "keep_folder" / "nested_file.txt").write_text("Nested content to keep")
     (tmp_path / "example").mkdir()
-    (tmp_path / "example" / "file1").write_text("I should remain")
-    (tmp_path / "example" / "file2").write_text("I should be deleted")
-    (tmp_path / "example" / "nested").mkdir()
-    (tmp_path / "example" / "nested" / "file3").write_text("I should be deleted")
-    (tmp_path / "other_folder").mkdir()
-    (tmp_path / "other_folder" / "file4").write_text("I should be deleted")
-
-    # WHEN
-    delete_all_files_in_local_git_repository(tmp_path)
-
-    # THEN
-    assert (tmp_path / "example").exists()
-    assert (tmp_path / "example" / "file1").exists()
-    assert not (tmp_path / "example" / "file2").exists()
-    assert not (tmp_path / "example" / "nested").exists()
-    assert not (tmp_path / "other_folder").exists()
-
-
-def test_delete_all_files_in_local_git_repository_respects_multiple_nested_path_exclusions(tmp_path):
-    # GIVEN
-    (tmp_path / ".fengine-reset-ignore").write_text("example/file1\nexample/nested/deep_file")
-    (tmp_path / "example").mkdir()
-    (tmp_path / "example" / "file1").write_text("I should remain")
-    (tmp_path / "example" / "file2").write_text("I should be deleted")
     (tmp_path / "example" / "nested").mkdir()
     (tmp_path / "example" / "nested" / "deep_file").write_text("I should remain")
-    (tmp_path / "example" / "nested" / "other_file").write_text("I should be deleted")
-    (tmp_path / "other_folder").mkdir()
-    (tmp_path / "other_folder" / "file4").write_text("I should be deleted")
+
+    # Files to delete
+    (tmp_path / "delete_me.txt").write_text("I should be deleted")
+    (tmp_path / "delete_folder").mkdir()
+    (tmp_path / "delete_folder" / "some_file.txt").write_text("To be deleted")
+    (tmp_path / "example" / "file_to_delete.txt").write_text("I should be deleted")
+    (tmp_path / "example" / "nested" / "other_file.txt").write_text("I should be deleted")
+
+    # .git directory should be preserved
+    (tmp_path / ".git").mkdir()
+    (tmp_path / ".git" / "config").write_text("git config")
 
     # WHEN
     delete_all_files_in_local_git_repository(tmp_path)
 
-    # THEN
-    assert (tmp_path / "example").exists()
-    assert (tmp_path / "example" / "file1").exists()
-    assert not (tmp_path / "example" / "file2").exists()
-    assert (tmp_path / "example" / "nested").exists()
+    # THEN - kept files
+    assert (tmp_path / "keep_file.txt").exists()
+    assert (tmp_path / "keep_folder").exists()
+    assert (tmp_path / "keep_folder" / "nested_file.txt").exists()
     assert (tmp_path / "example" / "nested" / "deep_file").exists()
-    assert not (tmp_path / "example" / "nested" / "other_file").exists()
-    assert not (tmp_path / "other_folder").exists()
+    assert (tmp_path / ".git").exists()
+    assert (tmp_path / ".git" / "config").exists()
+
+    # THEN - deleted files
+    assert not (tmp_path / "delete_me.txt").exists()
+    assert not (tmp_path / "delete_folder").exists()
+    assert not (tmp_path / "example" / "file_to_delete.txt").exists()
+    assert not (tmp_path / "example" / "nested" / "other_file.txt").exists()
+    assert not (tmp_path / ".fengine-reset-ignore").exists()
