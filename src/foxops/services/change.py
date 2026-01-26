@@ -815,29 +815,21 @@ def _has_ignored_descendants(path: Path, directory: Path, ignore_list: frozenset
     return False
 
 
-def delete_all_files_in_local_git_repository(directory: Path) -> None:
-    ignore_list = _load_fengine_reset_ignore(directory)
+def _delete_directory_contents_with_ignores(
+    path: Path, root_directory: Path, ignore_list: frozenset[str], *, is_root: bool = False
+) -> None:
+    """Recursively delete directory contents while respecting ignore list.
 
-    for file in directory.glob("*"):
-        if file.name == ".git":
-            continue
-
-        if _is_path_ignored(file, directory, ignore_list):
-            continue
-
-        if file.is_dir():
-            if _has_ignored_descendants(file, directory, ignore_list):
-                # Directory has ignored descendants, need to process recursively
-                _delete_directory_contents_with_ignores(file, directory, ignore_list)
-            else:
-                shutil.rmtree(file)
-        else:
-            file.unlink()
-
-
-def _delete_directory_contents_with_ignores(path: Path, root_directory: Path, ignore_list: frozenset[str]) -> None:
-    """Recursively delete directory contents while respecting ignore list."""
+    Args:
+        path: The directory to process
+        root_directory: The root directory used for calculating relative paths
+        ignore_list: Set of paths to ignore (relative to root_directory)
+        is_root: If True, skip .git directory (only at repository root level)
+    """
     for item in path.iterdir():
+        if is_root and item.name == ".git":
+            continue
+
         if _is_path_ignored(item, root_directory, ignore_list):
             continue
 
@@ -848,6 +840,12 @@ def _delete_directory_contents_with_ignores(path: Path, root_directory: Path, ig
                 shutil.rmtree(item)
         else:
             item.unlink()
+
+
+def delete_all_files_in_local_git_repository(directory: Path) -> None:
+    ignore_list = _load_fengine_reset_ignore(directory)
+
+    _delete_directory_contents_with_ignores(directory, directory, ignore_list, is_root=True)
 
 
 def generate_foxops_branch_name(prefix: str, target_directory: str, template_repository_version: str) -> str:
