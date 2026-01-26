@@ -793,29 +793,15 @@ def _is_ignored(path: Path, directory: Path, ignore_list: frozenset[Path]) -> bo
 def delete_all_files_in_local_git_repository(directory: Path) -> None:
     ignore_list = _load_fengine_reset_ignore(directory)
 
-    # Walk bottom-up so we process children before parents
-    for root, dirs, files in directory.walk(top_down=False):
-        # Skip .git directory and its contents entirely
-        if ".git" in root.parts:
-            continue
+    for root, dirs, files in directory.walk(top_down=True):
+        if ".git" in dirs:
+            dirs.remove(".git")
 
         # Delete files that aren't ignored
         for name in files:
             path = root / name
             if not _is_ignored(path, directory, ignore_list):
                 path.unlink()
-
-        # Delete directories that aren't ignored and are now empty
-        for name in dirs:
-            if name == ".git" and root == directory:
-                continue
-
-            path = root / name
-            if not _is_ignored(path, directory, ignore_list):
-                try:
-                    path.rmdir()
-                except OSError:
-                    pass
 
 
 def generate_foxops_branch_name(prefix: str, target_directory: str, template_repository_version: str) -> str:

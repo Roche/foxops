@@ -680,6 +680,7 @@ async def test_reset_incarnation_fails_when_incarnation_does_not_exist(change_se
 def test_delete_all_files_in_local_git_repository_removes_hidden_directories_and_files(tmp_path):
     # GIVEN
     (tmp_path / ".dummy_folder").mkdir()
+    (tmp_path / ".dummy_folder" / "file.txt").write_text("content")
     (tmp_path / "dummy_folder2").mkdir()
     (tmp_path / "dummy_folder2" / ".myfile").write_text("Hello, world!")
     (tmp_path / ".config").write_text("Hello, world!")
@@ -688,16 +689,15 @@ def test_delete_all_files_in_local_git_repository_removes_hidden_directories_and
     delete_all_files_in_local_git_repository(tmp_path)
 
     # THEN
-    assert not (tmp_path / ".dummy_folder").exists()
+    assert not (tmp_path / ".dummy_folder" / "file.txt").exists()
     assert not (tmp_path / "dummy_folder2" / ".myfile").exists()
     assert not (tmp_path / ".config").exists()
 
 
-def test_delete_all_files_in_local_git_repository_does_not_delete_git_directory_in_root_folder(tmp_path):
+def test_delete_all_files_in_local_git_repository_does_not_delete_git_directory(tmp_path):
     # GIVEN
     (tmp_path / ".git").mkdir()
-    (tmp_path / "subfolder").mkdir()
-    (tmp_path / "subfolder" / ".git").mkdir()
+    (tmp_path / ".git" / "config").write_text("git config")
     (tmp_path / "README.md").write_text("Hello, world!")
 
     # WHEN
@@ -705,7 +705,7 @@ def test_delete_all_files_in_local_git_repository_does_not_delete_git_directory_
 
     # THEN
     assert (tmp_path / ".git").exists()
-    assert not (tmp_path / "subfolder" / ".git").exists()
+    assert (tmp_path / ".git" / "config").exists()
     assert not (tmp_path / "README.md").exists()
 
 
@@ -870,7 +870,7 @@ def test_delete_all_files_in_local_git_repository_respects_fengine_reset_ignore(
 
     # THEN - deleted files
     assert not (tmp_path / "delete_me.txt").exists()
-    assert not (tmp_path / "delete_folder").exists()
+    assert not (tmp_path / "delete_folder" / "some_file.txt").exists()
     assert not (tmp_path / "example" / "file_to_delete.txt").exists()
     assert not (tmp_path / "example" / "nested" / "other_file.txt").exists()
     assert not (tmp_path / ".fengine-reset-ignore").exists()
