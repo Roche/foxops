@@ -772,7 +772,7 @@ def _construct_merge_request_conflict_description(
     return "\n\n".join(description_paragraphs)
 
 
-def _load_fengine_reset_ignore(directory: Path) -> frozenset[str]:
+def _load_fengine_reset_ignore(directory: Path) -> frozenset[Path]:
     """Load the content of .fengine-reset-ignore file from the given directory.
     The file contains a list of file/folder names (one per line) that should be
     skipped during file deletion in delete_all_files_in_local_git_repository.
@@ -782,70 +782,40 @@ def _load_fengine_reset_ignore(directory: Path) -> frozenset[str]:
         return frozenset()
 
     content = ignore_file.read_text()
-    ignore_list = frozenset(line.strip() for line in content.splitlines() if line.strip())
-    return ignore_list
+    return frozenset(Path(line.strip()) for line in content.splitlines() if line.strip())
 
 
-def _is_path_ignored(path: Path, directory: Path, ignore_list: frozenset[str]) -> bool:
-    """Check if a path or any of its parent directories should be ignored."""
-    relative_path = path.relative_to(directory)
-    relative_path_str = str(relative_path)
-
-    # Check if this exact path is in the ignore list
-    if relative_path_str in ignore_list:
-        return True
-
-    # Check if the top-level name is in the ignore list (backward compatibility)
-    if relative_path.parts[0] in ignore_list:
-        return True
-
-    return False
-
-
-def _has_ignored_descendants(path: Path, directory: Path, ignore_list: frozenset[str]) -> bool:
-    """Check if a directory contains any files that should be ignored."""
-    relative_path = path.relative_to(directory)
-    relative_path_str = str(relative_path)
-
-    for ignored_item in ignore_list:
-        # Check if any ignored path is under this directory
-        if ignored_item.startswith(relative_path_str + "/"):
-            return True
-
-    return False
-
-
-def _delete_directory_contents_with_ignores(
-    path: Path, root_directory: Path, ignore_list: frozenset[str], *, is_root: bool = False
-) -> None:
-    """Recursively delete directory contents while respecting ignore list.
-
-    Args:
-        path: The directory to process
-        root_directory: The root directory used for calculating relative paths
-        ignore_list: Set of paths to ignore (relative to root_directory)
-        is_root: If True, skip .git directory (only at repository root level)
-    """
-    for item in path.iterdir():
-        if is_root and item.name == ".git":
-            continue
-
-        if _is_path_ignored(item, root_directory, ignore_list):
-            continue
-
-        if item.is_dir():
-            if _has_ignored_descendants(item, root_directory, ignore_list):
-                _delete_directory_contents_with_ignores(item, root_directory, ignore_list)
-            else:
-                shutil.rmtree(item)
-        else:
-            item.unlink()
+def _is_ignored(path: Path, directory: Path, ignore_list: frozenset[Path]) -> bool:
+    relative = path.relative_to(directory)
+    return any(relative == ignored or relative.is_relative_to(ignored) for ignored in ignore_list)
 
 
 def delete_all_files_in_local_git_repository(directory: Path) -> None:
     ignore_list = _load_fengine_reset_ignore(directory)
 
-    _delete_directory_contents_with_ignores(directory, directory, ignore_list, is_root=True)
+    # Walk bottom-up so we process children before parents
+    for root, dirs, files in directory.walk(top_down=False):
+        # Skip .git directory and its contents entirely
+        if ".git" in root.parts:
+            continue
+
+        # Delete files that aren't ignored
+        for name in files:
+            path = root / name
+            if not _is_ignored(path, directory, ignore_list):
+                path.unlink()
+
+        # Delete directories that aren't ignored and are now empty
+        for name in dirs:
+            if name == ".git" and root == directory:
+                continue
+
+            path = root / name
+            if not _is_ignored(path, directory, ignore_list):
+                try:
+                    path.rmdir()
+                except OSError:
+                    pass
 
 
 def generate_foxops_branch_name(prefix: str, target_directory: str, template_repository_version: str) -> str:
