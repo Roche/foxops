@@ -8,8 +8,12 @@ to the incarnation, but they can be overridden. For the data, partial overrides 
 ## Ignore some files from reset
 Sometimes, you want to keep some files in the incarnation that were created or modified after the initial
 creation of the incarnation. For example, you might have a `pipeline.yaml` which is created by different process.
-To achieve this, you can create a file called `.fengine-reset-ignore` in the root of your template. It would propagate it
-to the root of your incarnation repository.
+To achieve this, you can create a file called `.fengine-reset-ignore` in the root of your incarnation repository (that
+is about to be reset) and add the path to the file you want to preserve.
+
+Additionally, if you need to ignore identical files across all incarnations, you can add .fengine-reset-ignore to your
+template. This file will propagate to all incarnations through foxops' usual synchronization mechanisms. That's actually
+the expected usecase otherwise the `.fengine-reset-ignore` file would be also deleted/overwritten during reset.
 
 This file should contain a list of file paths (one per line) that should be ignored during the reset process.
 
