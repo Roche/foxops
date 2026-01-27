@@ -772,15 +772,36 @@ def _construct_merge_request_conflict_description(
     return "\n\n".join(description_paragraphs)
 
 
-def delete_all_files_in_local_git_repository(directory: Path) -> None:
-    for file in directory.glob("*"):
-        if file.name == ".git":
-            continue
+def _load_fengine_reset_ignore(directory: Path) -> frozenset[Path]:
+    """Load the content of .fengine-reset-ignore file from the given directory.
+    The file contains a list of file/folder names (one per line) that should be
+    skipped during file deletion in delete_all_files_in_local_git_repository.
+    """
+    ignore_file = directory / ".fengine-reset-ignore"
+    if not ignore_file.exists():
+        return frozenset()
 
-        if file.is_dir():
-            shutil.rmtree(file)
-        else:
-            file.unlink()
+    content = ignore_file.read_text()
+    return frozenset(Path(line.strip()) for line in content.splitlines() if line.strip())
+
+
+def _is_ignored(path: Path, directory: Path, ignore_list: frozenset[Path]) -> bool:
+    relative = path.relative_to(directory)
+    return any(relative == ignored or relative.is_relative_to(ignored) for ignored in ignore_list)
+
+
+def delete_all_files_in_local_git_repository(directory: Path) -> None:
+    ignore_list = _load_fengine_reset_ignore(directory)
+
+    for root, dirs, files in directory.walk(top_down=True):
+        if ".git" in dirs:
+            dirs.remove(".git")
+
+        # Delete files that aren't ignored
+        for name in files:
+            path = root / name
+            if not _is_ignored(path, directory, ignore_list):
+                path.unlink()
 
 
 def generate_foxops_branch_name(prefix: str, target_directory: str, template_repository_version: str) -> str:
