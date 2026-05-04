@@ -43,6 +43,7 @@ typer = "0.16.0"
 Jinja2 = "^3.0.3"
 pydantic-settings = "2.10.1"
 rich = "^14.1.0"
+requests = "2.33.1"
 
 [tool.poetry.dev-dependencies]
 # Linting
