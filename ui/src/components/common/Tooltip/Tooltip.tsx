@@ -1,5 +1,5 @@
-import { useState, Children, CSSProperties } from 'react'
-import { useFloating, offset, flip, shift, useInteractions, useHover, Placement, safePolygon, FloatingPortal } from '@floating-ui/react-dom-interactions'
+import { useState, Children, cloneElement, CSSProperties } from 'react'
+import { useFloating, offset, flip, shift, useInteractions, useHover, Placement, safePolygon, FloatingPortal } from '@floating-ui/react'
 import styled from '@emotion/styled'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -28,25 +28,27 @@ interface TooltipProps {
 
 export const Tooltip = ({ children, title, dataTestid, placement = 'bottom', style }: TooltipProps) => {
   const [open, setOpen] = useState(false)
-  const { x, y, reference, floating, strategy, context } = useFloating({
+  const { x, y, refs, strategy, context } = useFloating({
     middleware: [offset(8), flip(), shift()],
     open,
     onOpenChange: setOpen,
     placement
   })
-  const { getReferenceProps, getFloatingProps } = useInteractions([useHover(context, { restMs: 200, handleClose: safePolygon() })])
+  const { getReferenceProps, getFloatingProps } = useInteractions([useHover(context, { restMs: 400, handleClose: safePolygon() })])
   try {
     Children.only(children)
   } catch (error) {
     console.error(error)
     return children
   }
-
+  const element = cloneElement(children, {
+    ...children.props,
+    ...getReferenceProps(),
+    ref: refs.setReference
+  })
   return (
     <>
-      <div ref={reference} {...getReferenceProps()}>
-        {children}
-      </div>
+      {element}
       <FloatingPortal>
         <AnimatePresence>
           {open && (
@@ -56,7 +58,7 @@ export const Tooltip = ({ children, title, dataTestid, placement = 'bottom', sty
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0 }}
               transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-              ref={floating}
+              ref={refs.setFloating}
               style={{
                 position: strategy,
                 top: y ?? 0,
