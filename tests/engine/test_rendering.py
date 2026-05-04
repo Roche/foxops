@@ -51,7 +51,7 @@ async def test_rendering_a_template_file_renders_data_in_file_content(tmp_path: 
 async def test_rendering_a_template_file_with_a_binary_file_skipped(tmp_path: Path):
     # GIVEN
     template_file = tmp_path / "template.bin"
-    template_file.write_bytes(b"\x89\xA9")
+    template_file.write_bytes(b"\x89\xa9")
     incarnation_dir = tmp_path / "incarnation"
     incarnation_dir.mkdir()
 
@@ -67,7 +67,7 @@ async def test_rendering_a_template_file_with_a_binary_file_skipped(tmp_path: Pa
     )
 
     # THEN
-    assert (incarnation_dir / "template.bin").read_bytes() == b"\x89\xA9"
+    assert (incarnation_dir / "template.bin").read_bytes() == b"\x89\xa9"
 
 
 async def test_rendering_a_template_file_with_invalid_templating_syntax_raises_exception(
