@@ -6,8 +6,7 @@ from alembic.command import upgrade
 from alembic.script import ScriptDirectory
 from foxops.database.repositories.change.repository import ChangeRepository
 
-INSERT_INCARNAION = text(
-    """
+INSERT_INCARNAION = text("""
     INSERT INTO incarnation (
         id,
         incarnation_repository,
@@ -19,10 +18,8 @@ INSERT_INCARNAION = text(
         '.',
         'https://example.com/template.git'
     )
-    """
-)
-INSERT_LEGACY_CHANGE = text(
-    """
+    """)
+INSERT_LEGACY_CHANGE = text("""
     INSERT INTO change (
         incarnation_id,
         revision,
@@ -44,8 +41,7 @@ INSERT_LEGACY_CHANGE = text(
         '1234567890abcdef',
         1
     )
-    """
-)
+    """)
 
 
 async def test_database_upgrade(alembic_config, database_engine, async_database_engine):

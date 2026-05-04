@@ -118,12 +118,10 @@ async def test_diff_and_patch_no_change_when_updating_to_template_version_with_i
     template_directory.mkdir()
 
     (template_directory / "template").mkdir()
-    (template_directory / "template" / "myfile.txt").write_text(
-        """r1 {...}
+    (template_directory / "template" / "myfile.txt").write_text("""r1 {...}
 
 r2 {...}
-"""
-    )
+""")
     await init_repository(tmp_path)
     incarnation_directory = tmp_path / "incarnation"
     incarnation_directory.mkdir()
@@ -140,22 +138,18 @@ r2 {...}
     # same change in template and incarnation
     updated_template_directory = tmp_path / "updated-template"
     shutil.copytree(template_directory, updated_template_directory)
-    (updated_template_directory / "template" / "myfile.txt").write_text(
-        """r1 {...}
+    (updated_template_directory / "template" / "myfile.txt").write_text("""r1 {...}
 
 rnew {...}
 
 r2 {...}
-"""
-    )
-    (incarnation_directory / "myfile.txt").write_text(
-        """r1 {...}
+""")
+    (incarnation_directory / "myfile.txt").write_text("""r1 {...}
 
 rnew {...}
 
 r2 {...}
-"""
-    )
+""")
     await init_repository(incarnation_directory)
 
     await update_incarnation(
@@ -168,14 +162,12 @@ r2 {...}
     )
 
     # THEN
-    assert (incarnation_directory / "myfile.txt").read_text() == (
-        """r1 {...}
+    assert (incarnation_directory / "myfile.txt").read_text() == ("""r1 {...}
 
 rnew {...}
 
 r2 {...}
-"""
-    )
+""")
 
 
 @pytest.mark.parametrize("diff_patch_func", [diff_and_patch])
@@ -195,12 +187,10 @@ async def test_diff_and_patch_no_change_when_updating_to_template_version_with_i
     template_directory.mkdir()
 
     (template_directory / "template").mkdir()
-    (template_directory / "template" / "myfile.txt").write_text(
-        """r1 {...}
+    (template_directory / "template" / "myfile.txt").write_text("""r1 {...}
 
 r2 {...}
-"""
-    )
+""")
     await init_repository(tmp_path)
 
     incarnation_repository_directory = tmp_path / "incarnation"
@@ -222,22 +212,18 @@ r2 {...}
     # same change in template and incarnation
     updated_template_directory = tmp_path / "updated-template"
     shutil.copytree(template_directory, updated_template_directory)
-    (updated_template_directory / "template" / "myfile.txt").write_text(
-        """r1 {...}
+    (updated_template_directory / "template" / "myfile.txt").write_text("""r1 {...}
 
 rnew {...}
 
 r2 {...}
-"""
-    )
-    (incarnation_directory / "myfile.txt").write_text(
-        """r1 {...}
+""")
+    (incarnation_directory / "myfile.txt").write_text("""r1 {...}
 
 rnew {...}
 
 r2 {...}
-"""
-    )
+""")
 
     await update_incarnation(
         original_template_root_dir=template_directory,
@@ -249,14 +235,12 @@ r2 {...}
     )
 
     # THEN
-    assert (incarnation_directory / "myfile.txt").read_text() == (
-        """r1 {...}
+    assert (incarnation_directory / "myfile.txt").read_text() == ("""r1 {...}
 
 rnew {...}
 
 r2 {...}
-"""
-    )
+""")
 
 
 @pytest.mark.parametrize("diff_patch_func", [diff_and_patch])
@@ -273,12 +257,10 @@ async def test_diff_and_patch_conflict_for_nearby_changes_in_template_and_incarn
     template_directory.mkdir()
 
     (template_directory / "template").mkdir()
-    (template_directory / "template" / "myfile.txt").write_text(
-        """a
+    (template_directory / "template" / "myfile.txt").write_text("""a
 b
 c
-"""
-    )
+""")
     await init_repository(tmp_path)
     incarnation_directory = tmp_path / "incarnation"
     incarnation_directory.mkdir()
@@ -295,18 +277,14 @@ c
     # nearby change in template and incarnation
     updated_template_directory = tmp_path / "updated-template"
     shutil.copytree(template_directory, updated_template_directory)
-    (updated_template_directory / "template" / "myfile.txt").write_text(
-        """a
+    (updated_template_directory / "template" / "myfile.txt").write_text("""a
 b
 a
-"""
-    )
-    (incarnation_directory / "myfile.txt").write_text(
-        """c
+""")
+    (incarnation_directory / "myfile.txt").write_text("""c
 b
 c
-"""
-    )
+""")
     await init_repository(incarnation_directory)
 
     # WHEN
@@ -338,16 +316,14 @@ async def test_diff_and_patch_success_when_changes_in_different_places_in_templa
     template_directory.mkdir()
 
     (template_directory / "template").mkdir()
-    (template_directory / "template" / "myfile.txt").write_text(
-        """a
+    (template_directory / "template" / "myfile.txt").write_text("""a
 b
 c
 
 ###
 ### Add custom changes to this file below
 ###
-"""
-    )
+""")
     await init_repository(tmp_path)
     incarnation_directory = tmp_path / "incarnation"
     incarnation_directory.mkdir()
@@ -364,8 +340,7 @@ c
     # same change in template and incarnation
     updated_template_directory = tmp_path / "updated-template"
     shutil.copytree(template_directory, updated_template_directory)
-    (updated_template_directory / "template" / "myfile.txt").write_text(
-        """a
+    (updated_template_directory / "template" / "myfile.txt").write_text("""a
 b1
 b2
 c
@@ -373,10 +348,8 @@ c
 ###
 ### Add custom changes to this file below
 ###
-"""
-    )
-    (incarnation_directory / "myfile.txt").write_text(
-        """a
+""")
+    (incarnation_directory / "myfile.txt").write_text("""a
 b
 c
 
@@ -384,8 +357,7 @@ c
 ### Add custom changes to this file below
 ###
 mychange
-"""
-    )
+""")
     await init_repository(incarnation_directory)
 
     await update_incarnation(
@@ -398,9 +370,7 @@ mychange
     )
 
     # THEN
-    assert (
-        (incarnation_directory / "myfile.txt").read_text()
-        == """a
+    assert (incarnation_directory / "myfile.txt").read_text() == """a
 b1
 b2
 c
@@ -410,7 +380,6 @@ c
 ###
 mychange
 """
-    )
 
 
 @pytest.mark.parametrize("diff_patch_func", [diff_and_patch])
