@@ -6,6 +6,11 @@ from .logger import get_logger
 
 logger = get_logger("utils")
 
+# Limits concurrent subprocesses to avoid exhausting OS file descriptors.
+# Each subprocess with stdout=PIPE, stderr=PIPE holds 2 FDs for its lifetime;
+# without a cap, high request concurrency accumulates past container FD limits.
+_SUBPROCESS_SEMAPHORE = asyncio.Semaphore(16)
+
 
 class CalledProcessError(subprocess.CalledProcessError, FoxopsError):
     """Error raised when copier fails."""
@@ -32,27 +37,28 @@ async def check_call(
     called process completes, the subprocess will be killed.
     -> Setting the timeout to None (default) will allow the child process to take forever.
     """
-    proc = await asyncio.create_subprocess_exec(
-        program,
-        *args,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-        **kwargs,
-    )
-
-    try:
-        await asyncio.wait_for(proc.wait(), timeout=timeout)
-    except asyncio.TimeoutError:
-        proc.kill()
-        stdout_buffer = None if proc.stdout is None else bytes(proc.stdout._buffer)  # type: ignore
-        stderr_buffer = None if proc.stderr is None else bytes(proc.stderr._buffer)  # type: ignore
-
-        logger.error(
-            "killed process as it exceeded the timeout",
-            stdout_buffer=stdout_buffer,
-            stderr_buffer=stderr_buffer,
+    async with _SUBPROCESS_SEMAPHORE:
+        proc = await asyncio.create_subprocess_exec(
+            program,
+            *args,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            **kwargs,
         )
-        raise
+
+        try:
+            await asyncio.wait_for(proc.wait(), timeout=timeout)
+        except asyncio.TimeoutError:
+            proc.kill()
+            stdout_buffer = None if proc.stdout is None else bytes(proc.stdout._buffer)  # type: ignore
+            stderr_buffer = None if proc.stderr is None else bytes(proc.stderr._buffer)  # type: ignore
+
+            logger.error(
+                "killed process as it exceeded the timeout",
+                stdout_buffer=stdout_buffer,
+                stderr_buffer=stderr_buffer,
+            )
+            raise
 
     if proc.returncode is not None and proc.returncode not in expected_returncodes:
         raise CalledProcessError(

@@ -23,6 +23,7 @@ from pathlib import Path
 import pytest
 
 from foxops.hosters.local import LocalHoster
+from foxops.utils import check_call
 
 # --- sleep-based (mechanism) ---
 # Mirrors the confirmed repro: N requests × 2 concurrent subprocesses per request,
@@ -34,14 +35,14 @@ _SLEEP_SECS = 0.05
 
 
 async def test_concurrent_subprocess_pipes_do_not_exhaust_fd_limit() -> None:
-    """Each asyncio subprocess with stdout/stderr PIPE holds 2 FDs for its lifetime.
+    """The semaphore in check_call must bound concurrent pipe FD consumption.
 
     A single foxops mutation spawns two concurrent git clones (template + incarnation
     repo). With N concurrent API requests and no concurrency cap, N×2×2 pipe FDs
     accumulate simultaneously, exceeding the container limit.
 
-    This test uses `sleep` as a stand-in for a slow remote `git clone` — identical
-    FD lifecycle without requiring network or git infrastructure.
+    Uses check_call("sleep") as a fast stand-in for a slow remote git clone — the
+    same code path as all git subprocesses, without requiring network or git setup.
     """
     soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
     resource.setrlimit(resource.RLIMIT_NOFILE, (_SLEEP_FD_LIMIT, hard))
@@ -50,13 +51,7 @@ async def test_concurrent_subprocess_pipes_do_not_exhaust_fd_limit() -> None:
 
     async def with_open_pipes() -> None:
         try:
-            proc = await asyncio.create_subprocess_exec(
-                "sleep",
-                str(_SLEEP_SECS),
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            await proc.wait()
+            await check_call("sleep", str(_SLEEP_SECS))
         except OSError as exc:
             errors.append(exc)
 
