@@ -80,7 +80,7 @@ export const api: API = {
       let errorResult = result
       try {
         errorResult = typeof errorResult === 'string' ? JSON.parse(errorResult) : errorResult
-      } catch (error) {
+      } catch {
         errorResult = {
           message: errorResult
         }

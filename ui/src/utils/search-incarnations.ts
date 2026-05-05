@@ -54,7 +54,7 @@ export const searchIncarnations = (incarnations: IncarnationBase[], { search }: 
       : []
     const _data = mergeIncarnations(filteredData, regexFilteredData)
     return _data
-  } catch (error) {
+  } catch {
     // invalid regex
   }
   return filteredData

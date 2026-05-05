@@ -211,7 +211,7 @@ export const IncarnationsForm = ({
           try {
             JSON.parse(value)
             return true
-          } catch (error) {
+          } catch {
             return 'Invalid JSON'
           }
         }
