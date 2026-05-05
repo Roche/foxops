@@ -25,7 +25,7 @@ from foxops.engine.patching.git_diff_patch import PatchResult
 from foxops.errors import RetryableError
 from foxops.external.git import GitError, GitRepository
 from foxops.hosters import Hoster
-from foxops.hosters.types import MergeRequestStatus
+from foxops.hosters.types import MergeRequestStatus, ReconciliationStatus
 from foxops.models import IncarnationWithDetails
 from foxops.models.change import Change, ChangeWithMergeRequest
 from foxops.utils import get_logger
@@ -545,20 +545,45 @@ class ChangeService:
         merge_request_status: MergeRequestStatus | None = None
 
         change: Change | ChangeWithMergeRequest
-        if change_type == ChangeType.MERGE_REQUEST:
-            change = await self.get_change_with_merge_request(change_id)
+        try:
+            if change_type == ChangeType.MERGE_REQUEST:
+                change = await self.get_change_with_merge_request(change_id)
 
-            merge_request_id = change.merge_request_id
-            merge_request_status = await self._hoster.get_merge_request_status(
-                incarnation.incarnation_repository, merge_request_id
+                merge_request_id = change.merge_request_id
+                merge_request_status = await self._hoster.get_merge_request_status(
+                    incarnation.incarnation_repository, merge_request_id
+                )
+                merge_request_url = await self._hoster.get_merge_request_url(
+                    incarnation.incarnation_repository, merge_request_id
+                )
+            elif change_type == ChangeType.DIRECT:
+                change = await self.get_change(change_id)
+            else:
+                raise ValueError(f"Unknown change type {change_type}")
+        except IncompleteChange:
+            # The latest change has not been fully committed/pushed yet. Return what is known
+            # from the database so that the incarnation remains readable and deletable.
+            # Use the fix endpoint to repair the change before attempting further updates.
+            change_in_db = await self._change_repository.get_change(change_id)
+            return IncarnationWithDetails(
+                id=incarnation.id,
+                incarnation_repository=incarnation.incarnation_repository,
+                target_directory=incarnation.target_directory,
+                commit_sha=change_in_db.commit_sha,
+                commit_url=await self._hoster.get_commit_url(
+                    incarnation.incarnation_repository, change_in_db.commit_sha
+                ),
+                merge_request_id=change_in_db.merge_request_id,
+                merge_request_url=None,
+                merge_request_status=None,
+                status=ReconciliationStatus.UNKNOWN,
+                revision=change_in_db.revision,
+                template_repository=incarnation.template_repository,
+                template_repository_version=change_in_db.requested_version,
+                template_repository_version_hash=change_in_db.requested_version_hash,
+                template_data=json.loads(change_in_db.requested_data),
+                template_data_full=json.loads(change_in_db.template_data_full),
             )
-            merge_request_url = await self._hoster.get_merge_request_url(
-                incarnation.incarnation_repository, merge_request_id
-            )
-        elif change_type == ChangeType.DIRECT:
-            change = await self.get_change(change_id)
-        else:
-            raise ValueError(f"Unknown change type {change_type}")
 
         status = await self._hoster.get_reconciliation_status(
             incarnation_repository=incarnation.incarnation_repository,
