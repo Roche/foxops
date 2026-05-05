@@ -155,9 +155,9 @@ async def render_template_file(
     incarnation_file_path = Path(incarnation_root_dir) / rendered_path
     await AsyncPath(incarnation_file_path).parent.mkdir(parents=True, exist_ok=True)
     if render_content:
-        await AsyncPath(incarnation_file_path).write_text(rendered_content)
+        await AsyncPath(incarnation_file_path).write_text(typing.cast(str, rendered_content))
     else:
-        await AsyncPath(incarnation_file_path).write_bytes(rendered_content)
+        await AsyncPath(incarnation_file_path).write_bytes(typing.cast(bytes, rendered_content))
     apply_path_stats(incarnation_file_path, template_file_stat)
     return incarnation_file_path
 
