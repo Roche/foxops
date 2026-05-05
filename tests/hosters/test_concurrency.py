@@ -17,6 +17,7 @@ actual `cloned_repository()` code path where the fix must be applied.
 """
 
 import asyncio
+import os
 import resource
 from pathlib import Path
 
@@ -73,10 +74,22 @@ async def test_concurrent_subprocess_pipes_do_not_exhaust_fd_limit() -> None:
     )
 
 
+def _open_fd_count() -> int:
+    """Count file descriptors currently open in this process."""
+    try:
+        return len(os.listdir("/proc/self/fd"))
+    except OSError:
+        return 20  # non-Linux estimate
+
+
 # --- git-based (integration) ---
 # Tests the actual cloned_repository() code path; this is where the fix must be applied.
 _CONCURRENCY = 30
-_FD_LIMIT = 64  # well below _CONCURRENCY×2 + base (~75 FDs)
+# FD budget: semaphore(16) bounds concurrent pipe FDs to 16×2=32.
+# Without the semaphore, 30 concurrent clones = 30×2=60 additional FDs.
+# We pick a margin of 48 (midpoint: 32 < 48 < 60) above the current open-FD
+# baseline so the test is valid regardless of how many FDs pytest/asyncio hold.
+_FD_MARGIN = 48
 
 
 @pytest.fixture
@@ -99,11 +112,16 @@ async def test_concurrent_cloned_repository_does_not_exhaust_file_descriptors(
     Without a concurrency cap, N concurrent callers each hold 2 pipe FDs for the
     lifetime of their underlying git subprocess. At moderate concurrency this
     accumulates past the OS file-descriptor limit (here simulated with setrlimit).
+
+    The FD limit is set dynamically to base + _FD_MARGIN so the test is valid
+    regardless of how many FDs the pytest/asyncio environment already holds open.
     """
     hoster, repo_name = hoster_with_repo
 
     soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
-    resource.setrlimit(resource.RLIMIT_NOFILE, (_FD_LIMIT, hard))
+    base = _open_fd_count()
+    fd_limit = base + _FD_MARGIN
+    resource.setrlimit(resource.RLIMIT_NOFILE, (fd_limit, hard))
 
     errors: list[OSError] = []
 
@@ -122,5 +140,5 @@ async def test_concurrent_cloned_repository_does_not_exhaust_file_descriptors(
     assert not errors, (
         f"{len(errors)}/{_CONCURRENCY} concurrent cloned_repository() calls failed with "
         f"OSError — unbounded git subprocess spawning exhausts file descriptors "
-        f"(FD limit: {_FD_LIMIT}, peak without semaphore: ~{_CONCURRENCY * 2 + 20} FDs)."
+        f"(base FDs: {base}, FD limit: {fd_limit}, peak without semaphore: ~{base + _CONCURRENCY * 2} FDs)."
     )
