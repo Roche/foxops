@@ -14,7 +14,7 @@ readme = "README.md"
 fengine = 'foxops.engine.__main__:app'
 
 [tool.poetry.dependencies]
-python = ">=3.12,<3.13"
+python = ">=3.12,<3.15"
 
 # Web Framework
 uvicorn = "0.38.0"
