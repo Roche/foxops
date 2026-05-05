@@ -15,6 +15,7 @@ no network or git setup required).
 `test_concurrent_cloned_repository_does_not_exhaust_file_descriptors` exercises the
 actual `cloned_repository()` code path where the fix must be applied.
 """
+
 import asyncio
 import resource
 from pathlib import Path
@@ -23,13 +24,12 @@ import pytest
 
 from foxops.hosters.local import LocalHoster
 
-
 # --- sleep-based (mechanism) ---
 # Mirrors the confirmed repro: N requests × 2 concurrent subprocesses per request,
 # each holding stdout+stderr pipe FDs open for the subprocess lifetime.
 # Sleep duration is short to keep the test fast; long enough for FDs to accumulate.
-_SLEEP_CONCURRENCY = 80   # reproduced in issue #571 at this level
-_SLEEP_FD_LIMIT = 256     # typical restrictive container limit
+_SLEEP_CONCURRENCY = 80  # reproduced in issue #571 at this level
+_SLEEP_FD_LIMIT = 256  # typical restrictive container limit
 _SLEEP_SECS = 0.05
 
 
@@ -51,7 +51,8 @@ async def test_concurrent_subprocess_pipes_do_not_exhaust_fd_limit() -> None:
     async def with_open_pipes() -> None:
         try:
             proc = await asyncio.create_subprocess_exec(
-                "sleep", str(_SLEEP_SECS),
+                "sleep",
+                str(_SLEEP_SECS),
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
