@@ -44,9 +44,7 @@ def template_repository_without_variables(tmp_path: Path):
 def template_repository(tmp_path: Path):
     template_repository_dir = tmp_path / "template-repository"
     init_repository(template_repository_dir)
-    (template_repository_dir / "fengine.yaml").write_text(
-        dedent(
-            """
+    (template_repository_dir / "fengine.yaml").write_text(dedent("""
             variables:
                 name:
                     type: str
@@ -55,9 +53,7 @@ def template_repository(tmp_path: Path):
                 age:
                     type: int
                     description: the age
-            """
-        )
-    )
+            """))
     (template_repository_dir / "template").mkdir()
     (template_repository_dir / "template" / "README.md").write_text("# Hello, {{ name }} of age {{ age }}!")
     commit_version(template_repository_dir, "v1")
@@ -77,14 +73,11 @@ def template_repository_with_two_versions(template_repository: Path):
 def template_repository_with_two_versions_different_variables(
     template_repository: Path,
 ):
-    (template_repository / "fengine.yaml").write_text(
-        (template_repository / "fengine.yaml").read_text()
-        + """
+    (template_repository / "fengine.yaml").write_text((template_repository / "fengine.yaml").read_text() + """
     new:
         type: str
         description: the new
-"""
-    )
+""")
     (template_repository / "template" / "info.txt").write_text("some info for {{ name }} with {{ new }}.")
     commit_version(template_repository, "v2")
 

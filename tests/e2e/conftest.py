@@ -72,8 +72,7 @@ def gitlab_template_repository(gitlab_client: Client, gitlab_project_factory: Ca
             f"/projects/{project['id']}/repository/files/{quote_plus('fengine.yaml')}",
             json={
                 "encoding": "base64",
-                "content": base64.b64encode(
-                    b"""
+                "content": base64.b64encode(b"""
 variables:
     name:
         type: str
@@ -87,8 +86,7 @@ variables:
         type: str
         description: The country of the person
         default: Switzerland
-"""
-                ).decode("utf-8"),
+""").decode("utf-8"),
                 "commit_message": "Initial commit",
                 "branch": project["default_branch"],
             },

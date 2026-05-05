@@ -24,16 +24,14 @@ async def init_repository(repository_dir: Path) -> str:
 
 async def test_initialize_template_at_root_of_incarnation_repository(tmp_path: Path):
     # GIVEN
-    (tmp_path / "fengine.yaml").write_text(
-        """
+    (tmp_path / "fengine.yaml").write_text("""
 variables:
   author:
     type: str
     description: dummy
   three:
     type: int
-    description: dummy"""
-    )
+    description: dummy""")
 
     template_dir = tmp_path / "template"
     template_dir.mkdir()
@@ -132,16 +130,14 @@ async def test_initialize_template_at_root_of_incarnation_repository_with_existi
 
 async def test_initialize_template_fails_when_variables_are_not_set(tmp_path):
     # GIVEN
-    (tmp_path / "fengine.yaml").write_text(
-        """
+    (tmp_path / "fengine.yaml").write_text("""
 variables:
   author:
     type: str
     description: dummy
   three:
     type: int
-    description: dummy"""
-    )
+    description: dummy""")
 
     template_dir = tmp_path / "template"
     template_dir.mkdir()
@@ -165,8 +161,7 @@ async def test_initialize_template_used_passed_value_instead_default_for_optiona
     tmp_path,
 ):
     # GIVEN
-    (tmp_path / "fengine.yaml").write_text(
-        """
+    (tmp_path / "fengine.yaml").write_text("""
 variables:
   author:
     type: str
@@ -174,8 +169,7 @@ variables:
   three:
     type: int
     description: dummy
-    default: 42"""
-    )
+    default: 42""")
 
     template_dir = tmp_path / "template"
     template_dir.mkdir()
@@ -200,8 +194,7 @@ variables:
 
 async def test_initialize_template_allows_optional_variables(tmp_path):
     # GIVEN
-    (tmp_path / "fengine.yaml").write_text(
-        """
+    (tmp_path / "fengine.yaml").write_text("""
 variables:
   author:
     type: str
@@ -209,8 +202,7 @@ variables:
   three:
     type: int
     description: dummy
-    default: 42"""
-    )
+    default: 42""")
 
     template_dir = tmp_path / "template"
     template_dir.mkdir()
@@ -235,8 +227,7 @@ variables:
 
 async def test_initialize_template_adds_additional_variables_to_state(tmp_path):
     # GIVEN
-    (tmp_path / "fengine.yaml").write_text(
-        """
+    (tmp_path / "fengine.yaml").write_text("""
 variables:
   author:
     type: str
@@ -244,8 +235,7 @@ variables:
   three:
     type: int
     description: dummy
-    default: 42"""
-    )
+    default: 42""")
 
     template_dir = tmp_path / "template"
     template_dir.mkdir()

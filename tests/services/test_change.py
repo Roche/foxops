@@ -431,15 +431,12 @@ async def test_construct_merge_request_conflict_description_with_conflicts():
     description = _construct_merge_request_conflict_description(conflict_files, [])
 
     # THEN
-    assert (
-        description
-        == """Foxops couldn't automatically apply the changes from the template in this incarnation
+    assert description == """Foxops couldn't automatically apply the changes from the template in this incarnation
 
 The following files were updated in the template repository - and at the same time - also
 **modified** in the incarnation repository. Please resolve the conflicts manually:
 
 - README.md"""
-    )
 
 
 async def test_construct_merge_request_conflict_description_with_conflicts_and_deletions():
@@ -451,9 +448,7 @@ async def test_construct_merge_request_conflict_description_with_conflicts_and_d
     description = _construct_merge_request_conflict_description(conflict_files, deleted_files)
 
     # THEN
-    assert (
-        description
-        == """Foxops couldn't automatically apply the changes from the template in this incarnation
+    assert description == """Foxops couldn't automatically apply the changes from the template in this incarnation
 
 The following files were updated in the template repository - and at the same time - also
 **modified** in the incarnation repository. Please resolve the conflicts manually:
@@ -464,7 +459,6 @@ The following files were updated in the template repository but are **no longer
 present** in this incarnation repository. Please resolve the conflicts manually:
 
 - CONTRIBUTING.md"""
-    )
 
 
 async def test_list_changes(
