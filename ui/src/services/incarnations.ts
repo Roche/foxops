@@ -68,7 +68,7 @@ const convertToUiIncarnation = (incarnation: IncarnationApiView): Incarnation =>
   templateData: incarnation.template_data ?? {},
   templateDataFull: incarnation.template_data_full ?? {},
   revision: incarnation.revision,
-  autoUpdateIntervalSeconds: incarnation.auto_update_interval_seconds,
+  autoUpdateIntervalSeconds: incarnation.auto_update_interval_seconds
 })
 
 const convertToApiInput = (incarnation: IncarnationInput): IncarnationApiInput => ({
@@ -78,14 +78,14 @@ const convertToApiInput = (incarnation: IncarnationInput): IncarnationApiInput =
   target_directory: incarnation.targetDirectory,
   template_data: JSON.parse(incarnation.templateData),
   automerge: false,
-  auto_update_interval_seconds: incarnation.autoUpdateIntervalSeconds,
+  auto_update_interval_seconds: incarnation.autoUpdateIntervalSeconds
 })
 
 const convertToApiUpdateInput = (incarnation: IncarnationInput): IncarnationUpdateApiInput => ({
   template_repository_version: incarnation.templateVersion,
   template_data: JSON.parse(incarnation.templateData),
   automerge: incarnation.automerge,
-  auto_update_interval_seconds: incarnation.autoUpdateIntervalSeconds,
+  auto_update_interval_seconds: incarnation.autoUpdateIntervalSeconds
 })
 
 const convertToUiChange = (incarnationChange: ChangeApiView): Change => ({
