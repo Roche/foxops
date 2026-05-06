@@ -315,6 +315,38 @@ export const IncarnationsForm = ({
                 />
               </Hug>
             )}
+            <Hug mb={16}>
+              <Controller
+                control={control}
+                name="autoUpdateIntervalSeconds"
+                render={({ field: { onChange, value } }) => (
+                  <ToggleSwitch
+                    checked={value > 0}
+                    label="Auto update"
+                    disabled={isLoading}
+                    onChange={e => onChange(e.target.checked ? 3600 : 0)}
+                  />
+                )}
+              />
+            </Hug>
+            {watch('autoUpdateIntervalSeconds') > 0 && (
+              <Hug mb={16}>
+                <Controller
+                  control={control}
+                  name="autoUpdateIntervalSeconds"
+                  render={({ field: { onChange, value } }) => (
+                    <TextField
+                      label="Update interval (minutes)"
+                      type="number"
+                      disabled={isLoading}
+                      size="large"
+                      value={Math.round(value / 60)}
+                      onChange={e => onChange(Math.max(1, parseInt(e.target.value, 10) || 1) * 60)}
+                    />
+                  )}
+                />
+              </Hug>
+            )}
           </Hug>
           <Hug w="calc(60% - 2rem)" h="100%">
             {isEdit ? (
