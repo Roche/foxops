@@ -10,9 +10,9 @@ logger = get_logger("utils")
 # One semaphore per event loop — avoids "bound to a different event loop" errors
 # when multiple loops exist (e.g. in tests). Each subprocess with stdout=PIPE,
 # stderr=PIPE holds 2 FDs; the cap of 16 prevents FD exhaustion under concurrency.
-_subprocess_semaphores: weakref.WeakKeyDictionary[
-    asyncio.AbstractEventLoop, asyncio.Semaphore
-] = weakref.WeakKeyDictionary()
+_subprocess_semaphores: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Semaphore] = (
+    weakref.WeakKeyDictionary()
+)
 
 
 def _get_subprocess_semaphore() -> asyncio.Semaphore:

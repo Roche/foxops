@@ -110,7 +110,4 @@ async def test_concurrent_cloned_repository_does_not_exhaust_file_descriptors(
 
     await asyncio.gather(*[clone_once() for _ in range(_CONCURRENCY)])
 
-    assert not errors, (
-        f"{len(errors)}/{_CONCURRENCY} concurrent cloned_repository() calls failed: "
-        f"{errors[:3]}"
-    )
+    assert not errors, f"{len(errors)}/{_CONCURRENCY} concurrent cloned_repository() calls failed: " f"{errors[:3]}"
