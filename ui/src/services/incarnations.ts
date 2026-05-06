@@ -121,7 +121,8 @@ export const incarnations = {
     const incarnationApiInput: IncarnationUpdateApiInput = {
       automerge: input.automerge,
       template_repository_version: input.templateVersion,
-      template_data: incarnation.templateData
+      template_data: incarnation.templateData,
+      auto_update_interval_seconds: incarnation.autoUpdateIntervalSeconds
     }
     const data = await api.put<IncarnationUpdateApiInput, IncarnationApiView>(`/incarnations/${incarnation.id}`, { body: incarnationApiInput })
     return convertToUiIncarnation(data)

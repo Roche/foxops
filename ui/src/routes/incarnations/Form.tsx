@@ -337,10 +337,9 @@ export const IncarnationsForm = ({
                   render={({ field: { onChange, value } }) => (
                     <TextField
                       label="Update interval (minutes)"
-                      type="number"
                       disabled={isLoading}
                       size="large"
-                      value={Math.round(value / 60)}
+                      value={String(Math.round(value / 60))}
                       onChange={e => onChange(Math.max(1, parseInt(e.target.value, 10) || 1) * 60)}
                     />
                   )}
