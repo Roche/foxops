@@ -1,15 +1,27 @@
 import asyncio
 import subprocess
+import weakref
 
 from .errors import FoxopsError
 from .logger import get_logger
 
 logger = get_logger("utils")
 
-# Limits concurrent subprocesses to avoid exhausting OS file descriptors.
-# Each subprocess with stdout=PIPE, stderr=PIPE holds 2 FDs for its lifetime;
-# without a cap, high request concurrency accumulates past container FD limits.
-_SUBPROCESS_SEMAPHORE = asyncio.Semaphore(16)
+# One semaphore per event loop — avoids "bound to a different event loop" errors
+# when multiple loops exist (e.g. in tests). Each subprocess with stdout=PIPE,
+# stderr=PIPE holds 2 FDs; the cap of 16 prevents FD exhaustion under concurrency.
+_subprocess_semaphores: weakref.WeakKeyDictionary[
+    asyncio.AbstractEventLoop, asyncio.Semaphore
+] = weakref.WeakKeyDictionary()
+
+
+def _get_subprocess_semaphore() -> asyncio.Semaphore:
+    loop = asyncio.get_running_loop()
+    sem = _subprocess_semaphores.get(loop)
+    if sem is None:
+        sem = asyncio.Semaphore(16)
+        _subprocess_semaphores[loop] = sem
+    return sem
 
 
 class CalledProcessError(subprocess.CalledProcessError, FoxopsError):
@@ -37,7 +49,7 @@ async def check_call(
     called process completes, the subprocess will be killed.
     -> Setting the timeout to None (default) will allow the child process to take forever.
     """
-    async with _SUBPROCESS_SEMAPHORE:
+    async with _get_subprocess_semaphore():
         proc = await asyncio.create_subprocess_exec(
             program,
             *args,
@@ -58,6 +70,12 @@ async def check_call(
                 stdout_buffer=stdout_buffer,
                 stderr_buffer=stderr_buffer,
             )
+            raise
+        except BaseException:
+            # Kill the process on cancellation or any other unexpected exception so
+            # that orphan subprocesses do not block event-loop shutdown
+            # (ThreadedChildWatcher joins child-watcher threads on loop close).
+            proc.kill()
             raise
 
     if proc.returncode is not None and proc.returncode not in expected_returncodes:
