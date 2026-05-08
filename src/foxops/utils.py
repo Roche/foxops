@@ -11,8 +11,19 @@ class CalledProcessError(subprocess.CalledProcessError, FoxopsError):
     """Error raised when copier fails."""
 
     def __str__(self):
-        """Extend so that the string prints stdout and stderr by default."""
-        return f"{super().__str__()} with stdout '{self.stdout}' and stderr '{self.stderr}'"
+        def decode(data):
+            if isinstance(data, bytes):
+                return data.decode(errors="replace")
+            return data or ""
+
+        parts = [f"Command {self.cmd!r} returned non-zero exit status {self.returncode}."]
+        stdout = decode(self.stdout).strip()
+        stderr = decode(self.stderr).strip()
+        if stdout:
+            parts.append(f"stdout:\n{stdout}")
+        if stderr:
+            parts.append(f"stderr:\n{stderr}")
+        return "\n".join(parts)
 
 
 async def check_call(
