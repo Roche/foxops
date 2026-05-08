@@ -16,7 +16,7 @@ from foxops.engine.models.template_config import (
 )
 from foxops.external.git import git_exec
 from foxops.hosters.local import LocalHoster
-from foxops.hosters.types import MergeRequestStatus
+from foxops.hosters.types import MergeRequestStatus, ReconciliationStatus
 from foxops.models import Incarnation
 from foxops.models.change import Change, ChangeWithMergeRequest
 from foxops.services.change import (
@@ -481,6 +481,25 @@ async def test_list_changes(
 
     assert isinstance(changes[1], Change)
     assert changes[1].revision == 1
+
+
+async def test_get_incarnation_with_details_returns_unknown_status_when_change_is_incomplete(
+    change_service: ChangeService, initialized_incarnation: Incarnation
+):
+    # GIVEN a change whose commit was never pushed (commit_pushed=False)
+    change = await change_service.create_change_direct(
+        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}
+    )
+    await change_service._change_repository.update_commit_pushed(change.id, False)
+
+    # WHEN
+    details = await change_service.get_incarnation_with_details(initialized_incarnation.id)
+
+    # THEN the incarnation is still readable with UNKNOWN reconciliation status
+    assert details.id == initialized_incarnation.id
+    assert details.status == ReconciliationStatus.UNKNOWN
+    assert details.revision == change.revision
+    assert details.merge_request_status is None
 
 
 async def test_update_incomplete_change_recovers_from_unpushed_direct_change(
