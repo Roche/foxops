@@ -3,7 +3,7 @@ import os
 import typing
 from pathlib import Path
 
-from aiopath import AsyncPath
+from anyio import Path as AsyncPath
 from jinja2 import FileSystemLoader, StrictUndefined
 from jinja2.sandbox import SandboxedEnvironment
 
@@ -152,13 +152,13 @@ async def render_template_file(
     )
 
     template_file_stat = template_file_path.stat(follow_symlinks=False)  # type: ignore
-    incarnation_file_path = AsyncPath(incarnation_root_dir, rendered_path)
-    await incarnation_file_path.parent.mkdir(parents=True, exist_ok=True)
+    incarnation_file_path = Path(incarnation_root_dir) / rendered_path
+    await AsyncPath(incarnation_file_path).parent.mkdir(parents=True, exist_ok=True)
     if render_content:
-        await incarnation_file_path.write_text(rendered_content)
+        await AsyncPath(incarnation_file_path).write_text(typing.cast(str, rendered_content))
     else:
-        await incarnation_file_path.write_bytes(rendered_content)
-    apply_path_stats(Path(incarnation_file_path), template_file_stat)
+        await AsyncPath(incarnation_file_path).write_bytes(typing.cast(bytes, rendered_content))
+    apply_path_stats(incarnation_file_path, template_file_stat)
     return incarnation_file_path
 
 
@@ -179,9 +179,9 @@ async def render_template_dir(
     logger.debug("rendering directory in incarnation", path=rendered_path)
 
     template_dir_stat = template_dir_path.stat(follow_symlinks=False)  # type: ignore
-    incarnation_dir_path = AsyncPath(incarnation_root_dir, rendered_path)
-    await incarnation_dir_path.mkdir(parents=True, exist_ok=True)
-    apply_path_stats(Path(incarnation_dir_path), template_dir_stat)
+    incarnation_dir_path = Path(incarnation_root_dir) / rendered_path
+    await AsyncPath(incarnation_dir_path).mkdir(parents=True, exist_ok=True)
+    apply_path_stats(incarnation_dir_path, template_dir_stat)
     return incarnation_dir_path
 
 
