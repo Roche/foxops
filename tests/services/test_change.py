@@ -611,50 +611,74 @@ async def test_update_incomplete_change_raises_exception_for_pushed_merge_reques
         await change_service.update_incomplete_change(change.id)
 
 
-# --- Regression tests for issue #584 ---
-# These reproduce the deadlock scenarios described in the issue.
-# They use only the pre-existing API surface so they can verify the bug exists
-# on the old code (red) and is fixed by the implementation (green).
-
-
-@pytest.mark.xfail(strict=False, reason="Issue #584: update_incomplete_change skips commit_pushed=True changes with invalid SHAs")
-async def test_584_update_incomplete_change_handles_committed_change_with_missing_sha(
+@pytest.mark.xfail(strict=False, reason="Issue #584: mutation path does not self-heal broken changes")
+async def test_584_direct_change_recovers_after_force_push(
     local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation
 ):
-    """After a force-push, update_incomplete_change should handle a change
-    with commit_pushed=True but a nonexistent commit SHA, so that the
-    incarnation's latest change points to a real commit."""
+    """
+    Scenario: A user upgrades an incarnation to v1.1.0 via foxops. Later, someone
+    force-pushes (or rebases) the incarnation repository, removing the commit that
+    foxops recorded for v1.1.0. The user then wants to upgrade to v1.2.0.
 
-    # GIVEN — a completed change whose commit is then removed (force-push)
+    Previously this was a deadlock: foxops refused all mutations because the latest
+    change referenced a nonexistent commit (commit_pushed=False). The user had no
+    API path to recover without direct DB manipulation.
+
+    Expected: the normal PUT/PATCH mutation path should detect that the broken
+    change's commit no longer exists in git, invalidate it, and proceed with the
+    update as if it were applied on top of the last known-good state.
+    """
+
+    # User upgrades incarnation from v1.0.0 to v1.1.0
     change = await change_service.create_change_direct(
         initialized_incarnation.id, requested_version="v1.1.0", requested_data={}
     )
 
+    # Someone force-pushes the repo, removing the v1.1.0 commit.
+    # The DB still has a change record pointing at the now-nonexistent SHA.
+    # We also mark commit_pushed=False to simulate the state where foxops
+    # was mid-push when the force-push happened (the common trigger for the deadlock).
     repo_path = local_hoster._repo_path(initialized_incarnation.incarnation_repository)
     await git_exec("update-ref", "HEAD", "HEAD^", cwd=repo_path)
     await git_exec("gc", "--prune=now", cwd=repo_path)
+    await change_service._change_repository.update_commit_pushed(change.id, False)
 
-    # WHEN
-    await change_service.update_incomplete_change(change.id)
-
-    # THEN — the latest change should have a commit that actually exists in git
-    latest = await change_service._change_repository.get_latest_change_for_incarnation(
-        initialized_incarnation.id
+    # User tries to upgrade to v1.2.0 via the normal API — no /fix needed
+    new_change = await change_service.create_change_direct(
+        initialized_incarnation.id, requested_version="v1.2.0", requested_data={}
     )
+
+    # The mutation succeeds and the new change has a real commit in git
+    assert new_change.requested_version == "v1.2.0"
     assert await local_hoster.does_commit_exist(
-        initialized_incarnation.incarnation_repository, latest.commit_sha
-    ), "Latest change points to a nonexistent commit — incarnation is unrecoverable"
+        initialized_incarnation.incarnation_repository, new_change.commit_sha
+    )
+
+    # GET incarnation returns healthy state at the new version
+    details = await change_service.get_incarnation_with_details(initialized_incarnation.id)
+    assert details.template_repository_version == "v1.2.0"
+    assert details.status != ReconciliationStatus.UNKNOWN
 
 
-@pytest.mark.xfail(strict=False, reason="Issue #584: multiple broken changes leave incarnation unrecoverable")
-async def test_584_incarnation_recovers_from_multiple_broken_changes(
+@pytest.mark.xfail(strict=False, reason="Issue #584: mutation path does not self-heal broken changes")
+async def test_584_direct_change_recovers_after_force_push_removes_multiple_commits(
     local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation
 ):
-    """After a force-push removes multiple commits, repeatedly calling
-    update_incomplete_change should leave the incarnation in a recoverable
-    state where the latest change has a valid commit."""
+    """
+    Scenario: A user upgrades an incarnation through v1.0.0 → v1.1.0 → v1.2.0.
+    Someone then does `git reset --hard` back to the original state, wiping both
+    upgrade commits. The user wants to re-apply v1.2.0.
 
-    # GIVEN — two changes on top of the initial one, then both commits removed
+    This is the "chain" variant of the force-push deadlock: the system must walk
+    backwards past multiple broken changes to find a valid base. Previously, even
+    if you managed to fix one broken change, the next one in the chain would block
+    you again.
+
+    Expected: the mutation path invalidates all broken changes in the chain and
+    applies the requested update on top of the last surviving valid commit.
+    """
+
+    # User upgrades through two versions
     change_v11 = await change_service.create_change_direct(
         initialized_incarnation.id, requested_version="v1.1.0", requested_data={}
     )
@@ -662,47 +686,235 @@ async def test_584_incarnation_recovers_from_multiple_broken_changes(
         initialized_incarnation.id, requested_version="v1.2.0", requested_data={}
     )
 
+    # Someone resets the repo back to the initial commit, removing both upgrade commits.
+    # Both changes are now orphaned — their SHAs point at garbage-collected objects.
     repo_path = local_hoster._repo_path(initialized_incarnation.incarnation_repository)
     await git_exec("update-ref", "HEAD", "HEAD~2", cwd=repo_path)
     await git_exec("gc", "--prune=now", cwd=repo_path)
+    await change_service._change_repository.update_commit_pushed(change_v12.id, False)
+    await change_service._change_repository.update_commit_pushed(change_v11.id, False)
 
-    # WHEN — attempt repair of both changes
-    await change_service.update_incomplete_change(change_v12.id)
-    await change_service.update_incomplete_change(change_v11.id)
-
-    # THEN — the latest change should have a valid commit
-    latest = await change_service._change_repository.get_latest_change_for_incarnation(
-        initialized_incarnation.id
+    # User re-applies v1.2.0 via the normal API
+    new_change = await change_service.create_change_direct(
+        initialized_incarnation.id, requested_version="v1.2.0", requested_data={}
     )
+
+    # Succeeds with a valid commit
+    assert new_change.requested_version == "v1.2.0"
     assert await local_hoster.does_commit_exist(
-        initialized_incarnation.incarnation_repository, latest.commit_sha
-    ), "Latest change points to a nonexistent commit after repairing both changes"
+        initialized_incarnation.incarnation_repository, new_change.commit_sha
+    )
+
+    # GET confirms healthy state
+    details = await change_service.get_incarnation_with_details(initialized_incarnation.id)
+    assert details.template_repository_version == "v1.2.0"
+    assert details.status != ReconciliationStatus.UNKNOWN
+
+
+@pytest.mark.xfail(strict=False, reason="Issue #584: mutation path does not self-heal broken changes")
+async def test_584_get_incarnation_reports_broken_state_without_mutating(
+    local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation
+):
+    """
+    Scenario: Same force-push as above, but here we verify the read path behaviour.
+
+    A user (or monitoring) calls GET /api/incarnations/{id} on a broken incarnation.
+    The system should report the broken state honestly (status=UNKNOWN) without
+    attempting to fix it — reads must be side-effect-free.
+
+    Recovery only happens when the user explicitly mutates the incarnation (PUT/PATCH).
+    After that mutation, GET should reflect the healthy recovered state.
+    """
+
+    # User upgrades, then someone force-pushes
+    change = await change_service.create_change_direct(
+        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}
+    )
+    repo_path = local_hoster._repo_path(initialized_incarnation.incarnation_repository)
+    await git_exec("update-ref", "HEAD", "HEAD^", cwd=repo_path)
+    await git_exec("gc", "--prune=now", cwd=repo_path)
+    await change_service._change_repository.update_commit_pushed(change.id, False)
+
+    # GET reports broken state — this is how the user discovers the problem
+    details_before = await change_service.get_incarnation_with_details(initialized_incarnation.id)
+    assert details_before.status == ReconciliationStatus.UNKNOWN
+
+    # Crucially, GET did NOT mutate the broken change
+    broken = await change_service._change_repository.get_change(change.id)
+    assert not broken.commit_pushed
+
+    # User recovers by applying a new version via the normal mutation API
+    await change_service.create_change_direct(
+        initialized_incarnation.id, requested_version="v1.2.0", requested_data={}
+    )
+
+    # GET now reports healthy state — the incarnation is recovered
+    details_after = await change_service.get_incarnation_with_details(initialized_incarnation.id)
+    assert details_after.template_repository_version == "v1.2.0"
+    assert details_after.status != ReconciliationStatus.UNKNOWN
 
 
 @pytest.mark.xfail(strict=False, reason="Issue #584: stale branch from closed MR blocks new change creation")
 async def test_584_stale_branch_does_not_block_change_creation(
     local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation
 ):
-    """A stale branch from a previously closed MR should not prevent
-    creating a new change to the same template version."""
+    """
+    Scenario: A user requests an upgrade to v1.1.0 via merge request. The MR is
+    created on branch `foxops/update-to-{hash}-v1.1.0`. The user decides not to
+    merge and closes the MR — but GitLab only deletes the source branch on merge,
+    not on close. The branch persists on the remote.
 
-    # GIVEN — a merge request change, then the MR is closed without merging
+    Later, the user (or automation) requests another upgrade to v1.1.0 with different
+    template data. Because the branch name is deterministic (derived from target
+    directory + version), foxops generates the same branch name. The local shallow
+    clone doesn't see the remote branch, so `git checkout -b` succeeds locally.
+    But `git push` fails because the remote already has that branch with diverging
+    history, triggering a RebaseRequiredError that can corrupt or orphan the change.
+
+    Expected: before creating the branch, the system should check if it already
+    exists on the remote with no open MR, and delete it. The new change then
+    proceeds cleanly.
+    """
+
+    # User creates a merge request change to v1.1.0
     change = await change_service.create_change_merge_request(
         initialized_incarnation.id, requested_version="v1.1.0", requested_data={}, automerge=False
     )
+
+    # User closes the MR without merging — the branch remains on the remote
     local_hoster.close_merge_request(
         initialized_incarnation.incarnation_repository, change.merge_request_id
     )
-
-    # the branch still exists
     assert await local_hoster.has_pending_incarnation_branch(
         initialized_incarnation.incarnation_repository, change.merge_request_branch_name
     )
 
-    # WHEN/THEN — creating another change to the same version should not raise
+    # User requests another change to the same version (e.g. with updated template data)
+    # This should succeed — the stale branch should be cleaned up automatically
     change2 = await change_service.create_change_merge_request(
         initialized_incarnation.id, requested_version="v1.1.0", requested_data={}, automerge=False
     )
+    assert change2.merge_request_id is not None
+
+
+async def test_repair_change_invalidates_committed_change_with_missing_sha(
+    local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation
+):
+    """A change with commit_pushed=True but a nonexistent SHA should be invalidated."""
+    # GIVEN
+    change = await change_service.create_change_direct(
+        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}
+    )
+
+    # remove the commit but leave commit_pushed=True
+    repo_path = local_hoster._repo_path(initialized_incarnation.incarnation_repository)
+    await git_exec("update-ref", "HEAD", "HEAD^", cwd=repo_path)
+    await git_exec("gc", "--prune=now", cwd=repo_path)
+
+    # WHEN
+    await change_service.repair_change(change.id)
+
+    # THEN
+    change_in_db = await change_service._change_repository.get_change(change.id)
+    assert change_in_db.invalidated_at is not None
+
+    latest = await change_service.get_latest_change_for_incarnation_if_completed(initialized_incarnation.id)
+    assert latest.revision == 1
+
+
+async def test_fix_incarnation_walks_chain_of_broken_changes(
+    local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation
+):
+    """fix_incarnation should invalidate multiple broken changes until a valid one is found."""
+    # GIVEN — two changes on top of the initial one
+    change_v11 = await change_service.create_change_direct(
+        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}
+    )
+    change_v12 = await change_service.create_change_direct(
+        initialized_incarnation.id, requested_version="v1.2.0", requested_data={}
+    )
+
+    # remove both commits (force-push scenario)
+    repo_path = local_hoster._repo_path(initialized_incarnation.incarnation_repository)
+    await git_exec("update-ref", "HEAD", "HEAD~2", cwd=repo_path)
+    await git_exec("gc", "--prune=now", cwd=repo_path)
+
+    # WHEN
+    await change_service.fix_incarnation(initialized_incarnation.id)
+
+    # THEN — both changes should be invalidated
+    db_v11 = await change_service._change_repository.get_change(change_v11.id)
+    db_v12 = await change_service._change_repository.get_change(change_v12.id)
+    assert db_v11.invalidated_at is not None
+    assert db_v12.invalidated_at is not None
+
+    # the initial change (revision 1) should be the latest valid change
+    latest = await change_service.get_latest_change_for_incarnation_if_completed(initialized_incarnation.id)
+    assert latest.revision == 1
+    assert await local_hoster.does_commit_exist(initialized_incarnation.incarnation_repository, latest.commit_sha)
+
+
+async def test_fix_incarnation_is_idempotent(
+    local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation
+):
+    """Calling fix_incarnation when the incarnation is already healthy should be a no-op."""
+    # WHEN
+    await change_service.fix_incarnation(initialized_incarnation.id)
+
+    # THEN — still works, latest change is valid
+    latest = await change_service.get_latest_change_for_incarnation_if_completed(initialized_incarnation.id)
+    assert latest.revision == 1
+
+
+async def test_list_changes_includes_invalidated_changes(
+    local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation
+):
+    """list_changes should still return invalidated changes for audit purposes."""
+    # GIVEN
+    change = await change_service.create_change_direct(
+        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}
+    )
+
+    # invalidate the change
+    repo_path = local_hoster._repo_path(initialized_incarnation.incarnation_repository)
+    await git_exec("update-ref", "HEAD", "HEAD^", cwd=repo_path)
+    await git_exec("gc", "--prune=now", cwd=repo_path)
+    await change_service.repair_change(change.id)
+
+    # WHEN
+    all_changes = await change_service._change_repository.list_changes(initialized_incarnation.id)
+
+    # THEN — both the valid initial change and the invalidated change should be returned
+    assert len(all_changes) == 2
+    invalidated = [c for c in all_changes if c.invalidated_at is not None]
+    assert len(invalidated) == 1
+    assert invalidated[0].id == change.id
+
+
+async def test_stale_branch_cleanup_during_change_creation(
+    local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation
+):
+    """A stale branch from a previously closed MR should be cleaned up before creating a new change."""
+    # GIVEN — create a change that leaves a branch, then close the MR
+    change = await change_service.create_change_merge_request(
+        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}, automerge=False
+    )
+
+    # close the merge request (simulating user closing without merging)
+    local_hoster.close_merge_request(initialized_incarnation.incarnation_repository, change.merge_request_id)
+
+    # the branch still exists on the repo
+    assert await local_hoster.has_pending_incarnation_branch(
+        initialized_incarnation.incarnation_repository, change.merge_request_branch_name
+    )
+
+    # WHEN — create another change to the same version (same branch name would be generated)
+    # this should succeed because the stale branch is cleaned up
+    change2 = await change_service.create_change_merge_request(
+        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}, automerge=False
+    )
+
+    # THEN
     assert change2.merge_request_id is not None
 
 
