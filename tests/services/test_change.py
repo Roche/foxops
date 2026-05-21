@@ -611,6 +611,101 @@ async def test_update_incomplete_change_raises_exception_for_pushed_merge_reques
         await change_service.update_incomplete_change(change.id)
 
 
+# --- Regression tests for issue #584 ---
+# These reproduce the deadlock scenarios described in the issue.
+# They use only the pre-existing API surface so they can verify the bug exists
+# on the old code (red) and is fixed by the implementation (green).
+
+
+@pytest.mark.xfail(strict=False, reason="Issue #584: update_incomplete_change skips commit_pushed=True changes with invalid SHAs")
+async def test_584_update_incomplete_change_handles_committed_change_with_missing_sha(
+    local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation
+):
+    """After a force-push, update_incomplete_change should handle a change
+    with commit_pushed=True but a nonexistent commit SHA, so that the
+    incarnation's latest change points to a real commit."""
+
+    # GIVEN — a completed change whose commit is then removed (force-push)
+    change = await change_service.create_change_direct(
+        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}
+    )
+
+    repo_path = local_hoster._repo_path(initialized_incarnation.incarnation_repository)
+    await git_exec("update-ref", "HEAD", "HEAD^", cwd=repo_path)
+    await git_exec("gc", "--prune=now", cwd=repo_path)
+
+    # WHEN
+    await change_service.update_incomplete_change(change.id)
+
+    # THEN — the latest change should have a commit that actually exists in git
+    latest = await change_service._change_repository.get_latest_change_for_incarnation(
+        initialized_incarnation.id
+    )
+    assert await local_hoster.does_commit_exist(
+        initialized_incarnation.incarnation_repository, latest.commit_sha
+    ), "Latest change points to a nonexistent commit — incarnation is unrecoverable"
+
+
+@pytest.mark.xfail(strict=False, reason="Issue #584: multiple broken changes leave incarnation unrecoverable")
+async def test_584_incarnation_recovers_from_multiple_broken_changes(
+    local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation
+):
+    """After a force-push removes multiple commits, repeatedly calling
+    update_incomplete_change should leave the incarnation in a recoverable
+    state where the latest change has a valid commit."""
+
+    # GIVEN — two changes on top of the initial one, then both commits removed
+    change_v11 = await change_service.create_change_direct(
+        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}
+    )
+    change_v12 = await change_service.create_change_direct(
+        initialized_incarnation.id, requested_version="v1.2.0", requested_data={}
+    )
+
+    repo_path = local_hoster._repo_path(initialized_incarnation.incarnation_repository)
+    await git_exec("update-ref", "HEAD", "HEAD~2", cwd=repo_path)
+    await git_exec("gc", "--prune=now", cwd=repo_path)
+
+    # WHEN — attempt repair of both changes
+    await change_service.update_incomplete_change(change_v12.id)
+    await change_service.update_incomplete_change(change_v11.id)
+
+    # THEN — the latest change should have a valid commit
+    latest = await change_service._change_repository.get_latest_change_for_incarnation(
+        initialized_incarnation.id
+    )
+    assert await local_hoster.does_commit_exist(
+        initialized_incarnation.incarnation_repository, latest.commit_sha
+    ), "Latest change points to a nonexistent commit after repairing both changes"
+
+
+@pytest.mark.xfail(strict=False, reason="Issue #584: stale branch from closed MR blocks new change creation")
+async def test_584_stale_branch_does_not_block_change_creation(
+    local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation
+):
+    """A stale branch from a previously closed MR should not prevent
+    creating a new change to the same template version."""
+
+    # GIVEN — a merge request change, then the MR is closed without merging
+    change = await change_service.create_change_merge_request(
+        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}, automerge=False
+    )
+    local_hoster.close_merge_request(
+        initialized_incarnation.incarnation_repository, change.merge_request_id
+    )
+
+    # the branch still exists
+    assert await local_hoster.has_pending_incarnation_branch(
+        initialized_incarnation.incarnation_repository, change.merge_request_branch_name
+    )
+
+    # WHEN/THEN — creating another change to the same version should not raise
+    change2 = await change_service.create_change_merge_request(
+        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}, automerge=False
+    )
+    assert change2.merge_request_id is not None
+
+
 async def test_reset_incarnation_returns_change_and_does_not_modify_main_branch(
     local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation_with_customizations: Incarnation
 ):
