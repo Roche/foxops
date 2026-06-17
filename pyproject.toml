@@ -53,7 +53,7 @@ isort = "5.13.2"
 
 # Testing
 pytest = "8.4.2"
-pytest-asyncio = "1.1.0"
+pytest-asyncio = "1.4.0"
 pytest-mock = "3.15.1"
 pytest-randomly = "^3.12.0"
 
