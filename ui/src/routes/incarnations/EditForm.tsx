@@ -11,6 +11,7 @@ import { Incarnation } from '../../interfaces/incarnations.types'
 
 const toIncarnationInput = (x: Incarnation): IncarnationInput => ({
   automerge: true,
+  autoUpdateIntervalSeconds: x.autoUpdateIntervalSeconds,
   repository: x.incarnationRepository,
   targetDirectory: x.targetDirectory,
   templateRepository: x.templateRepository ?? '',

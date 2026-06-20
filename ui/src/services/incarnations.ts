@@ -20,6 +20,7 @@ export const INCARNATION_SEARCH_FIELDS: (keyof IncarnationBase)[] = [
 
 export interface IncarnationInput {
   automerge: boolean,
+  autoUpdateIntervalSeconds: number,
   repository: string,
   targetDirectory: string,
   templateRepository: string,
@@ -30,6 +31,7 @@ export interface IncarnationInput {
 export interface IncarnationUpdateInput {
   templateVersion: string,
   automerge: boolean,
+  autoUpdateIntervalSeconds: number,
   templateData: string
 }
 
@@ -65,7 +67,8 @@ const convertToUiIncarnation = (incarnation: IncarnationApiView): Incarnation =>
   templateRepositoryVersionHash: incarnation.template_repository_version_hash,
   templateData: incarnation.template_data ?? {},
   templateDataFull: incarnation.template_data_full ?? {},
-  revision: incarnation.revision
+  revision: incarnation.revision,
+  autoUpdateIntervalSeconds: incarnation.auto_update_interval_seconds
 })
 
 const convertToApiInput = (incarnation: IncarnationInput): IncarnationApiInput => ({
@@ -74,13 +77,15 @@ const convertToApiInput = (incarnation: IncarnationInput): IncarnationApiInput =
   template_repository_version: incarnation.templateVersion,
   target_directory: incarnation.targetDirectory,
   template_data: JSON.parse(incarnation.templateData),
-  automerge: false
+  automerge: false,
+  auto_update_interval_seconds: incarnation.autoUpdateIntervalSeconds
 })
 
 const convertToApiUpdateInput = (incarnation: IncarnationInput): IncarnationUpdateApiInput => ({
   template_repository_version: incarnation.templateVersion,
   template_data: JSON.parse(incarnation.templateData),
-  automerge: incarnation.automerge
+  automerge: incarnation.automerge,
+  auto_update_interval_seconds: incarnation.autoUpdateIntervalSeconds
 })
 
 const convertToUiChange = (incarnationChange: ChangeApiView): Change => ({
@@ -116,7 +121,8 @@ export const incarnations = {
     const incarnationApiInput: IncarnationUpdateApiInput = {
       automerge: input.automerge,
       template_repository_version: input.templateVersion,
-      template_data: incarnation.templateData
+      template_data: incarnation.templateData,
+      auto_update_interval_seconds: incarnation.autoUpdateIntervalSeconds
     }
     const data = await api.put<IncarnationUpdateApiInput, IncarnationApiView>(`/incarnations/${incarnation.id}`, { body: incarnationApiInput })
     return convertToUiIncarnation(data)

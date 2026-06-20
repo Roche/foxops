@@ -65,6 +65,7 @@ async def test_get_by_id_returns_existing_incarnation(
         incarnation_repository="incarnation_repo",
         target_directory="test",
         template_repository="template_repo",
+        auto_update_interval_seconds=0,
     )
 
 
