@@ -218,12 +218,15 @@ def parse_git_apply_rejection_output(output: bytes) -> PatchResult:
                     The returned paths are relative to the repository root.
     """
     reject_file_regex = re.compile(rb"Applying patch (.*?) with (\d+) reject...")
+    unapplied_file_regex = re.compile(rb"error: (.*): patch does not apply")
     deleted_target_regex = re.compile(rb"error: (.*): No such file or directory")
 
     files_with_rejections = []
     deleted_target_files = []
     for line in output.splitlines():
         if match := reject_file_regex.match(line):
+            files_with_rejections.append(Path(match.group(1).decode()))
+        if match := unapplied_file_regex.match(line):
             files_with_rejections.append(Path(match.group(1).decode()))
         if match := deleted_target_regex.match(line):
             deleted_target_files.append(Path(match.group(1).decode()))
