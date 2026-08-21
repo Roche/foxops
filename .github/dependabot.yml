@@ -41,4 +41,6 @@ updates:
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
-      interval: "monthly"
+      interval: "weekly"
+    cooldown:
+      default-days: 7
