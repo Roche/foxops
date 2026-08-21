@@ -63,7 +63,10 @@ def assert_update_merge_request_exists(
 
 
 def assert_update_merge_request_with_conflicts_exists(
-    gitlab_client: Client, repository: str, files_with_conflicts: list[str]
+    gitlab_client: Client,
+    repository: str,
+    files_with_conflicts: list[str],
+    files_with_rejections: list[str],
 ):
     params = {"state": "opened", "target_branch": "main"}
     response = gitlab_client.get(f"/projects/{quote_plus(repository)}/merge_requests", params=params)
@@ -84,7 +87,7 @@ def assert_update_merge_request_with_conflicts_exists(
 
     changes = response.json()["changes"]
 
-    for f in files_with_conflicts:
+    for f in files_with_rejections:
         assert any(
             c["new_path"] == f"{f}.rej" and c["new_file"] for c in changes
         ), f"No rejection file found for file {f}. Changes: {changes}. Merge request: {merge_request}"

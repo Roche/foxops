@@ -406,6 +406,79 @@ async def test_put_incarnation_creates_merge_request_with_conflicts(
         gitlab_client,
         incarnation_repository,
         files_with_conflicts=["README.md"],
+        files_with_rejections=["README.md"],
+    )
+
+
+async def test_put_incarnation_reports_conflict_when_modified_file_is_deleted_from_template(
+    foxops_client: AsyncClient,
+    gitlab_client: Client,
+    gitlab_project_factory: Callable[[str], dict],
+    gitlab_template_factory,
+    gitlab_template_version_factory,
+    gitlab_repository_file_updater,
+):
+    template_config = TemplateConfig()
+    previous_template_version = TemplateVersion(
+        version="v1.0.0",
+        config=template_config,
+        files={"README.md": b"template content"},
+    )
+    template_repository = gitlab_template_factory([previous_template_version])
+    updated_template_version = TemplateVersion(
+        version="v2.0.0",
+        config=template_config,
+        files={},
+    )
+    incarnation_repository = gitlab_project_factory("incarnation")["path_with_namespace"]
+    response = await foxops_client.post(
+        "/api/incarnations",
+        json={
+            "incarnation_repository": incarnation_repository,
+            "template_repository": template_repository,
+            "template_repository_version": "v1.0.0",
+            "template_data": {},
+        },
+    )
+    response.raise_for_status()
+    incarnation_id = response.json()["id"]
+
+    gitlab_repository_file_updater(
+        incarnation_repository,
+        "README.md",
+        b"locally modified content",
+    )
+    gitlab_template_version_factory(
+        template_repository,
+        previous_template_version,
+        updated_template_version,
+    )
+
+    response = await foxops_client.put(
+        f"/api/incarnations/{incarnation_id}",
+        json={
+            "template_repository_version": "v2.0.0",
+            "template_data": {},
+            "automerge": True,
+        },
+    )
+    response.raise_for_status()
+
+    incarnation = response.json()
+    assert incarnation["status"] == "pending"
+    assert incarnation["merge_request_status"] == "open"
+    conflict_branch = assert_update_merge_request_with_conflicts_exists(
+        gitlab_client,
+        incarnation_repository,
+        files_with_conflicts=["README.md"],
+        files_with_rejections=[],
+    )
+    assert_file_in_repository(
+        gitlab_client,
+        incarnation_repository,
+        "README.md",
+        "locally modified content",
+        branch=conflict_branch,
     )
 
 
