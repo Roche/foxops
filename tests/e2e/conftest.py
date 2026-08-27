@@ -18,6 +18,80 @@ TemplateVersion = NamedTuple(
 )
 
 TemplateFactory = Callable[[list[TemplateVersion]], str]
+TemplateVersionFactory = Callable[[str, TemplateVersion, TemplateVersion], None]
+RepositoryFileUpdater = Callable[[str, str, bytes], None]
+
+
+@pytest.fixture(scope="session")
+def gitlab_template_version_factory(gitlab_client: Client) -> TemplateVersionFactory:
+    def _add_version(repository: str, previous_version: TemplateVersion, version: TemplateVersion) -> None:
+        project = quote_plus(repository)
+        response = gitlab_client.get(f"/projects/{project}")
+        response.raise_for_status()
+        branch = response.json()["default_branch"]
+
+        if previous_version.config != version.config:
+            response = gitlab_client.put(
+                f"/projects/{project}/repository/files/{quote_plus('fengine.yaml')}",
+                json={
+                    "encoding": "base64",
+                    "content": base64.b64encode(version.config.yaml().encode()).decode(),
+                    "commit_message": f"Configure template {version.version}",
+                    "branch": branch,
+                },
+            )
+            response.raise_for_status()
+
+        for path in previous_version.files.keys() - version.files.keys():
+            response = gitlab_client.request(
+                "DELETE",
+                f"/projects/{project}/repository/files/{quote_plus('template/' + path)}",
+                json={
+                    "commit_message": f"Delete {path} in {version.version}",
+                    "branch": branch,
+                },
+            )
+            response.raise_for_status()
+
+        for path, content in version.files.items():
+            if previous_version.files.get(path) == content:
+                continue
+            file_method = gitlab_client.put if path in previous_version.files else gitlab_client.post
+            response = file_method(
+                f"/projects/{project}/repository/files/{quote_plus('template/' + path)}",
+                json={
+                    "encoding": "base64",
+                    "content": base64.b64encode(content).decode(),
+                    "commit_message": f"Update {path} for {version.version}",
+                    "branch": branch,
+                },
+            )
+            response.raise_for_status()
+
+        response = gitlab_client.post(
+            f"/projects/{project}/repository/tags",
+            json={"tag_name": version.version, "ref": branch},
+        )
+        response.raise_for_status()
+
+    return _add_version
+
+
+@pytest.fixture
+def gitlab_repository_file_updater(gitlab_client: Client) -> RepositoryFileUpdater:
+    def _update(repository: str, path: str, content: bytes) -> None:
+        response = gitlab_client.put(
+            f"/projects/{quote_plus(repository)}/repository/files/{quote_plus(path)}",
+            json={
+                "encoding": "base64",
+                "content": base64.b64encode(content).decode(),
+                "commit_message": f"Modify {path} in incarnation",
+                "branch": "main",
+            },
+        )
+        response.raise_for_status()
+
+    return _update
 
 
 @pytest.fixture(scope="session")

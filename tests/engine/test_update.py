@@ -382,6 +382,7 @@ mychange
 """
 
 
+# Unmodified file gets deleted properly
 @pytest.mark.parametrize("diff_patch_func", [diff_and_patch])
 async def test_diff_and_patch_success_when_deleting_file_in_template(
     diff_patch_func,
@@ -433,6 +434,31 @@ async def test_diff_and_patch_success_when_deleting_file_in_template(
     # THEN
     assert (incarnation_directory / "myfile1.txt").exists()
     assert not (incarnation_directory / "myfile2.txt").exists()
+
+
+# Modified file gets a conflict upon deletion
+@pytest.mark.parametrize("diff_patch_func", [diff_and_patch])
+async def test_diff_and_patch_conflict_when_deleting_modified_file_in_template(diff_patch_func, tmp_path):
+    old_directory = tmp_path / "old"
+    old_directory.mkdir()
+    (old_directory / "file.txt").write_text("template content")
+    (old_directory / "unchanged.txt").write_text("unchanged")
+    new_directory = tmp_path / "new"
+    shutil.copytree(old_directory, new_directory)
+    (new_directory / "file.txt").unlink()
+    incarnation_directory = tmp_path / "incarnation"
+    shutil.copytree(old_directory, incarnation_directory)
+    (incarnation_directory / "file.txt").write_text("locally modified content")
+    await init_repository(incarnation_directory)
+
+    patch_result = await diff_patch_func(
+        diff_a_directory=old_directory,
+        diff_b_directory=new_directory,
+        patch_directory=incarnation_directory,
+    )
+
+    assert patch_result.conflicts == [Path("file.txt")]
+    assert (incarnation_directory / "file.txt").read_text() == "locally modified content"
 
 
 @pytest.mark.parametrize("diff_patch_func", [diff_and_patch])
