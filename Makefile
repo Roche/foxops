@@ -10,7 +10,12 @@ lint:
 typecheck:
 	poetry run dmypy run -- src tests
 
-pre-commit: fmt lint typecheck
+pre-commit: fmt lint typecheck tools-config-check
+
+tools-config-check:
+	poetry run actionlint
+	poetry run check-jsonschema --builtin-schema vendor.github-workflows .github/workflows/*.y*ml
+	poetry run check-jsonschema --builtin-schema vendor.dependabot .github/dependabot.y*ml
 
 test:
 	poetry run pytest tests
