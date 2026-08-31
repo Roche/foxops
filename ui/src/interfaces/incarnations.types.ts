@@ -48,6 +48,7 @@ export interface IncarnationApiView {
   template_repository_version_hash: string
   template_data: Record<string, string> | null,
   template_data_full: Record<string, never> | null,
+  auto_update_interval_seconds: number,
 }
 
 export interface ChangeApiView {
@@ -102,13 +103,15 @@ export interface Incarnation {
   templateRepositoryVersion: string,
   templateRepositoryVersionHash: string,
   templateData: Record<string, string>,
-  templateDataFull: Record<string, never>
+  templateDataFull: Record<string, never>,
+  autoUpdateIntervalSeconds: number,
 }
 
 export interface IncarnationUpdateApiInput {
   template_repository_version: string,
   template_data: Record<string, string>,
-  automerge: boolean
+  automerge: boolean,
+  auto_update_interval_seconds: number,
 }
 
 export interface IncarnationApiInput {
@@ -117,5 +120,6 @@ export interface IncarnationApiInput {
   template_repository_version: string,
   target_directory: string,
   template_data: Record<string, string>,
-  automerge: boolean
+  automerge: boolean,
+  auto_update_interval_seconds: number,
 }

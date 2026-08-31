@@ -3,6 +3,7 @@ import { IncarnationsForm } from './Form'
 
 const defaultValues = {
   automerge: true,
+  autoUpdateIntervalSeconds: 0,
   repository: '',
   targetDirectory: '',
   templateRepository: '',

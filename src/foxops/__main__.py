@@ -1,14 +1,23 @@
+import asyncio
+from contextlib import asynccontextmanager, suppress
+
 from fastapi import APIRouter, Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse
 
-from foxops.dependencies import get_settings, static_token_auth_scheme
+from foxops.database.engine import create_engine
+from foxops.database.repositories.change.repository import ChangeRepository
+from foxops.database.repositories.incarnation.repository import IncarnationRepository
+from foxops.dependencies import build_hoster, get_settings, static_token_auth_scheme
 from foxops.error_handlers import __error_handlers__
 from foxops.logger import get_logger, setup_logging
 from foxops.middlewares import request_id_middleware, request_time_middleware
 from foxops.openapi import custom_openapi
 from foxops.routers import auth, incarnations, not_found, version
+from foxops.services.auto_update import AutoUpdateService
+from foxops.services.change import ChangeService
+from foxops.settings import DatabaseSettings
 
 #: Holds the module logger instance
 logger = get_logger(__name__)
@@ -19,11 +28,34 @@ logger = get_logger(__name__)
 FRONTEND_SUBDIRS = ["assets", "favicons"]
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    settings = get_settings()
+    db_settings = DatabaseSettings()
+    engine = create_engine(db_settings.url.get_secret_value())
+    hoster = build_hoster(settings)
+    change_service = ChangeService(
+        hoster=hoster,
+        incarnation_repository=IncarnationRepository(engine),
+        change_repository=ChangeRepository(engine),
+    )
+    auto_update = AutoUpdateService(
+        change_service=change_service,
+        change_repository=ChangeRepository(engine),
+    )
+    task = asyncio.create_task(auto_update.run_loop())
+    yield
+    task.cancel()
+    with suppress(asyncio.CancelledError):
+        await task
+    await engine.dispose()
+
+
 def create_app():
     settings = get_settings()
     setup_logging(level=settings.log_level)
 
-    app = FastAPI()
+    app = FastAPI(lifespan=lifespan)
 
     # Add middlewares
     app.middleware("http")(request_id_middleware)

@@ -41,6 +41,7 @@ class ChangeServiceMock(Mock):
         template_repository_version: str,
         template_data: dict[str, str],
         target_directory: str = ".",
+        auto_update_interval_seconds: int = 0,
     ) -> Change:
         return Change(
             id=1,
@@ -120,6 +121,7 @@ async def test_api_get_incarnations_returns_incarnations_from_inventory(
             "requested_version": "v1.0",
             "revision": 1,
             "type": "direct",
+            "auto_update_interval_seconds": 0,
         }
     ]
 

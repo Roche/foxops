@@ -48,28 +48,27 @@ def get_database_engine(request: Request, settings: DatabaseSettings = Depends(g
     return async_engine
 
 
+def build_hoster(settings: Settings) -> Hoster:
+    match settings.hoster_type:
+        case HosterType.LOCAL:
+            local_settings = LocalHosterSettings()
+            logger.warning(
+                "Using local hoster. This is for DEVELOPMENT use only!", directory=str(local_settings.directory)
+            )
+            return LocalHoster(local_settings.directory)
+        case HosterType.GITLAB:
+            gitlab_settings = GitlabHosterSettings()
+            logger.info("Using GitLab hoster", address=gitlab_settings.address)
+            return GitlabHoster(gitlab_settings.address, gitlab_settings.token.get_secret_value())
+        case _:
+            raise NotImplementedError(f"Unknown hoster type {settings.hoster_type}")
+
+
 def get_hoster(request: Request, settings: Annotated[Settings, Depends(get_settings)]) -> Hoster:
     if hasattr(request.app.state, "hoster"):
         return request.app.state.hoster
 
-    hoster: Hoster
-    match settings.hoster_type:
-        case HosterType.LOCAL:
-            local_settings = LocalHosterSettings()
-
-            logger.warning(
-                "Using local hoster. This is for DEVELOPMENT use only!", directory=str(local_settings.directory)
-            )
-
-            hoster = LocalHoster(local_settings.directory)
-        case HosterType.GITLAB:
-            gitlab_settings = GitlabHosterSettings()
-            logger.info("Using GitLab hoster", address=gitlab_settings.address)
-
-            hoster = GitlabHoster(gitlab_settings.address, gitlab_settings.token.get_secret_value())
-        case _:
-            raise NotImplementedError(f"Unknown hoster type {settings.hoster_type}")
-
+    hoster = build_hoster(settings)
     request.app.state.hoster = hoster
     return hoster
 

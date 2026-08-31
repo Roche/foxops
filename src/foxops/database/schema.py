@@ -20,6 +20,7 @@ incarnations = Table(
     Column("incarnation_repository", String, nullable=False),
     Column("target_directory", String, nullable=False),
     Column("template_repository", String, nullable=False),
+    Column("auto_update_interval_seconds", Integer, nullable=False, server_default="0"),
     UniqueConstraint("incarnation_repository", "target_directory", name="incarnation_identity"),
 )
 

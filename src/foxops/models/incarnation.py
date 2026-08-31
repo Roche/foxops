@@ -43,4 +43,6 @@ class IncarnationWithDetails(IncarnationBasic):
     template_data: TemplateData | None
     template_data_full: TemplateData | None
 
+    auto_update_interval_seconds: int
+
     model_config = ConfigDict(from_attributes=True)

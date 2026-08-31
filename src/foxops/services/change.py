@@ -58,6 +58,7 @@ class IncarnationWithLatestChangeDetails(BaseModel):
     incarnation_repository: str
     target_directory: str
     template_repository: str
+    auto_update_interval_seconds: int
 
     revision: int
     type: ChangeType
@@ -137,6 +138,7 @@ class ChangeService:
             incarnation_repository=dbobj.incarnation_repository,
             target_directory=dbobj.target_directory,
             template_repository=dbobj.template_repository,
+            auto_update_interval_seconds=dbobj.auto_update_interval_seconds,
             revision=dbobj.revision,
             type=dbobj.type,
             requested_version=dbobj.requested_version,
@@ -153,6 +155,9 @@ class ChangeService:
             async for inc in self._change_repository.list_incarnations_with_changes_summary()
         ]
 
+    async def set_auto_update_interval(self, incarnation_id: int, interval_seconds: int) -> None:
+        await self._incarnation_repository.update_auto_update_interval(incarnation_id, interval_seconds)
+
     async def get_incarnation_by_repo_and_target_directory(
         self, repo: str, target_directory: str
     ) -> IncarnationWithLatestChangeDetails:
@@ -167,6 +172,7 @@ class ChangeService:
         template_repository_version: str,
         template_data: TemplateData,
         target_directory: str = ".",
+        auto_update_interval_seconds: int = 0,
     ) -> Change:
         if await self._hoster.get_incarnation_state(incarnation_repository, target_directory) is not None:
             raise IncarnationAlreadyExists("Cannot create incarnation because it already exists")
@@ -198,6 +204,7 @@ class ChangeService:
                 requested_version=template_repository_version,
                 requested_data=json.dumps(incarnation_state.template_data),
                 template_data_full=json.dumps(incarnation_state.template_data_full),
+                auto_update_interval_seconds=auto_update_interval_seconds,
             )
 
             try:
@@ -609,6 +616,7 @@ class ChangeService:
             template_repository_version_hash=change.requested_version_hash,
             template_data=change.requested_data,
             template_data_full=change.template_data_full,
+            auto_update_interval_seconds=incarnation.auto_update_interval_seconds,
         )
 
     async def diff_incarnation(self, incarnation_id: int) -> str:

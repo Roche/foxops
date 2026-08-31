@@ -79,6 +79,8 @@ class CreateIncarnationRequest(BaseModel):
 
     template_data: TemplateData
 
+    auto_update_interval_seconds: int = 0
+
 
 @router.post(
     "",
@@ -122,6 +124,7 @@ async def create_incarnation(
             template_repository=request.template_repository,
             template_repository_version=request.template_repository_version,
             template_data=template_data,
+            auto_update_interval_seconds=request.auto_update_interval_seconds,
         )
     except ProvidedTemplateDataInvalidError as e:
         response.status_code = status.HTTP_400_BAD_REQUEST
@@ -281,6 +284,7 @@ class UpdateIncarnationRequest(BaseModel):
     template_data: TemplateData
 
     automerge: bool
+    auto_update_interval_seconds: int = 0
 
 
 @router.put(
@@ -321,7 +325,7 @@ async def update_incarnation(
     reusing the previously set variable values), use the PATCH endpoint instead.
     """
 
-    return await _create_change(
+    result = await _create_change(
         incarnation_id=incarnation_id,
         requested_version=request.template_repository_version,
         requested_data=request.template_data,
@@ -330,6 +334,9 @@ async def update_incarnation(
         response=response,
         change_service=change_service,
     )
+    if not isinstance(result, ApiError):
+        await change_service.set_auto_update_interval(incarnation_id, request.auto_update_interval_seconds)
+    return result
 
 
 class PatchIncarnationRequest(BaseModel):
@@ -339,6 +346,7 @@ class PatchIncarnationRequest(BaseModel):
     requested_data: TemplateData | None = None
 
     automerge: bool
+    auto_update_interval_seconds: int | None = None
 
     @model_validator(mode="after")
     def check_either_version_or_data_change_requested(self) -> Self:
@@ -387,7 +395,7 @@ async def patch_incarnation(
 
     requested_data = request.requested_data or {}
 
-    return await _create_change(
+    result = await _create_change(
         incarnation_id=incarnation_id,
         requested_version=request.requested_version,
         requested_data=requested_data,
@@ -396,6 +404,9 @@ async def patch_incarnation(
         response=response,
         change_service=change_service,
     )
+    if not isinstance(result, ApiError) and request.auto_update_interval_seconds is not None:
+        await change_service.set_auto_update_interval(incarnation_id, request.auto_update_interval_seconds)
+    return result
 
 
 @router.delete(
