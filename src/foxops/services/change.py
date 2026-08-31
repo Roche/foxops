@@ -516,6 +516,17 @@ class ChangeService:
     ) -> Change | ChangeWithMergeRequest:
         change_id = await self.get_latest_change_id_for_incarnation(incarnation_id)
 
+        try:
+            return await self._get_completed_change(change_id)
+        except IncompleteChange:
+            # The latest change has commit_pushed=False — attempt repair.
+            # Only the latest change can be in this state, since creating
+            # a new change requires the previous one to be complete.
+            await self.update_incomplete_change(change_id)
+            change_id = await self.get_latest_change_id_for_incarnation(incarnation_id)
+            return await self._get_completed_change(change_id)
+
+    async def _get_completed_change(self, change_id: int) -> Change | ChangeWithMergeRequest:
         change_type = await self.get_change_type(change_id)
         if change_type == ChangeType.MERGE_REQUEST:
             change = await self.get_change_with_merge_request(change_id)
