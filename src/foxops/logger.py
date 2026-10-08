@@ -33,6 +33,22 @@ def configure_uvicorn_logging():
     uvicorn_access_logger.handlers.clear()
 
 
+def build_console_renderer() -> structlog.dev.ConsoleRenderer:
+    """Build the console renderer used for all foxops log output.
+
+    The `exception_formatter` must be passed explicitly. Left to itself, ConsoleRenderer
+    picks rich's traceback formatter whenever `rich` is installed (it is, as a direct
+    dependency), and that formatter renders every stack frame's local variables. In foxops
+    those locals hold rendered template data, httpx responses and SQLAlchemy objects, so
+    repr()-ing them took ~26 seconds per traceback -- twice per failed request, because
+    Starlette re-raises after our `catch_all` handler and uvicorn logs the same exception
+    again. Rendering is synchronous on the event loop, so it stalls every other in-flight
+    request, and the first render happens before the error response is sent, which pushed
+    replies past the reverse proxy's 60s timeout. Plain tracebacks render in microseconds.
+    """
+    return structlog.dev.ConsoleRenderer(exception_formatter=structlog.dev.plain_traceback)
+
+
 def setup_logging(level: int | str) -> None:
     if structlog.is_configured():
         return
@@ -62,7 +78,7 @@ def setup_logging(level: int | str) -> None:
         processors=[
             # Remove _record & _from_structlog.
             structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-            structlog.dev.ConsoleRenderer(),
+            build_console_renderer(),
         ],
     )
 
