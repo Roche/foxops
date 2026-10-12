@@ -39,7 +39,7 @@ greenlet = "^3.1.1"
 typer = "0.16.0"
 
 # Business
-"ruamel.yaml" = "^0.17.20"
+"ruamel.yaml" = ">=0.18.10,<0.20.0"
 Jinja2 = "^3.0.3"
 pydantic-settings = "2.10.1"
 rich = "^14.1.0"
@@ -75,6 +75,8 @@ pytest-alembic = "^0.10.0"
 black = {extras = ["d"], version = ">=23.3,<27.0"}
 coverage = "^7.3.1"
 pytest-xdist = "^3.3.1"
+check-jsonschema = "0.38.0"
+actionlint-py = "1.7.12.24"
 
 [tool.black]
 line-length = 120
