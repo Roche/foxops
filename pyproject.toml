@@ -27,6 +27,9 @@ tenacity = "^9.0.0"
 pydantic = "^2.11.7"
 structlog = "25.5.0"
 anyio = ">=4.0"
+# Floor for the Mozilla CA bundle used by httpx/requests: 2026.10.19 removed the root behind the
+# compromised eMudhra intermediates (Oct 2026). Keep it so the image can never trust them again.
+certifi = ">=2026.10.19"
 
 # Database
 SQLAlchemy = {extras = ["asyncio"], version = "^2.0.2"}
