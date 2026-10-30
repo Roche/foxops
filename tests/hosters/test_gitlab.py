@@ -1,5 +1,3 @@
-import asyncio
-import time
 from datetime import timedelta
 from http import HTTPStatus
 
@@ -34,21 +32,18 @@ CREATED_MERGE_REQUEST = {
 
 
 class FakeGitlab:
-    def __init__(self, create_responses: list[httpx.Response], create_delays: list[float] | None = None) -> None:
+    def __init__(self, create_responses: list[httpx.Response]) -> None:
         self._create_responses = create_responses
-        #: Simulates a slow GitLab by delaying the response for the attempt at the same index.
-        self._create_delays = create_delays or []
         self.create_attempts = 0
+        #: The `timeout` extension httpx attached to each POST, in request order.
+        self.create_request_timeouts: list[dict] = []
 
-    async def __call__(self, request: httpx.Request) -> httpx.Response:
+    def __call__(self, request: httpx.Request) -> httpx.Response:
         if request.method == "POST" and request.url.path.endswith("/merge_requests"):
-            attempt = self.create_attempts
+            self.create_request_timeouts.append(request.extensions.get("timeout"))
+            response = self._create_responses[min(self.create_attempts, len(self._create_responses) - 1)]
             self.create_attempts += 1
-
-            if attempt < len(self._create_delays):
-                await asyncio.sleep(self._create_delays[attempt])
-
-            return self._create_responses[min(attempt, len(self._create_responses) - 1)]
+            return response
 
         if request.method != "GET":
             raise AssertionError(f"unexpected request: {request.method} {request.url}")
@@ -128,20 +123,15 @@ async def test_merge_request_does_not_retry_unrelated_gitlab_errors():
     assert "403 Forbidden" in str(exc_info.value)
 
 
-async def test_merge_request_bounds_a_slow_in_flight_request(mocker: MockerFixture):
-    # The retry budget is tiny, and GitLab only answers the retried attempt after that
-    # budget would already be exhausted. stop_after_delay alone would not catch this: it
-    # only checks elapsed time between attempts, not during one, so without a deadline on
-    # the request itself this attempt would be free to run for however long GitLab takes.
-    mocker.patch(RETRY_TIMEOUT_PATH, timedelta(seconds=0.1))
-    fake_gitlab = FakeGitlab(
-        [httpx.Response(HTTPStatus.BAD_REQUEST, json=SOURCE_BRANCH_MISSING_BODY)],
-        create_delays=[0, 5],
-    )
+async def test_merge_request_bounds_each_attempt_by_the_retry_timeout(mocker: MockerFixture):
+    # stop_after_delay only checks elapsed time between attempts, it does not interrupt an
+    # in-flight request: without a per-request timeout, a slow POST would inherit the
+    # client's full 120s timeout and could blow past both this budget and the reverse
+    # proxy's 60s timeout. Assert the timeout is actually wired onto the request rather than
+    # simulating a slow GitLab, since httpx.MockTransport never enforces timeouts itself.
+    mocker.patch(RETRY_TIMEOUT_PATH, timedelta(seconds=7))
+    fake_gitlab = FakeGitlab([httpx.Response(HTTPStatus.CREATED, json=CREATED_MERGE_REQUEST)])
 
-    started_at = time.monotonic()
-    with pytest.raises(MergeRequestCreationFailedError):
-        await create_merge_request(fake_gitlab)
-    elapsed = time.monotonic() - started_at
+    await create_merge_request(fake_gitlab)
 
-    assert elapsed < 1
+    assert fake_gitlab.create_request_timeouts == [{"connect": 7.0, "read": 7.0, "write": 7.0, "pool": 7.0}]

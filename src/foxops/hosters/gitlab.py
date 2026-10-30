@@ -221,9 +221,6 @@ class GitlabHoster(Hoster):
         reports this when it created nothing.
         """
 
-        loop = asyncio.get_running_loop()
-        deadline = loop.time() + MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT.total_seconds()
-
         @retry(
             retry=retry_if_exception_type(_SourceBranchNotYetVisible),
             stop=stop_after_delay(MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT.total_seconds()),
@@ -235,24 +232,18 @@ class GitlabHoster(Hoster):
             # an in-flight request. Without this, a slow POST inherits the client's full 120s
             # timeout and can blow past both this budget and the reverse proxy's 60s timeout.
             try:
-                response = await asyncio.wait_for(
-                    self.client.post(
-                        f"/projects/{quote_plus(incarnation_repository)}/merge_requests",
-                        json={
-                            "source_branch": source_branch,
-                            "target_branch": target_branch,
-                            "title": title,
-                            "description": description,
-                            "remove_source_branch": "True",
-                        },
-                    ),
-                    # Floor at the retry wait: tenacity's stop check runs before that wait, so an
-                    # attempt can legitimately start with the nominal budget already spent, and a
-                    # fast call still deserves a chance to complete instead of being cancelled
-                    # before it starts.
-                    timeout=max(deadline - loop.time(), MERGE_REQUEST_SOURCE_BRANCH_RETRY_WAIT.total_seconds()),
+                response = await self.client.post(
+                    f"/projects/{quote_plus(incarnation_repository)}/merge_requests",
+                    json={
+                        "source_branch": source_branch,
+                        "target_branch": target_branch,
+                        "title": title,
+                        "description": description,
+                        "remove_source_branch": "True",
+                    },
+                    timeout=MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT.total_seconds(),
                 )
-            except TimeoutError as e:
+            except httpx.TimeoutException as e:
                 raise MergeRequestCreationFailedError(
                     f"GitLab did not respond to the merge request creation for branch '{source_branch}' in "
                     f"'{incarnation_repository}' within "
