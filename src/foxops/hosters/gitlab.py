@@ -13,7 +13,7 @@ from urllib.parse import quote_plus
 
 import httpx
 from tenacity import retry
-from tenacity.retry import retry_if_exception_type
+from tenacity.retry import retry_if_exception, retry_if_exception_type
 from tenacity.stop import stop_after_delay
 from tenacity.wait import wait_fixed
 
@@ -40,23 +40,15 @@ logger = get_logger(__name__)
 MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT = timedelta(seconds=10)
 MERGE_REQUEST_SOURCE_BRANCH_RETRY_WAIT = timedelta(seconds=1)
 
-#: The status GitLab maps this validation error to has moved between 400 and 422 across
-#  versions, so match on the message instead. Covers both body shapes:
-#  {"message": ["Source branch \"x\" does not exist"]} and
-#  {"message": "400 Bad request - [\"Source branch \\\"x\\\" does not exist\"]"}.
 _SOURCE_BRANCH_MISSING_PATTERN = re.compile(r"[Ss]ource branch .{0,200}? does not exist")
 
-_ERROR_BODY_MAX_LENGTH = 500
 
-
-class _SourceBranchNotYetVisible(Exception):
-    """Retry signal: GitLab does not see the freshly pushed source branch yet."""
-
-
-def _truncate(body: str) -> str:
-    if len(body) <= _ERROR_BODY_MAX_LENGTH:
-        return body
-    return body[:_ERROR_BODY_MAX_LENGTH] + "... (truncated)"
+def _is_source_branch_not_yet_visible(error: BaseException) -> bool:
+    return (
+        isinstance(error, httpx.HTTPStatusError)
+        and error.response.is_client_error
+        and _SOURCE_BRANCH_MISSING_PATTERN.search(error.response.text) is not None
+    )
 
 
 class MergeRequest(TypedDict):
@@ -210,16 +202,8 @@ class GitlabHoster(Hoster):
         title: str,
         description: str,
     ) -> MergeRequest:
-        """Create a merge request, riding out GitLab not seeing the pushed source branch yet.
-
-        foxops asks for the merge request immediately after pushing the branch, and GitLab
-        answers from a branch cache that can still be a moment behind. It then rejects the
-        request with `Source branch "<x>" does not exist`. Retrying is safe: GitLab only
-        reports this when it created nothing.
-        """
-
         @retry(
-            retry=retry_if_exception_type(_SourceBranchNotYetVisible),
+            retry=retry_if_exception(_is_source_branch_not_yet_visible),
             stop=stop_after_delay(MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT.total_seconds()),
             wait=wait_fixed(MERGE_REQUEST_SOURCE_BRANCH_RETRY_WAIT.total_seconds()),
             reraise=True,
@@ -244,33 +228,31 @@ class GitlabHoster(Hoster):
                     f"{MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT.total_seconds():.0f}s."
                 ) from e
 
-            if response.is_client_error and _SOURCE_BRANCH_MISSING_PATTERN.search(response.text):
-                logger.warning(
-                    f"GitLab does not see the pushed source branch '{source_branch}' in "
-                    f"'{incarnation_repository}' yet, retrying merge request creation",
-                    status_code=response.status_code,
-                    response=_truncate(response.text),
-                )
-                raise _SourceBranchNotYetVisible(_truncate(response.text))
-
             try:
                 response.raise_for_status()
             except httpx.HTTPStatusError as e:
+                if _is_source_branch_not_yet_visible(e):
+                    logger.warning(
+                        f"GitLab does not see the pushed source branch '{source_branch}' in "
+                        f"'{incarnation_repository}' yet, retrying merge request creation",
+                        status_code=response.status_code,
+                    )
+                    raise
                 raise MergeRequestCreationFailedError(
                     f"GitLab refused to create a merge request for branch '{source_branch}' in "
-                    f"'{incarnation_repository}' (HTTP {response.status_code}): {_truncate(response.text)}"
+                    f"'{incarnation_repository}' (HTTP {response.status_code}): {response.text}"
                 ) from e
 
             return response.json()
 
         try:
             return await __create()
-        except _SourceBranchNotYetVisible as e:
+        except httpx.HTTPStatusError as e:
             raise MergeRequestCreationFailedError(
                 f"GitLab still reports the source branch '{source_branch}' in "
                 f"'{incarnation_repository}' as non-existent "
                 f"{MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT.total_seconds():.0f}s after it was pushed. "
-                f"Last response from GitLab: {e}"
+                f"Last response from GitLab: {e.response.text}"
             ) from e
 
     @asynccontextmanager
