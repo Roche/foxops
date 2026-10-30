@@ -1,3 +1,5 @@
+import asyncio
+import time
 from datetime import timedelta
 from http import HTTPStatus
 
@@ -32,15 +34,21 @@ CREATED_MERGE_REQUEST = {
 
 
 class FakeGitlab:
-    def __init__(self, create_responses: list[httpx.Response]) -> None:
+    def __init__(self, create_responses: list[httpx.Response], create_delays: list[float] | None = None) -> None:
         self._create_responses = create_responses
+        #: Simulates a slow GitLab by delaying the response for the attempt at the same index.
+        self._create_delays = create_delays or []
         self.create_attempts = 0
 
-    def __call__(self, request: httpx.Request) -> httpx.Response:
+    async def __call__(self, request: httpx.Request) -> httpx.Response:
         if request.method == "POST" and request.url.path.endswith("/merge_requests"):
-            response = self._create_responses[min(self.create_attempts, len(self._create_responses) - 1)]
+            attempt = self.create_attempts
             self.create_attempts += 1
-            return response
+
+            if attempt < len(self._create_delays):
+                await asyncio.sleep(self._create_delays[attempt])
+
+            return self._create_responses[min(attempt, len(self._create_responses) - 1)]
 
         if request.method != "GET":
             raise AssertionError(f"unexpected request: {request.method} {request.url}")
@@ -118,3 +126,22 @@ async def test_merge_request_does_not_retry_unrelated_gitlab_errors():
 
     assert fake_gitlab.create_attempts == 1
     assert "403 Forbidden" in str(exc_info.value)
+
+
+async def test_merge_request_bounds_a_slow_in_flight_request(mocker: MockerFixture):
+    # The retry budget is tiny, and GitLab only answers the retried attempt after that
+    # budget would already be exhausted. stop_after_delay alone would not catch this: it
+    # only checks elapsed time between attempts, not during one, so without a deadline on
+    # the request itself this attempt would be free to run for however long GitLab takes.
+    mocker.patch(RETRY_TIMEOUT_PATH, timedelta(seconds=0.1))
+    fake_gitlab = FakeGitlab(
+        [httpx.Response(HTTPStatus.BAD_REQUEST, json=SOURCE_BRANCH_MISSING_BODY)],
+        create_delays=[0, 5],
+    )
+
+    started_at = time.monotonic()
+    with pytest.raises(MergeRequestCreationFailedError):
+        await create_merge_request(fake_gitlab)
+    elapsed = time.monotonic() - started_at
+
+    assert elapsed < 1
