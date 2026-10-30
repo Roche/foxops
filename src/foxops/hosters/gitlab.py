@@ -248,6 +248,14 @@ class GitlabHoster(Hoster):
         try:
             return await __create()
         except httpx.HTTPStatusError as e:
+            logger.error(
+                "Gave up creating a merge request: the branch was pushed but GitLab still does not see it. "
+                "The incarnation repository now has a pushed branch with no merge request.",
+                incarnation_repository=incarnation_repository,
+                source_branch=source_branch,
+                target_branch=target_branch,
+                retry_timeout_seconds=MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT.total_seconds(),
+            )
             raise MergeRequestCreationFailedError(
                 f"GitLab still reports the source branch '{source_branch}' in "
                 f"'{incarnation_repository}' as non-existent "
