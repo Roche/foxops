@@ -37,9 +37,6 @@ from foxops.logger import bound, get_logger
 #: Holds the module logger
 logger = get_logger(__name__)
 
-#: Bounds the whole retry loop, including the HTTP requests themselves, not just the time
-#  between attempts. Kept short because the reverse proxy in front of foxops times out at
-#  60s and merge_request() may already spend up to 25s waiting for GitLab's mergeability check.
 MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT = timedelta(seconds=10)
 MERGE_REQUEST_SOURCE_BRANCH_RETRY_WAIT = timedelta(seconds=1)
 
@@ -228,9 +225,6 @@ class GitlabHoster(Hoster):
             reraise=True,
         )
         async def __create() -> MergeRequest:
-            # stop_after_delay only checks elapsed time between attempts, it does not interrupt
-            # an in-flight request. Without this, a slow POST inherits the client's full 120s
-            # timeout and can blow past both this budget and the reverse proxy's 60s timeout.
             try:
                 response = await self.client.post(
                     f"/projects/{quote_plus(incarnation_repository)}/merge_requests",

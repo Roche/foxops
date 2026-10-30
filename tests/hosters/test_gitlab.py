@@ -35,7 +35,6 @@ class FakeGitlab:
     def __init__(self, create_responses: list[httpx.Response]) -> None:
         self._create_responses = create_responses
         self.create_attempts = 0
-        #: The `timeout` extension httpx attached to each POST, in request order.
         self.create_request_timeouts: list[dict] = []
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
@@ -123,15 +122,10 @@ async def test_merge_request_does_not_retry_unrelated_gitlab_errors():
     assert "403 Forbidden" in str(exc_info.value)
 
 
-async def test_merge_request_bounds_each_attempt_by_the_retry_timeout(mocker: MockerFixture):
-    # stop_after_delay only checks elapsed time between attempts, it does not interrupt an
-    # in-flight request: without a per-request timeout, a slow POST would inherit the
-    # client's full 120s timeout and could blow past both this budget and the reverse
-    # proxy's 60s timeout. Assert the timeout is actually wired onto the request rather than
-    # simulating a slow GitLab, since httpx.MockTransport never enforces timeouts itself.
+async def test_merge_request_bounds_each_attempt_by_the_retry_timeout(mocker: MockerFixture) -> None:
     mocker.patch(RETRY_TIMEOUT_PATH, timedelta(seconds=7))
     fake_gitlab = FakeGitlab([httpx.Response(HTTPStatus.CREATED, json=CREATED_MERGE_REQUEST)])
 
     await create_merge_request(fake_gitlab)
 
-    assert fake_gitlab.create_request_timeouts == [{"connect": 7.0, "read": 7.0, "write": 7.0, "pool": 7.0}]
+    assert [{"connect": 7.0, "read": 7.0, "write": 7.0, "pool": 7.0}] == fake_gitlab.create_request_timeouts
