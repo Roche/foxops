@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import re
 import shutil
 from contextlib import asynccontextmanager
 from datetime import timedelta
@@ -12,12 +13,12 @@ from urllib.parse import quote_plus
 
 import httpx
 from tenacity import retry
-from tenacity.retry import retry_if_exception_type
+from tenacity.retry import retry_if_exception, retry_if_exception_type
 from tenacity.stop import stop_after_delay
 from tenacity.wait import wait_fixed
 
 from foxops.engine import IncarnationState
-from foxops.errors import IncarnationRepositoryNotFound
+from foxops.errors import IncarnationRepositoryNotFound, MergeRequestCreationFailedError
 from foxops.external.git import (
     GitRepository,
     add_authentication_to_git_clone_url,
@@ -35,6 +36,19 @@ from foxops.logger import bound, get_logger
 
 #: Holds the module logger
 logger = get_logger(__name__)
+
+MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT = timedelta(seconds=10)
+MERGE_REQUEST_SOURCE_BRANCH_RETRY_WAIT = timedelta(seconds=1)
+
+_SOURCE_BRANCH_MISSING_PATTERN = re.compile(r"[Ss]ource branch .{0,200}? does not exist")
+
+
+def _is_source_branch_not_yet_visible(error: BaseException) -> bool:
+    return (
+        isinstance(error, httpx.HTTPStatusError)
+        and error.response.is_client_error
+        and _SOURCE_BRANCH_MISSING_PATTERN.search(error.response.text) is not None
+    )
 
 
 class MergeRequest(TypedDict):
@@ -135,18 +149,13 @@ class GitlabHoster(Hoster):
         # For now, foxops anyways only supports operating on the default branch.
         target_branch = (await self.get_repository_metadata(incarnation_repository))["default_branch"]
 
-        response = await self.client.post(
-            f"/projects/{quote_plus(incarnation_repository)}/merge_requests",
-            json={
-                "source_branch": source_branch,
-                "target_branch": target_branch,
-                "title": title,
-                "description": description,
-                "remove_source_branch": "True",
-            },
+        merge_request = await self._create_merge_request(
+            incarnation_repository=incarnation_repository,
+            source_branch=source_branch,
+            target_branch=target_branch,
+            title=title,
+            description=description,
         )
-        response.raise_for_status()
-        merge_request: MergeRequest = response.json()
         logger.info(
             f"Created merge request at {merge_request['web_url']}",
             title=title,
@@ -183,6 +192,76 @@ class GitlabHoster(Hoster):
             merge_request = await self._automerge_merge_request(merge_request, merge_message)
 
         return merge_request["sha"], str(merge_request["iid"])
+
+    async def _create_merge_request(
+        self,
+        *,
+        incarnation_repository: str,
+        source_branch: str,
+        target_branch: str,
+        title: str,
+        description: str,
+    ) -> MergeRequest:
+        @retry(
+            retry=retry_if_exception(_is_source_branch_not_yet_visible),
+            stop=stop_after_delay(MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT.total_seconds()),
+            wait=wait_fixed(MERGE_REQUEST_SOURCE_BRANCH_RETRY_WAIT.total_seconds()),
+            reraise=True,
+        )
+        async def __create() -> MergeRequest:
+            try:
+                response = await self.client.post(
+                    f"/projects/{quote_plus(incarnation_repository)}/merge_requests",
+                    json={
+                        "source_branch": source_branch,
+                        "target_branch": target_branch,
+                        "title": title,
+                        "description": description,
+                        "remove_source_branch": "True",
+                    },
+                    timeout=MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT.total_seconds(),
+                )
+            except httpx.TimeoutException as e:
+                raise MergeRequestCreationFailedError(
+                    f"GitLab did not respond to the merge request creation for branch '{source_branch}' in "
+                    f"'{incarnation_repository}' within "
+                    f"{MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT.total_seconds():.0f}s."
+                ) from e
+
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                if _is_source_branch_not_yet_visible(e):
+                    logger.warning(
+                        f"GitLab does not see the pushed source branch '{source_branch}' in "
+                        f"'{incarnation_repository}' yet, retrying merge request creation",
+                        status_code=response.status_code,
+                    )
+                    raise
+                raise MergeRequestCreationFailedError(
+                    f"GitLab refused to create a merge request for branch '{source_branch}' in "
+                    f"'{incarnation_repository}' (HTTP {response.status_code}): {response.text}"
+                ) from e
+
+            return response.json()
+
+        try:
+            return await __create()
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                "Gave up creating a merge request: the branch was pushed but GitLab still does not see it. "
+                "The incarnation repository now has a pushed branch with no merge request.",
+                incarnation_repository=incarnation_repository,
+                source_branch=source_branch,
+                target_branch=target_branch,
+                retry_timeout_seconds=MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT.total_seconds(),
+            )
+            raise MergeRequestCreationFailedError(
+                f"GitLab still reports the source branch '{source_branch}' in "
+                f"'{incarnation_repository}' as non-existent "
+                f"{MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT.total_seconds():.0f}s after it was pushed. "
+                f"Last response from GitLab: {e.response.text}"
+            ) from e
 
     @asynccontextmanager
     async def cloned_repository(
