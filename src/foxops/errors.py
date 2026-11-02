@@ -18,6 +18,10 @@ class ReconciliationUserError(ReconciliationError, FoxopsUserError):
     """Exception raised when a user error occurs during reconciliation."""
 
 
+class MergeRequestCreationFailedError(FoxopsError):
+    """Exception raised when the hoster refused to create a merge request for a pushed branch."""
+
+
 class IncarnationNotFoundError(FoxopsError):
     """Exception raised when an Incarnation cannot be found in the inventory"""
 

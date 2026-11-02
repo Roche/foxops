@@ -33,6 +33,13 @@ def configure_uvicorn_logging():
     uvicorn_access_logger.handlers.clear()
 
 
+def build_console_renderer() -> structlog.dev.ConsoleRenderer:
+    # Without an explicit exception_formatter, ConsoleRenderer silently switches to rich's
+    # whenever rich is installed, and that one repr()s every frame's locals: ~26s per
+    # traceback here, rendered synchronously on the event loop.
+    return structlog.dev.ConsoleRenderer(exception_formatter=structlog.dev.plain_traceback)
+
+
 def setup_logging(level: int | str) -> None:
     if structlog.is_configured():
         return
@@ -62,7 +69,7 @@ def setup_logging(level: int | str) -> None:
         processors=[
             # Remove _record & _from_structlog.
             structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-            structlog.dev.ConsoleRenderer(),
+            build_console_renderer(),
         ],
     )
 

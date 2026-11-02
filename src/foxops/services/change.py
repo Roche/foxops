@@ -434,6 +434,11 @@ class ChangeService:
             )
 
             if merge_request_id is None:
+                log.warning(
+                    "Found a dangling branch with no merge request",
+                    incarnation_repository=incarnation.incarnation_repository,
+                    branch_name=change.merge_request_branch_name,
+                )
                 raise CannotRepairChangeException(
                     "the commit and branch for the change exist, but the MR does not. "
                     f"Please go ahead and manually create a merge request for "
