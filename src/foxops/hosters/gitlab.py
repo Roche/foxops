@@ -40,7 +40,11 @@ logger = get_logger(__name__)
 MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT = timedelta(seconds=10)
 MERGE_REQUEST_SOURCE_BRANCH_RETRY_WAIT = timedelta(seconds=1)
 
-_SOURCE_BRANCH_MISSING_PATTERN = re.compile(r"[Ss]ource branch .{0,200}? does not exist")
+# Gitlab words this differently depending on which check rejects the request. The REST
+# API reaches a model validation that reports it per attribute, as
+# {"source_branch": ["does not exist"]}, while MergeRequests::BuildService behind the web
+# UI adds a sentence instead: Source branch "x" does not exist.
+_SOURCE_BRANCH_MISSING_PATTERN = re.compile(r'"?source[_ ]branch"?.{0,200}?does not exist', re.IGNORECASE)
 
 
 def _is_source_branch_not_yet_visible(error: BaseException) -> bool:
