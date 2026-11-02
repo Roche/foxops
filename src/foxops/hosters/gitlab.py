@@ -40,9 +40,7 @@ logger = get_logger(__name__)
 MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT = timedelta(seconds=10)
 MERGE_REQUEST_SOURCE_BRANCH_RETRY_WAIT = timedelta(seconds=1)
 
-# The REST API says {"source_branch": ["does not exist"]}, the web UI says
-# 'Source branch "x" does not exist'.
-_SOURCE_BRANCH_MISSING_PATTERN = re.compile(r'"?source[_ ]branch"?.{0,200}?does not exist', re.IGNORECASE)
+_SOURCE_BRANCH_MISSING_PATTERN = re.compile(r'"source_branch":\s*\["does not exist"')
 
 
 def _is_source_branch_not_yet_visible(error: BaseException) -> bool:

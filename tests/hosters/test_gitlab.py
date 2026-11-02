@@ -15,9 +15,7 @@ RETRY_WAIT_PATH = "foxops.hosters.gitlab.MERGE_REQUEST_SOURCE_BRANCH_RETRY_WAIT"
 INCARNATION_REPOSITORY = "group/incarnation"
 SOURCE_BRANCH = "foxops/update-ab12cd"
 
-# What the REST API returns, and what MergeRequests::BuildService returns behind the web UI.
 SOURCE_BRANCH_MISSING_BODY = {"message": {"source_branch": ["does not exist"]}}
-SOURCE_BRANCH_MISSING_BODY_BUILD_SERVICE = {"message": [f'Source branch "{SOURCE_BRANCH}" does not exist']}
 
 CREATED_MERGE_REQUEST = {
     "iid": 42,
@@ -81,15 +79,14 @@ async def create_merge_request(fake_gitlab: FakeGitlab) -> tuple[str, str]:
     )
 
 
-@pytest.mark.parametrize("body", [SOURCE_BRANCH_MISSING_BODY, SOURCE_BRANCH_MISSING_BODY_BUILD_SERVICE])
 @pytest.mark.parametrize("status_code", [HTTPStatus.BAD_REQUEST, HTTPStatus.UNPROCESSABLE_ENTITY])
 async def test_merge_request_retries_until_gitlab_sees_the_pushed_branch(
-    status_code: HTTPStatus, body: dict[str, Any], mocker: MockerFixture
+    status_code: HTTPStatus, mocker: MockerFixture
 ) -> None:
     mocker.patch(RETRY_TIMEOUT_PATH, timedelta(seconds=5))
     fake_gitlab = FakeGitlab(
         [
-            httpx.Response(status_code, json=body),
+            httpx.Response(status_code, json=SOURCE_BRANCH_MISSING_BODY),
             httpx.Response(HTTPStatus.CREATED, json=CREATED_MERGE_REQUEST),
         ]
     )
