@@ -158,11 +158,39 @@ Some tests require a Gitlab instance to be available and will be skipped automat
 
 ### Run Tests that Require Gitlab
 
-To run tests that require a Gitlab instance, you can either [run one locally](https://docs.gitlab.com/ee/install/docker.html) or use the public [gitlab.com](https://gitlab.com) instance. The latter is typically recommended for ease of use.
+These tests are worth reaching for after a change to the hoster or the change
+service: the end-to-end tests under `tests/e2e/` start the foxops app in-process
+and point it at a real Gitlab, so they cover the full path down to the Gitlab API
+without an image build or a deployment.
 
-On that Gitlab instance, a "root group" is required, in which foxops can create temporary projects for test templates and incarnations (these will be automatically cleaned after the test execution). Also an access token is required that has access to that group.
+On an **amd64 host** the least setup is the Gitlab instance that this repository
+already starts for its own CI. It needs neither an access token nor a
+pre-existing group:
 
-Once you have all this, add the following environment variables and rerun the tests:
+```shell
+make gitlab-up      # the first run has to pull the image and takes a few minutes
+make test-gitlab
+make gitlab-down    # stops Gitlab and deletes its volumes
+```
+
+`make test-gitlab` runs the whole suite against that instance. Pass additional
+pytest flags to iterate on a subset:
+
+```shell
+make test-gitlab PYTEST_ARGS="-n 4 -m e2e -k merge_request"
+```
+
+> `gitlab/gitlab-ce` is only published for amd64. On an arm64 host it runs under
+> emulation, where it saturates a core and answers a part of the test suite with
+> `502 Bad Gateway` even though the container reports itself healthy. Prefer a
+> remote instance there.
+
+Otherwise point the tests at a Gitlab instance you already have, for example the
+public [gitlab.com](https://gitlab.com). That one does need an access token, and
+a "root group" in which foxops can create temporary projects for test templates
+and incarnations (these will be automatically cleaned after the test execution).
+
+Add the following environment variables and rerun the tests:
 
 ```shell
 # defaults to "https://gitlab.com" if not specified
