@@ -37,6 +37,10 @@ from foxops.logger import bound, get_logger
 #: Holds the module logger
 logger = get_logger(__name__)
 
+# Has to share the load balancer's 60s idle timeout with the mergeability loop below, which
+# can spend 25s of it. 10s was not enough: in production it recovered 1 of the 4 races seen
+# over two weeks, and running out leaves a pushed branch behind with no merge request.
+MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT = timedelta(seconds=30)
 MERGE_REQUEST_SOURCE_BRANCH_RETRY_WAIT = timedelta(seconds=1)
 
 _SOURCE_BRANCH_MISSING_PATTERN = re.compile(r'"source_branch":\s*\["does not exist"')
@@ -83,10 +87,9 @@ def evaluate_gitlab_address(address: str) -> tuple[str, str]:
 class GitlabHoster(Hoster):
     """REST API client for GitLab"""
 
-    def __init__(self, address: str, token: str, merge_request_retry_timeout_seconds: float):
+    def __init__(self, address: str, token: str):
         self.web_address, self.api_address = evaluate_gitlab_address(address)
         self.token = token
-        self.merge_request_retry_timeout_seconds = merge_request_retry_timeout_seconds
         self.client = httpx.AsyncClient(
             base_url=self.api_address, headers={"Authorization": f"Bearer {self.token}"}, timeout=httpx.Timeout(120)
         )
@@ -204,7 +207,7 @@ class GitlabHoster(Hoster):
     ) -> MergeRequest:
         @retry(
             retry=retry_if_exception(_is_source_branch_not_yet_visible),
-            stop=stop_after_delay(self.merge_request_retry_timeout_seconds),
+            stop=stop_after_delay(MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT.total_seconds()),
             wait=wait_fixed(MERGE_REQUEST_SOURCE_BRANCH_RETRY_WAIT.total_seconds()),
             reraise=True,
         )
@@ -219,13 +222,13 @@ class GitlabHoster(Hoster):
                         "description": description,
                         "remove_source_branch": "True",
                     },
-                    timeout=self.merge_request_retry_timeout_seconds,
+                    timeout=MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT.total_seconds(),
                 )
             except httpx.TimeoutException as e:
                 raise MergeRequestCreationFailedError(
                     f"GitLab did not respond to the merge request creation for branch '{source_branch}' in "
                     f"'{incarnation_repository}' within "
-                    f"{self.merge_request_retry_timeout_seconds:.0f}s."
+                    f"{MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT.total_seconds():.0f}s."
                 ) from e
 
             try:
@@ -254,12 +257,12 @@ class GitlabHoster(Hoster):
                 incarnation_repository=incarnation_repository,
                 source_branch=source_branch,
                 target_branch=target_branch,
-                retry_timeout_seconds=self.merge_request_retry_timeout_seconds,
+                retry_timeout_seconds=MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT.total_seconds(),
             )
             raise MergeRequestCreationFailedError(
                 f"GitLab still reports the source branch '{source_branch}' in "
                 f"'{incarnation_repository}' as non-existent "
-                f"{self.merge_request_retry_timeout_seconds:.0f}s after it was pushed. "
+                f"{MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT.total_seconds():.0f}s after it was pushed. "
                 f"Last response from GitLab: {e.response.text}"
             ) from e
 

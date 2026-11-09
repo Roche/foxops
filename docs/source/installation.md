@@ -104,8 +104,6 @@ The following is needed to run foxops:
   * `FOXOPS_HOSTER_GITLAB_TOKEN` - Set to a GitLab access token that has access to all repositories (incarnations & templates) that foxops should manage (if hoster type is set to `gitlab`)
     * The Gitlab token must have the `api` scope to be able to perform all required actions (pushing/pulling repos, creating merge requests).
     * Be aware that foxops pushes all changes using this token (and therefore, might also trigger pipelines with this token). As Gitlab pipelines inherit the permissions from the user (in this case, the token) creating a change, make sure this token has sufficient access.
-  * `FOXOPS_HOSTER_GITLAB_MERGE_REQUEST_RETRY_TIMEOUT_SECONDS` - How long to keep retrying merge request creation while GitLab still reports the branch foxops just pushed as non-existent (optional, default is `30`)
-    * GitLab answers this check from a cache that can lag a push, so a merge request created immediately after one can be rejected. Raise this if you see `Gave up creating a merge request` in the logs, but keep the whole request inside whatever timeout your reverse proxy applies.
   * `FOXOPS_LOG_LEVEL` - Set to `DEBUG` to enable debug logging (optional, default is `INFO`)
 
 #### Kubernetes Example
