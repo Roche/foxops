@@ -66,7 +66,11 @@ def get_hoster(request: Request, settings: Annotated[Settings, Depends(get_setti
             gitlab_settings = GitlabHosterSettings()
             logger.info("Using GitLab hoster", address=gitlab_settings.address)
 
-            hoster = GitlabHoster(gitlab_settings.address, gitlab_settings.token.get_secret_value())
+            hoster = GitlabHoster(
+                gitlab_settings.address,
+                gitlab_settings.token.get_secret_value(),
+                gitlab_settings.merge_request_retry_timeout_seconds,
+            )
         case _:
             raise NotImplementedError(f"Unknown hoster type {settings.hoster_type}")
 

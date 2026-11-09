@@ -22,6 +22,11 @@ class GitlabHosterSettings(BaseSettings):
     address: str
     token: SecretStr
 
+    # Spent waiting for Gitlab to see a branch that was just pushed. The whole request has to
+    # stay under the load balancer's 60s idle timeout, and the mergeability loop that follows
+    # can take another 25s of it.
+    merge_request_retry_timeout_seconds: float = 30.0
+
     model_config = SettingsConfigDict(env_prefix="foxops_hoster_gitlab_", secrets_dir="/var/run/secrets/foxops")
 
 

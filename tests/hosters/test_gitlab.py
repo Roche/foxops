@@ -9,7 +9,6 @@ from pytest_mock import MockerFixture
 from foxops.errors import MergeRequestCreationFailedError
 from foxops.hosters.gitlab import GitlabHoster
 
-RETRY_TIMEOUT_PATH = "foxops.hosters.gitlab.MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT"
 RETRY_WAIT_PATH = "foxops.hosters.gitlab.MERGE_REQUEST_SOURCE_BRANCH_RETRY_WAIT"
 
 INCARNATION_REPOSITORY = "group/incarnation"
@@ -63,14 +62,14 @@ def fast_retry_wait(mocker: MockerFixture) -> None:
     mocker.patch(RETRY_WAIT_PATH, timedelta(seconds=0.01))
 
 
-def build_hoster(fake_gitlab: FakeGitlab) -> GitlabHoster:
-    hoster = GitlabHoster("https://gitlab.example.com", "token")
+def build_hoster(fake_gitlab: FakeGitlab, retry_timeout_seconds: float = 5.0) -> GitlabHoster:
+    hoster = GitlabHoster("https://gitlab.example.com", "token", retry_timeout_seconds)
     hoster.client = httpx.AsyncClient(base_url=hoster.api_address, transport=httpx.MockTransport(fake_gitlab))
     return hoster
 
 
-async def create_merge_request(fake_gitlab: FakeGitlab) -> tuple[str, str]:
-    return await build_hoster(fake_gitlab).merge_request(
+async def create_merge_request(fake_gitlab: FakeGitlab, retry_timeout_seconds: float = 5.0) -> tuple[str, str]:
+    return await build_hoster(fake_gitlab, retry_timeout_seconds).merge_request(
         incarnation_repository=INCARNATION_REPOSITORY,
         source_branch=SOURCE_BRANCH,
         title="Update to v1.2.3",
@@ -80,10 +79,7 @@ async def create_merge_request(fake_gitlab: FakeGitlab) -> tuple[str, str]:
 
 
 @pytest.mark.parametrize("status_code", [HTTPStatus.BAD_REQUEST, HTTPStatus.UNPROCESSABLE_ENTITY])
-async def test_merge_request_retries_until_gitlab_sees_the_pushed_branch(
-    status_code: HTTPStatus, mocker: MockerFixture
-) -> None:
-    mocker.patch(RETRY_TIMEOUT_PATH, timedelta(seconds=5))
+async def test_merge_request_retries_until_gitlab_sees_the_pushed_branch(status_code: HTTPStatus) -> None:
     fake_gitlab = FakeGitlab(
         [
             httpx.Response(status_code, json=SOURCE_BRANCH_MISSING_BODY),
@@ -98,12 +94,11 @@ async def test_merge_request_retries_until_gitlab_sees_the_pushed_branch(
     assert "42" == merge_request_id
 
 
-async def test_merge_request_fails_cleanly_when_the_branch_never_becomes_visible(mocker: MockerFixture) -> None:
-    mocker.patch(RETRY_TIMEOUT_PATH, timedelta(seconds=0.2))
+async def test_merge_request_fails_cleanly_when_the_branch_never_becomes_visible() -> None:
     fake_gitlab = FakeGitlab([httpx.Response(HTTPStatus.BAD_REQUEST, json=SOURCE_BRANCH_MISSING_BODY)])
 
     with pytest.raises(MergeRequestCreationFailedError) as exc_info:
-        await create_merge_request(fake_gitlab)
+        await create_merge_request(fake_gitlab, retry_timeout_seconds=0.2)
 
     assert fake_gitlab.create_attempts > 1
     assert SOURCE_BRANCH in str(exc_info.value)
@@ -121,10 +116,9 @@ async def test_merge_request_does_not_retry_unrelated_gitlab_errors() -> None:
     assert "403 Forbidden" in str(exc_info.value)
 
 
-async def test_merge_request_bounds_each_attempt_by_the_retry_timeout(mocker: MockerFixture) -> None:
-    mocker.patch(RETRY_TIMEOUT_PATH, timedelta(seconds=7))
+async def test_merge_request_bounds_each_attempt_by_the_retry_timeout() -> None:
     fake_gitlab = FakeGitlab([httpx.Response(HTTPStatus.CREATED, json=CREATED_MERGE_REQUEST)])
 
-    await create_merge_request(fake_gitlab)
+    await create_merge_request(fake_gitlab, retry_timeout_seconds=7.0)
 
     assert [{"connect": 7.0, "read": 7.0, "write": 7.0, "pool": 7.0}] == fake_gitlab.create_request_timeouts

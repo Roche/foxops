@@ -65,7 +65,7 @@ build:
 
 @pytest.fixture
 async def gitlab_hoster(gitlab_address, gitlab_access_token) -> Hoster:
-    return GitlabHoster(address=gitlab_address, token=gitlab_access_token)
+    return GitlabHoster(address=gitlab_address, token=gitlab_access_token, merge_request_retry_timeout_seconds=30.0)
 
 
 async def test_get_merge_request_status_returns_open_for_open_merge_request(
