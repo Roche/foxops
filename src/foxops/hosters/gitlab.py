@@ -37,7 +37,10 @@ from foxops.logger import bound, get_logger
 #: Holds the module logger
 logger = get_logger(__name__)
 
-MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT = timedelta(seconds=10)
+# Has to share the load balancer's 60s idle timeout with the mergeability loop below, which
+# can spend 25s of it. 10s was not enough: in production it recovered 1 of the 4 races seen
+# over two weeks, and running out leaves a pushed branch behind with no merge request.
+MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT = timedelta(seconds=30)
 MERGE_REQUEST_SOURCE_BRANCH_RETRY_WAIT = timedelta(seconds=1)
 
 _SOURCE_BRANCH_MISSING_PATTERN = re.compile(r'"source_branch":\s*\["does not exist"')
