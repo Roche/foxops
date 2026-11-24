@@ -8,7 +8,12 @@ from typing import AsyncIterator, Iterator
 from pydantic import BaseModel
 
 from foxops.engine import IncarnationState
-from foxops.external.git import GitError, GitRepository, git_exec, shallow_checkout_refspec
+from foxops.external.git import (
+    GitError,
+    GitRepository,
+    git_exec,
+    shallow_checkout_refspec,
+)
 from foxops.hosters import GitSha, Hoster, MergeRequestId, ReconciliationStatus
 from foxops.hosters.types import MergeRequestStatus, RepositoryMetadata
 
