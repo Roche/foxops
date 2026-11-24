@@ -23,6 +23,7 @@ from foxops.external.git import (
     GitRepository,
     add_authentication_to_git_clone_url,
     git_exec,
+    validate_refspec,
 )
 from foxops.hosters.types import (
     GitSha,
@@ -309,9 +310,10 @@ class GitlabHoster(Hoster):
                 await git_exec(
                     "fetch",
                     "--depth=1",
-                    "origin",
                     "--tags",
-                    refspec,
+                    "--end-of-options",
+                    "origin",
+                    validate_refspec(refspec),
                     cwd=local_clone_directory,
                 )
                 await git_exec("reset", "--hard", "FETCH_HEAD", cwd=local_clone_directory)
