@@ -69,6 +69,14 @@ async def git_exec(*args, **kwargs) -> asyncio.subprocess.Process:
         raise GitError(message=exc.stderr.decode()) from exc
 
 
+async def shallow_checkout_refspec(directory: Path | str, refspec: str) -> None:
+    """Shallow-fetch `refspec` (plus all tags) from `origin` and check it out in the repository at `directory`."""
+    await git_exec(
+        "fetch", "--depth=1", "--tags", "--end-of-options", "origin", validate_refspec(refspec), cwd=directory
+    )
+    await git_exec("reset", "--hard", "FETCH_HEAD", cwd=directory)
+
+
 def add_authentication_to_git_clone_url(source: str, username: str, password: str):
     if not source.startswith(("http://", "https://")):
         raise ValueError("only http:// and https:// repository URLs are allowed")

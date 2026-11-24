@@ -7,7 +7,8 @@ import pytest
 from pytest_mock import MockerFixture
 
 from foxops.errors import MergeRequestCreationFailedError
-from foxops.hosters.gitlab import GitlabHoster
+from foxops.external.git import InvalidRefspecError
+from foxops.hosters.gitlab import GitlabHoster, RepositoryNotOnHosterError
 
 RETRY_TIMEOUT_PATH = "foxops.hosters.gitlab.MERGE_REQUEST_SOURCE_BRANCH_RETRY_TIMEOUT"
 RETRY_WAIT_PATH = "foxops.hosters.gitlab.MERGE_REQUEST_SOURCE_BRANCH_RETRY_WAIT"
@@ -128,3 +129,59 @@ async def test_merge_request_bounds_each_attempt_by_the_retry_timeout(mocker: Mo
     await create_merge_request(fake_gitlab)
 
     assert [{"connect": 7.0, "read": 7.0, "write": 7.0, "pool": 7.0}] == fake_gitlab.create_request_timeouts
+
+
+async def test_cloned_repository_rejects_refspec_that_looks_like_a_git_option():
+    hoster = GitlabHoster("https://gitlab.example.com", "token")
+
+    with pytest.raises(InvalidRefspecError):
+        async with hoster.cloned_repository("https://gitlab.example.com/group/template.git", refspec="--upload-pack=x"):
+            pass
+
+
+@pytest.mark.parametrize(
+    "repository",
+    [
+        "https://attacker.example/group/template.git",
+        "https://gitlab.example.com.attacker.example/group/template.git",
+        "https://gitlab.example.com@attacker.example/group/template.git",
+        "http://gitlab.example.com/group/template.git",
+        "https://gitlab.example.com:8443/group/template.git",
+        "https://gitlab.example.com:notaport/group/template.git",
+    ],
+)
+async def test_cloned_repository_does_not_send_token_to_repository_url_outside_of_gitlab(
+    mocker: MockerFixture, repository: str
+):
+    # GIVEN
+    hoster = GitlabHoster("https://gitlab.example.com", "token")
+    git_exec = mocker.patch("foxops.hosters.gitlab.git_exec")
+
+    # THEN
+    with pytest.raises(RepositoryNotOnHosterError):
+        async with hoster.cloned_repository(repository):
+            pass
+    git_exec.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "address, repository",
+    [
+        ("https://gitlab.example.com", "https://gitlab.example.com/group/template.git"),
+        ("https://gitlab.example.com", "https://GitLab.Example.com/group/template.git"),
+        ("https://gitlab.example.com", "https://gitlab.example.com:443/group/template.git"),
+        ("https://gitlab.example.com/api/v4", "https://gitlab.example.com/group/template.git"),
+        ("http://localhost:5002", "http://localhost:5002/group/template.git"),
+    ],
+)
+async def test_cloned_repository_clones_repository_url_on_gitlab(mocker: MockerFixture, address: str, repository: str):
+    # GIVEN
+    hoster = GitlabHoster(address, "token")
+    git_exec = mocker.patch("foxops.hosters.gitlab.git_exec")
+
+    # WHEN
+    async with hoster.cloned_repository(repository):
+        pass
+
+    # THEN
+    assert git_exec.call_args_list[0].args[0] == "clone"
