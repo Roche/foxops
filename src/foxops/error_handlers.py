@@ -17,10 +17,9 @@ def _request_context(request: Request) -> dict:
     return {
         "method": request.method,
         "path": request.url.path,
-        # Read from request.state, not from the contextvars: the middleware binds those in a child task,
-        # and catch_all runs outside of it.
-        "request_id": getattr(request.state, "request_id", None),
         **request.path_params,
+        # Set by bind_request_context().
+        **getattr(request.state, "log_context", {}),
     }
 
 

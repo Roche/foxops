@@ -13,6 +13,9 @@ class _FailingChangeService:
     async def get_incarnation_with_details(self, incarnation_id: int):
         raise RuntimeError("boom")
 
+    async def create_incarnation(self, **kwargs):
+        raise RuntimeError("boom")
+
 
 @pytest.fixture
 async def failing_client(app: FastAPI, static_api_token: str):
@@ -40,4 +43,24 @@ async def test_unhandled_error_is_logged_with_request_context(failing_client: As
     assert event["method"] == "GET"
     assert event["path"] == "/api/incarnations/42"
     assert event["incarnation_id"] == "42"
+    assert uuid.UUID(event["request_id"])
+
+
+async def test_unhandled_error_on_create_is_logged_with_the_incarnation_repository(failing_client: AsyncClient, caplog):
+    with caplog.at_level(logging.ERROR, logger="foxops.error_handlers"):
+        response = await failing_client.post(
+            "/api/incarnations",
+            json={
+                "incarnation_repository": "group/incarnation",
+                "target_directory": "subdir",
+                "template_repository": "group/template",
+                "template_repository_version": "main",
+                "template_data": {},
+            },
+        )
+
+    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    (event,) = _error_handler_events(caplog)
+    assert event["incarnation_repository"] == "group/incarnation"
+    assert event["target_directory"] == "subdir"
     assert uuid.UUID(event["request_id"])
