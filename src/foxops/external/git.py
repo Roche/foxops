@@ -32,6 +32,20 @@ class RevisionNotFoundError(GitError, FoxopsUserError):
         super().__init__(f"Revision '{ref.decode('utf-8')}' not found.")
 
 
+class InvalidRefspecError(FoxopsUserError):
+    """Error raised when a refspec could be interpreted by git as a command line option."""
+
+    def __init__(self, refspec: str):
+        super().__init__(f"Invalid git refspec '{refspec}': must not start with a dash (-).")
+
+
+def validate_refspec(refspec: str) -> str:
+    """Guard against user-provided refspecs being interpreted as git options (e.g. `--upload-pack=...`)."""
+    if refspec.startswith("-"):
+        raise InvalidRefspecError(refspec)
+    return refspec
+
+
 GIT_ERROR_ORACLE = {
     re.compile(
         rb"hint: Updates were rejected because the remote contains work that you do.*not.*have locally.",
@@ -53,6 +67,14 @@ async def git_exec(*args, **kwargs) -> asyncio.subprocess.Process:
             raise oracle_hit_exc from exc
 
         raise GitError(message=exc.stderr.decode()) from exc
+
+
+async def shallow_checkout_refspec(directory: Path | str, refspec: str) -> None:
+    """Shallow-fetch `refspec` (plus all tags) from `origin` and check it out in the repository at `directory`."""
+    await git_exec(
+        "fetch", "--depth=1", "--tags", "--end-of-options", "origin", validate_refspec(refspec), cwd=directory
+    )
+    await git_exec("reset", "--hard", "FETCH_HEAD", cwd=directory)
 
 
 def add_authentication_to_git_clone_url(source: str, username: str, password: str):
@@ -236,9 +258,9 @@ class GitRepository:
     async def fetch(self, refspec: str | None = None) -> None:
         args = []
         if refspec is not None:
-            args.append(refspec)
+            args.append(validate_refspec(refspec))
 
-        await self._run("fetch", "origin", *args)
+        await self._run("fetch", "--end-of-options", "origin", *args)
 
     async def rebase(self, branch: str | None = None) -> None:
         if branch is None:

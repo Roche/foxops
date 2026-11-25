@@ -14,7 +14,7 @@ from foxops.engine.models.template_config import (
     StringVariableDefinition,
     TemplateConfig,
 )
-from foxops.external.git import git_exec
+from foxops.external.git import InvalidRefspecError, git_exec
 from foxops.hosters.local import LocalHoster
 from foxops.hosters.types import MergeRequestStatus, ReconciliationStatus
 from foxops.models import Incarnation
@@ -887,3 +887,12 @@ def test_delete_all_files_in_local_git_repository_respects_fengine_reset_ignore(
     assert not (tmp_path / "example" / "file_to_delete.txt").exists()
     assert not (tmp_path / "example" / "nested" / "other_file.txt").exists()
     assert not (tmp_path / ".fengine-reset-ignore").exists()
+
+
+async def test_create_change_direct_rejects_version_that_looks_like_a_git_option(
+    change_service: ChangeService, initialized_incarnation: Incarnation
+):
+    with pytest.raises(InvalidRefspecError):
+        await change_service.create_change_direct(
+            initialized_incarnation.id, requested_version="--upload-pack=x", requested_data={}
+        )
