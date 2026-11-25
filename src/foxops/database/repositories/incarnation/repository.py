@@ -1,6 +1,6 @@
 from typing import AsyncIterator
 
-from sqlalchemy import delete, insert, select
+from sqlalchemy import delete, insert, select, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -21,6 +21,7 @@ class IncarnationRepository:
         incarnation_repository: str,
         target_directory: str,
         template_repository: str,
+        auto_update_interval_seconds: int = 0,
     ) -> IncarnationInDB:
         async with self.engine.begin() as conn:
             query = (
@@ -29,6 +30,7 @@ class IncarnationRepository:
                     incarnation_repository=incarnation_repository,
                     target_directory=target_directory,
                     template_repository=template_repository,
+                    auto_update_interval_seconds=auto_update_interval_seconds,
                 )
                 .returning(incarnations)
             )
@@ -62,6 +64,15 @@ class IncarnationRepository:
                 raise IncarnationNotFoundError(f"could not find incarnation in DB with id: {id_}")
             else:
                 return IncarnationInDB.model_validate(row)
+
+    async def update_auto_update_interval(self, id_: int, interval_seconds: int) -> None:
+        query = (
+            update(incarnations).values(auto_update_interval_seconds=interval_seconds).where(incarnations.c.id == id_)
+        )
+        async with self.engine.begin() as conn:
+            result = await conn.execute(query)
+            if result.rowcount == 0:
+                raise IncarnationNotFoundError(f"could not find incarnation in DB with id: {id_}")
 
     async def delete_by_id(self, id_: int) -> None:
         query = delete(incarnations).where(incarnations.c.id == id_)

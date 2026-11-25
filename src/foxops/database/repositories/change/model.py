@@ -48,6 +48,7 @@ class IncarnationWithChangesSummary(BaseModel):
     incarnation_repository: str
     target_directory: str
     template_repository: str
+    auto_update_interval_seconds: int
 
     revision: int
     type: ChangeType
