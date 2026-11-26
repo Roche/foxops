@@ -6,6 +6,7 @@ from foxops import utils
 from foxops.engine import initialize_incarnation
 from foxops.engine.models.incarnation_state import IncarnationState, TemplateData
 from foxops.engine.patching.git_diff_patch import PatchResult
+from foxops.external.git import validate_refspec
 from foxops.logger import get_logger
 
 #: Holds the module logger
@@ -48,11 +49,7 @@ async def update_incarnation_from_git_template_repository(
       - the new template version with the data that was provided for the update
     * diff the two incarnations - then apply the patch on the actual incarnation that should be updated
     """
-    if update_template_repository_version.startswith("-"):
-        raise ValueError(
-            f"update_template_repository_version must ba a valid git refspec and "
-            f"not start with a dash (-): {update_template_repository_version}"
-        )
+    validate_refspec(update_template_repository_version)
 
     # initialize pristine incarnation from current incarnation state
     current_incarnation_state = IncarnationState.from_file(incarnation_root_dir / ".fengine.yaml")
@@ -78,6 +75,7 @@ async def update_incarnation_from_git_template_repository(
             "git",
             "worktree",
             "add",
+            "--end-of-options",
             updated_template_root_dir,
             update_template_repository_version,
             cwd=template_git_repository,

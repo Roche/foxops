@@ -9,7 +9,7 @@ from pathlib import Path
 from ssl import SSLZeroReturnError
 from tempfile import mkdtemp
 from typing import Any, AsyncIterator, TypedDict
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlsplit
 
 import httpx
 from tenacity import retry
@@ -18,11 +18,16 @@ from tenacity.stop import stop_after_delay
 from tenacity.wait import wait_fixed
 
 from foxops.engine import IncarnationState
-from foxops.errors import IncarnationRepositoryNotFound, MergeRequestCreationFailedError
+from foxops.errors import (
+    FoxopsUserError,
+    IncarnationRepositoryNotFound,
+    MergeRequestCreationFailedError,
+)
 from foxops.external.git import (
     GitRepository,
     add_authentication_to_git_clone_url,
     git_exec,
+    shallow_checkout_refspec,
 )
 from foxops.hosters.types import (
     GitSha,
@@ -84,6 +89,20 @@ def evaluate_gitlab_address(address: str) -> tuple[str, str]:
         return address, f"{address}/api/v4"
 
 
+class RepositoryNotOnHosterError(FoxopsUserError):
+    """Exception raised when a repository URL points to a host other than the configured GitLab instance."""
+
+    def __init__(self, repository: str):
+        super().__init__(f"Repository '{repository}' is not hosted on the configured GitLab instance.")
+
+
+def _url_origin(url: str) -> tuple[str, str | None, int | None]:
+    """Return the (scheme, host, port) of the given URL, filling in the default port of the scheme."""
+    parts = urlsplit(url)
+    scheme = parts.scheme.lower()
+    return scheme, parts.hostname, parts.port or {"http": 80, "https": 443}.get(scheme)
+
+
 class GitlabHoster(Hoster):
     """REST API client for GitLab"""
 
@@ -96,6 +115,12 @@ class GitlabHoster(Hoster):
 
     async def validate(self) -> None:
         (await self.client.get("/version")).raise_for_status()
+
+    def _is_on_gitlab(self, url: str) -> bool:
+        try:
+            return _url_origin(url) == _url_origin(self.web_address)
+        except ValueError:
+            return False
 
     async def __project_exists(self, project_identifier: str) -> bool:
         response = await self.client.head(f"/projects/{quote_plus(project_identifier)}")
@@ -274,6 +299,9 @@ class GitlabHoster(Hoster):
             # it's not a URL, but a `path_with_namespace`, so, let's think it a URL
             metadata = await self.get_repository_metadata(repository)
             repository = metadata["http_url"]
+        elif not self._is_on_gitlab(repository):
+            # NOTE: the clone URL carries the GitLab token, so it must never point to any other host
+            raise RepositoryNotOnHosterError(repository)
 
         clone_url = add_authentication_to_git_clone_url(repository, "oauth2", self.token)
 
@@ -306,15 +334,7 @@ class GitlabHoster(Hoster):
                 #           So we need to fetch all tag refs, which should be fine.
                 await git_exec("init", local_clone_directory, cwd=Path.home())
                 await git_exec("remote", "add", "origin", clone_url, cwd=local_clone_directory)
-                await git_exec(
-                    "fetch",
-                    "--depth=1",
-                    "origin",
-                    "--tags",
-                    refspec,
-                    cwd=local_clone_directory,
-                )
-                await git_exec("reset", "--hard", "FETCH_HEAD", cwd=local_clone_directory)
+                await shallow_checkout_refspec(local_clone_directory, refspec)
 
             # NOTE(TF): set author data
             await git_exec(

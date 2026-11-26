@@ -4,6 +4,7 @@ import pytest
 from pytest import fixture
 
 from foxops.engine import IncarnationState
+from foxops.external.git import InvalidRefspecError
 from foxops.hosters.local import LocalHoster
 from foxops.hosters.types import MergeRequestStatus
 
@@ -271,3 +272,26 @@ async def test_get_incarnation_state_returns_none_if_incarnation_does_not_exist(
 
     # THEN
     assert state is None
+
+
+async def test_cloned_repository_rejects_refspec_that_looks_like_a_git_option(local_hoster, tmp_path):
+    # GIVEN
+    repo_name = "test-repository"
+    await local_hoster.create_repository(repo_name)
+    async with local_hoster.cloned_repository(repo_name) as repo:
+        (repo.directory / "README.md").write_text("Hello, world!")
+        await repo.commit_all("Initial commit")
+        await repo.push()
+
+    marker = tmp_path / "pwned"
+    payload = tmp_path / "upload-pack.sh"
+    payload.write_text(f'#!/bin/sh\ntouch {marker}\nexec git-upload-pack "$@"\n')
+    payload.chmod(0o755)
+
+    # WHEN
+    with pytest.raises(InvalidRefspecError):
+        async with local_hoster.cloned_repository(repo_name, refspec=f"--upload-pack={payload}"):
+            pass
+
+    # THEN
+    assert not marker.exists()

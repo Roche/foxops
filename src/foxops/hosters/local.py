@@ -8,7 +8,12 @@ from typing import AsyncIterator, Iterator
 from pydantic import BaseModel
 
 from foxops.engine import IncarnationState
-from foxops.external.git import GitError, GitRepository, git_exec
+from foxops.external.git import (
+    GitError,
+    GitRepository,
+    git_exec,
+    shallow_checkout_refspec,
+)
 from foxops.hosters import GitSha, Hoster, MergeRequestId, ReconciliationStatus
 from foxops.hosters.types import MergeRequestStatus, RepositoryMetadata
 
@@ -171,8 +176,7 @@ class LocalHoster(Hoster):
             else:
                 await git_exec("init", cwd=tmpdir)
                 await git_exec("remote", "add", "origin", repo_path, cwd=tmpdir)
-                await git_exec("fetch", "--depth=1", "origin", "--tags", refspec, cwd=tmpdir)
-                await git_exec("reset", "--hard", "FETCH_HEAD", cwd=tmpdir)
+                await shallow_checkout_refspec(tmpdir, refspec)
 
             # set author data
             await git_exec("config", "user.name", "foxops", cwd=tmpdir)
