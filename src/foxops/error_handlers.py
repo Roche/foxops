@@ -13,13 +13,23 @@ async def validation_exception_handler(_: Request, exc: RequestValidationError):
     return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"message": str(exc)})
 
 
-async def foxops_user_error(_: Request, exc: FoxopsUserError):
-    logger.warning(f"User error happened: {exc}")
+def _request_context(request: Request) -> dict:
+    return {
+        "method": request.method,
+        "path": request.url.path,
+        **request.path_params,
+        # Set by bind_request_context().
+        **getattr(request.state, "log_context", {}),
+    }
+
+
+async def foxops_user_error(request: Request, exc: FoxopsUserError):
+    logger.warning(f"User error happened: {exc}", **_request_context(request))
     return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"message": str(exc)})
 
 
-async def catch_all(_: Request, exc: Exception):
-    logger.exception(str(exc))
+async def catch_all(request: Request, exc: Exception):
+    logger.exception(str(exc), **_request_context(request))
     return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"message": str(exc)})
 
 

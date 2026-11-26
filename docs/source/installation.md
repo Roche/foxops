@@ -105,6 +105,7 @@ The following is needed to run foxops:
     * The Gitlab token must have the `api` scope to be able to perform all required actions (pushing/pulling repos, creating merge requests).
     * Be aware that foxops pushes all changes using this token (and therefore, might also trigger pipelines with this token). As Gitlab pipelines inherit the permissions from the user (in this case, the token) creating a change, make sure this token has sufficient access.
   * `FOXOPS_LOG_LEVEL` - Set to `DEBUG` to enable debug logging (optional, default is `INFO`)
+  * `FOXOPS_LOG_FORMAT` - Set to `json` to write each log entry as one JSON object on a single line, for log systems like Loki or CloudWatch (optional, default is `console`)
 
 #### Kubernetes Example
 

@@ -21,7 +21,7 @@ FRONTEND_SUBDIRS = ["assets", "favicons"]
 
 def create_app():
     settings = get_settings()
-    setup_logging(level=settings.log_level)
+    setup_logging(level=settings.log_level, log_format=settings.log_format)
 
     app = FastAPI()
 

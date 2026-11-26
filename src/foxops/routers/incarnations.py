@@ -1,6 +1,6 @@
 from typing import Self
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from pydantic import BaseModel, model_validator
 
 from foxops.database.repositories.incarnation.errors import IncarnationNotFoundError
@@ -9,7 +9,8 @@ from foxops.engine import TemplateData
 from foxops.engine.errors import ProvidedTemplateDataInvalidError
 from foxops.errors import IncarnationNotFoundError as IncarnationNotFoundLegacyError
 from foxops.hosters import Hoster
-from foxops.logger import bind, get_logger
+from foxops.logger import get_logger
+from foxops.middlewares import bind_request_context
 from foxops.models import IncarnationBasic, IncarnationWithDetails
 from foxops.models.errors import ApiError
 from foxops.routers import changes
@@ -104,14 +105,18 @@ class CreateIncarnationRequest(BaseModel):
 async def create_incarnation(
     response: Response,
     request: CreateIncarnationRequest,
+    http_request: Request,
     change_service: ChangeService = Depends(get_change_service),
 ):
     """Initializes a new incarnation and adds it to the inventory.
 
     If the initialization fails, foxops will return the error in a `4xx` or `5xx` status code response.
     """
-    bind(incarnation_repository=request.incarnation_repository)
-    bind(target_directory=request.target_directory)
+    bind_request_context(
+        http_request,
+        incarnation_repository=request.incarnation_repository,
+        target_directory=request.target_directory,
+    )
 
     template_data = request.template_data or {}
 

@@ -11,7 +11,9 @@ from foxops.settings import DatabaseSettings
 
 config = context.config
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # Keep loggers that exist already. The default disables them, and in the test run that silences
+    # foxops loggers for every test that runs after a migration test.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = schema.meta
 

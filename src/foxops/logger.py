@@ -1,5 +1,5 @@
 import logging
-from typing import Sequence
+from typing import Literal, Sequence
 
 import structlog
 from structlog.contextvars import (
@@ -40,14 +40,28 @@ def build_console_renderer() -> structlog.dev.ConsoleRenderer:
     return structlog.dev.ConsoleRenderer(exception_formatter=structlog.dev.plain_traceback)
 
 
-def setup_logging(level: int | str) -> None:
+def build_renderers(log_format: Literal["console", "json"]) -> list[Processor]:
+    if log_format == "json":
+        # format_exc_info, not dict_tracebacks: dict_tracebacks renders every frame's locals by default.
+        return [structlog.processors.format_exc_info, structlog.processors.JSONRenderer()]
+    return [build_console_renderer()]
+
+
+def setup_logging(level: int | str, log_format: Literal["console", "json"] = "console") -> None:
     if structlog.is_configured():
         return
+
+    if log_format == "json":
+        timestamper = structlog.processors.TimeStamper(fmt="iso", utc=True)
+        # Without this, warnings go to stderr as raw multi-line text in between the JSON lines.
+        logging.captureWarnings(True)
+    else:
+        timestamper = structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M:%S")
 
     shared_processors: Sequence[Processor] = [
         merge_contextvars,
         structlog.stdlib.add_log_level,
-        structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M:%S"),
+        timestamper,
         structlog.stdlib.add_logger_name,
     ]
 
@@ -69,7 +83,7 @@ def setup_logging(level: int | str) -> None:
         processors=[
             # Remove _record & _from_structlog.
             structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-            build_console_renderer(),
+            *build_renderers(log_format),
         ],
     )
 

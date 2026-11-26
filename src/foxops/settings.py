@@ -1,5 +1,6 @@
 from enum import Enum
 from pathlib import Path
+from typing import Literal
 
 from pydantic import DirectoryPath, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -35,6 +36,7 @@ class Settings(BaseSettings):
     static_token: SecretStr
     frontend_dist_dir: Path = Path("ui/dist")
     log_level: str = "INFO"
+    log_format: Literal["console", "json"] = "console"
 
     hoster_type: HosterType = HosterType.LOCAL
 
