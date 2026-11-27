@@ -611,6 +611,92 @@ async def test_update_incomplete_change_raises_exception_for_pushed_merge_reques
         await change_service.update_incomplete_change(change.id)
 
 
+async def test_584_direct_change_recovers_after_force_push(
+    local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation
+):
+    """
+    Scenario: A user upgrades an incarnation to v1.1.0 via foxops. Later, someone
+    force-pushes (or rebases) the incarnation repository, removing the commit that
+    foxops recorded for v1.1.0. The user then wants to upgrade to v1.2.0.
+
+    Previously this was a deadlock: foxops refused all mutations because the latest
+    change referenced a nonexistent commit (commit_pushed=False). The user had no
+    API path to recover without direct DB manipulation.
+
+    Expected: the normal PUT/PATCH mutation path should detect that the broken
+    change's commit no longer exists in git, invalidate it, and proceed with the
+    update as if it were applied on top of the last known-good state.
+    """
+
+    # User upgrades incarnation from v1.0.0 to v1.1.0
+    change = await change_service.create_change_direct(
+        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}
+    )
+
+    # Someone force-pushes the repo, removing the v1.1.0 commit.
+    # The DB still has a change record pointing at the now-nonexistent SHA.
+    # We also mark commit_pushed=False to simulate the state where foxops
+    # was mid-push when the force-push happened (the common trigger for the deadlock).
+    repo_path = local_hoster._repo_path(initialized_incarnation.incarnation_repository)
+    await git_exec("update-ref", "HEAD", "HEAD^", cwd=repo_path)
+    await git_exec("gc", "--prune=now", cwd=repo_path)
+    await change_service._change_repository.update_commit_pushed(change.id, False)
+
+    # User tries to upgrade to v1.2.0 via the normal API — no /fix needed
+    new_change = await change_service.create_change_direct(
+        initialized_incarnation.id, requested_version="v1.2.0", requested_data={}
+    )
+
+    # The mutation succeeds and the new change has a real commit in git
+    assert new_change.requested_version == "v1.2.0"
+    assert await local_hoster.does_commit_exist(initialized_incarnation.incarnation_repository, new_change.commit_sha)
+
+    # GET incarnation returns healthy state at the new version
+    details = await change_service.get_incarnation_with_details(initialized_incarnation.id)
+    assert details.template_repository_version == "v1.2.0"
+    assert details.status != ReconciliationStatus.UNKNOWN
+
+
+async def test_584_get_incarnation_reports_broken_state_without_mutating(
+    local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation: Incarnation
+):
+    """
+    Scenario: Same force-push as above, but here we verify the read path behaviour.
+
+    A user (or monitoring) calls GET /api/incarnations/{id} on a broken incarnation.
+    The system should report the broken state honestly (status=UNKNOWN) without
+    attempting to fix it — reads must be side-effect-free.
+
+    Recovery only happens when the user explicitly mutates the incarnation (PUT/PATCH).
+    After that mutation, GET should reflect the healthy recovered state.
+    """
+
+    # User upgrades, then someone force-pushes
+    change = await change_service.create_change_direct(
+        initialized_incarnation.id, requested_version="v1.1.0", requested_data={}
+    )
+    repo_path = local_hoster._repo_path(initialized_incarnation.incarnation_repository)
+    await git_exec("update-ref", "HEAD", "HEAD^", cwd=repo_path)
+    await git_exec("gc", "--prune=now", cwd=repo_path)
+    await change_service._change_repository.update_commit_pushed(change.id, False)
+
+    # GET reports broken state — this is how the user discovers the problem
+    details_before = await change_service.get_incarnation_with_details(initialized_incarnation.id)
+    assert details_before.status == ReconciliationStatus.UNKNOWN
+
+    # Crucially, GET did NOT mutate the broken change
+    broken = await change_service._change_repository.get_change(change.id)
+    assert not broken.commit_pushed
+
+    # User recovers by applying a new version via the normal mutation API
+    await change_service.create_change_direct(initialized_incarnation.id, requested_version="v1.2.0", requested_data={})
+
+    # GET now reports healthy state — the incarnation is recovered
+    details_after = await change_service.get_incarnation_with_details(initialized_incarnation.id)
+    assert details_after.template_repository_version == "v1.2.0"
+    assert details_after.status != ReconciliationStatus.UNKNOWN
+
+
 async def test_reset_incarnation_returns_change_and_does_not_modify_main_branch(
     local_hoster: LocalHoster, change_service: ChangeService, initialized_incarnation_with_customizations: Incarnation
 ):
